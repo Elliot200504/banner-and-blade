@@ -1,37 +1,56 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { BattleEvent, Hex, Unit } from '../game'
-import { distanceBetween, hexToPixel, type Point } from './layout'
+import { SPELLS, type BattleEvent, type CreatureType, type Player, type Unit } from '../game'
+import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
 
-const STEP_MS = 150
-const LUNGE_MS = 130
-const HIT_MS = 320
+const STEP_MS = 140
+const FLY_MS_PER_HEX = 80
+const LUNGE_MS = 120
+const HIT_MS = 300
 const DEATH_MS = 450
-const DEFEND_MS = 400
-const FLOAT_MS = 1000
+const NOTE_MS = 380
+const FLOAT_MS = 1100
+
+export type ProjectileKind = 'arrow' | 'holy' | 'death' | 'magic'
+
+const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
+  crossbowman: 'arrow',
+  priest: 'holy',
+  lich: 'death',
+}
 
 export interface FloatingText {
   id: number
   position: Point
   text: string
-  tone: 'damage' | 'info'
+  tone: 'damage' | 'kills' | 'info' | 'good' | 'magic'
 }
 
 export interface Projectile {
   position: Point
   angle: number
+  kind: ProjectileKind
 }
 
 /** Temporary changes drawn on top of the last committed state while a move plays out. */
 export interface AnimationView {
-  positions: Record<string, Hex>
-  hp: Record<string, number>
-  lungeOffsets: Record<string, Point>
+  positions: Record<string, Point>
+  stacks: Record<string, { count: number; topHp: number }>
   hit: Record<string, boolean>
   dying: Record<string, boolean>
+  glow: Record<string, string>
   projectile: Projectile | null
+  lightning: Point | null
 }
 
-const EMPTY_VIEW: AnimationView = { positions: {}, hp: {}, lungeOffsets: {}, hit: {}, dying: {}, projectile: null }
+const EMPTY_VIEW: AnimationView = {
+  positions: {},
+  stacks: {},
+  hit: {},
+  dying: {},
+  glow: {},
+  projectile: null,
+  lightning: null,
+}
 
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds))
 
@@ -47,6 +66,14 @@ function tween(milliseconds: number, onFrame: (progress: number) => void): Promi
     requestAnimationFrame(tick)
   })
 }
+
+const between = (from: Point, to: Point, progress: number): Point => ({
+  x: from.x + (to.x - from.x) * progress,
+  y: from.y + (to.y - from.y) * progress,
+})
+
+/** Where a hero's spell comes from: the caster's edge of the board. */
+const casterPoint = (caster: Player): Point => ({ x: caster === 'red' ? 0 : BOARD_WIDTH, y: BOARD_HEIGHT / 2 })
 
 export function useAnimator() {
   const [view, setView] = useState<AnimationView>(EMPTY_VIEW)
@@ -66,74 +93,147 @@ export function useAnimator() {
     if (mounted.current) setView(change)
   }, [])
 
-  const addFloatingText = useCallback((hex: Hex, text: string, tone: FloatingText['tone']) => {
+  const addFloatingText = useCallback((position: Point, text: string, tone: FloatingText['tone'], offsetY = 0) => {
     const id = nextFloatId.current++
-    setFloatingTexts((current) => [...current, { id, position: hexToPixel(hex), text, tone }])
+    setFloatingTexts((current) => [...current, { id, position: { x: position.x, y: position.y + offsetY }, text, tone }])
     setTimeout(() => {
       if (mounted.current) setFloatingTexts((current) => current.filter((floating) => floating.id !== id))
     }, FLOAT_MS)
   }, [])
 
-  /** Plays the events of a move, starting from the units as they were before it. */
+  /**
+   * Plays the events of a move, starting from the units as they were before it.
+   * `speed` scales every duration: below 1 is faster, above 1 is slower.
+   */
   const play = useCallback(
-    async (events: BattleEvent[], unitsBefore: Unit[]) => {
+    async (events: BattleEvent[], unitsBefore: Unit[], speed: number) => {
       setPlaying(true)
-      const positions: Record<string, Hex> = Object.fromEntries(unitsBefore.map((unit) => [unit.id, unit.position]))
+      const duration = (milliseconds: number) => milliseconds * speed
+      const positions: Record<string, Point> = Object.fromEntries(
+        unitsBefore.map((unit) => [unit.id, hexToPixel(unit.position)]),
+      )
+      const typeOf = (unitId: string) => unitsBefore.find((unit) => unit.id === unitId)?.type
+      const setPosition = (unitId: string, point: Point) =>
+        updateView((current) => ({ ...current, positions: { ...current.positions, [unitId]: point } }))
+      const setProjectile = (projectile: Projectile | null) => updateView((current) => ({ ...current, projectile }))
+
+      const showHit = async (targetId: string, count: number, topHp: number, damage: number, kills: number) => {
+        updateView((current) => ({
+          ...current,
+          stacks: { ...current.stacks, [targetId]: { count, topHp } },
+          hit: { ...current.hit, [targetId]: true },
+        }))
+        addFloatingText(positions[targetId], `-${damage}`, 'damage')
+        if (kills > 0) addFloatingText(positions[targetId], `${kills}†`, 'kills', 16)
+        await sleep(duration(HIT_MS))
+        updateView((current) => ({ ...current, hit: { ...current.hit, [targetId]: false } }))
+      }
+
+      const shoot = async (from: Point, to: Point, kind: ProjectileKind) => {
+        const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
+        await tween(duration(Math.max(200, distanceBetween(from, to) * 0.8)), (progress) =>
+          setProjectile({ position: between(from, to, progress), angle, kind }),
+        )
+        setProjectile(null)
+      }
 
       for (const event of events) {
         if (!mounted.current) return
         switch (event.kind) {
-          case 'move':
-            for (const step of event.path.slice(1)) {
-              positions[event.unitId] = step
-              updateView((current) => ({ ...current, positions: { ...current.positions, [event.unitId]: step } }))
-              await sleep(STEP_MS)
+          case 'move': {
+            if (event.flying) {
+              const from = positions[event.unitId]
+              const to = hexToPixel(event.path[event.path.length - 1])
+              const hexes = Math.max(1, distanceBetween(from, to) / 45)
+              await tween(duration(FLY_MS_PER_HEX * hexes + 120), (progress) => {
+                const point = between(from, to, progress)
+                setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 18 })
+              })
+              positions[event.unitId] = to
+              setPosition(event.unitId, to)
+            } else {
+              for (const step of event.path.slice(1)) {
+                const from = positions[event.unitId]
+                const to = hexToPixel(step)
+                await tween(duration(STEP_MS), (progress) => {
+                  const point = between(from, to, progress)
+                  setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 3 })
+                })
+                positions[event.unitId] = to
+              }
             }
             break
+          }
 
           case 'attack': {
-            const from = hexToPixel(positions[event.attackerId])
-            const to = hexToPixel(positions[event.targetId])
-            if (event.ranged) {
-              const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
-              await tween(Math.max(220, distanceBetween(from, to) * 0.9), (progress) =>
-                updateView((current) => ({
-                  ...current,
-                  projectile: {
-                    position: { x: from.x + (to.x - from.x) * progress, y: from.y + (to.y - from.y) * progress },
-                    angle,
-                  },
-                })),
-              )
-              updateView((current) => ({ ...current, projectile: null }))
+            const from = positions[event.attackerId]
+            const to = positions[event.targetId]
+            if (event.splash) {
+              // The death cloud spreads from the main target, no projectile of its own.
+            } else if (event.ranged) {
+              await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'crossbowman'] ?? 'arrow')
             } else {
-              const lunge = { x: (to.x - from.x) * 0.35, y: (to.y - from.y) * 0.35 }
-              updateView((current) => ({ ...current, lungeOffsets: { ...current.lungeOffsets, [event.attackerId]: lunge } }))
-              await sleep(LUNGE_MS)
+              const lunge = between(from, to, 0.35)
+              await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
+              await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(lunge, from, progress)))
+            }
+            if (event.lucky) addFloatingText(from, 'Lucky!', 'good', -24)
+            if (event.deathblow) addFloatingText(from, 'Deathblow!', 'good', -24)
+            await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)
+            break
+          }
+
+          case 'spell': {
+            const target = positions[event.targetId]
+            if (event.spell === 'magicArrow') {
+              await shoot(casterPoint(event.caster), target, 'magic')
+            } else if (event.spell === 'lightningBolt') {
+              updateView((current) => ({ ...current, lightning: target }))
+              await sleep(duration(260))
+              updateView((current) => ({ ...current, lightning: null }))
+            }
+            if (event.damage > 0) {
+              await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)
+            } else {
+              const color = SPELLS[event.spell].target === 'ally' ? 'var(--glow-good)' : 'var(--glow-bad)'
               updateView((current) => ({
                 ...current,
-                lungeOffsets: { ...current.lungeOffsets, [event.attackerId]: { x: 0, y: 0 } },
+                glow: { ...current.glow, [event.targetId]: color },
+                stacks: { ...current.stacks, [event.targetId]: { count: event.targetCount, topHp: event.targetTopHp } },
               }))
+              addFloatingText(target, SPELLS[event.spell].name, 'magic')
+              await sleep(duration(NOTE_MS * 1.5))
+              updateView((current) => ({ ...current, glow: { ...current.glow, [event.targetId]: '' } }))
             }
-            updateView((current) => ({
-              ...current,
-              hp: { ...current.hp, [event.targetId]: event.targetHp },
-              hit: { ...current.hit, [event.targetId]: true },
-            }))
-            addFloatingText(positions[event.targetId], `-${event.damage}`, 'damage')
-            await sleep(HIT_MS)
-            updateView((current) => ({ ...current, hit: { ...current.hit, [event.targetId]: false } }))
             break
           }
 
           case 'death':
             updateView((current) => ({ ...current, dying: { ...current.dying, [event.unitId]: true } }))
-            await sleep(DEATH_MS)
+            await sleep(duration(DEATH_MS))
+            break
+
+          case 'regenerate':
+            addFloatingText(positions[event.unitId], 'Regenerate', 'good')
+            await sleep(duration(NOTE_MS))
             break
 
           case 'defend':
             addFloatingText(positions[event.unitId], 'Defend', 'info')
-            await sleep(DEFEND_MS)
+            await sleep(duration(NOTE_MS))
+            break
+
+          case 'wait':
+            addFloatingText(positions[event.unitId], 'Wait', 'info')
+            await sleep(duration(NOTE_MS))
+            break
+
+          case 'morale':
+            addFloatingText(positions[event.unitId], 'Morale!', 'good')
+            await sleep(duration(NOTE_MS * 1.5))
+            break
+
+          case 'retreat':
             break
         }
       }

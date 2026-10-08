@@ -5,7 +5,7 @@ export interface Point {
   y: number
 }
 
-export const HEX_SIZE = 36
+export const HEX_SIZE = 26
 const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE
 const MARGIN = 12
 const OFFSET_X = MARGIN + HEX_WIDTH / 2
