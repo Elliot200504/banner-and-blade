@@ -321,7 +321,7 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
               Retreat
             </button>
             <button className="button button--secondary" onClick={() => setRetreatOpen(false)} autoFocus>
-              Keep figthing
+              Keep fighting
             </button>
           </div>
         </Modal>

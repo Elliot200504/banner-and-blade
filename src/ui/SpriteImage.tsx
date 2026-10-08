@@ -17,7 +17,7 @@ interface PixelRun {
   character: string
 }
 
-/** Merges neighbouring pixles of the same color into one rect each, to keep the SVG small. */
+/** Merges neighbouring pixels of the same color into one rect each, to keep the SVG small. */
 function pixelRuns(sprite: Sprite): PixelRun[] {
   const runs: PixelRun[] = []
   sprite.pixels.forEach((line, row) => {

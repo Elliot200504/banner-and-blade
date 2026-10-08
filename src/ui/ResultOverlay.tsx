@@ -17,7 +17,7 @@ export function ResultOverlay({ state, onPlayAgain, onMainMenu }: ResultOverlayP
         <p className="result__text">
           {state.retreated
             ? `${PLAYER_NAMES[state.retreated]} retreated in round ${state.round}.`
-            : `The battle was decieded in round ${state.round}.`}
+            : `The battle was decided in round ${state.round}.`}
         </p>
         <div className="result__casualties">
           <Casualties state={state} player="red" />

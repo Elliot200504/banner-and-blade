@@ -14,7 +14,7 @@ export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenP
     <main className="start-screen">
       <div className="start-screen__crest">⚔️</div>
       <h1 className="start-screen__title">Banner &amp; Blade</h1>
-      <p className="start-screen__subtitle">Hot-seat hex batles · two players, one computer</p>
+      <p className="start-screen__subtitle">Hot-seat hex battles · two players, one computer</p>
 
       <div className="army-picker">
         {(['red', 'blue'] as const).map((player) => (
@@ -52,7 +52,7 @@ export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenP
           <li>📖 C: your hero casts one spell per round without ending the turn.</li>
           <li>⏳ W: wait and act later this round. 🛡️ D: defend for extra defense.</li>
           <li>Good morale may grant an extra turn; luck may double damage.</li>
-          <li>Right-click any stack to see its full stats. Destory every enemy stack to win.</li>
+          <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
         </ul>
       </section>
     </main>

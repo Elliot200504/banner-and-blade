@@ -16,7 +16,7 @@ export const SPELLS: Record<SpellId, SpellDefinition> = {
   lightningBolt: { name: 'Lightning Bolt', icon: '⚡', cost: 10, target: 'enemy', description: 'Deals 10 + 25 × power damage.' },
   haste: { name: 'Haste', icon: '💨', cost: 6, target: 'ally', description: '+3 speed for power rounds.' },
   slow: { name: 'Slow', icon: '🐌', cost: 6, target: 'enemy', description: 'Halves speed for power rounds.' },
-  bless: { name: 'Bless', icon: '🌟', cost: 5, target: 'ally', description: 'Always deals maximum damge.' },
+  bless: { name: 'Bless', icon: '🌟', cost: 5, target: 'ally', description: 'Always deals maximum damage.' },
   curse: { name: 'Curse', icon: '💀', cost: 5, target: 'enemy', description: 'Always deals minimum damage.' },
   stoneSkin: { name: 'Stone Skin', icon: '🪨', cost: 5, target: 'ally', description: '+3 defense for power rounds.' },
   cure: { name: 'Cure', icon: '💚', cost: 6, target: 'ally', description: 'Heals 10 + 5 × power and removes Slow and Curse.' },

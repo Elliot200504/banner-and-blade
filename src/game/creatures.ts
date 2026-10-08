@@ -110,8 +110,8 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
 }
 
 export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
-  flying: 'Flies over units and obstacels.',
-  doubleRetaliation: 'Strikes back twice per rond.',
+  flying: 'Flies over units and obstacles.',
+  doubleRetaliation: 'Strikes back twice per round.',
   charge: '+5% damage for every hex moved before attacking.',
   braced: 'Immune to the charge bonus.',
   noRetaliation: 'Enemies cannot strike back.',

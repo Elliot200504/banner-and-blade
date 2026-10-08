@@ -48,7 +48,7 @@ export function castProblem(state: GameState, spell: SpellId, targetId: string):
   return null
 }
 
-/** A mutable workng copy used while one move is resolved. */
+/** A mutable working copy used while one move is resolved. */
 interface Draft {
   units: Unit[]
   heroes: Record<Player, Hero>
