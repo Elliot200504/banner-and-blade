@@ -1,4 +1,4 @@
-// Axial hex coordinates (pointy-top). The board is a 9x7 rectangle stored in
+// Axial hex coordinates (pointy-top). The board is a 15x11 rectangle stored in
 // "odd-r" offset layout: odd rows are shifted half a hex to the right.
 
 export interface Hex {
@@ -6,8 +6,8 @@ export interface Hex {
   r: number
 }
 
-export const COLUMNS = 9
-export const ROWS = 7
+export const COLUMNS = 15
+export const ROWS = 11
 
 const DIRECTIONS: Hex[] = [
   { q: 1, r: 0 },

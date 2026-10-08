@@ -1,95 +1,29 @@
-import { hexDistance, hexKey, inBounds, neighbors, sameHex, type Hex } from './hex'
-import { UNIT_STATS } from './units'
-import type { BattleEvent, GameState, Move, Player, Unit } from './types'
-import { PLAYER_NAMES } from './types'
+import { afterDamage, effectiveSpeed, rollDamage } from './combat'
+import { CREATURES, hasAbility } from './creatures'
+import type { Hero } from './heroes'
+import { hexDistance, hexKey, neighbors, sameHex, type Hex } from './hex'
+import { attackMode, pathLength, reachableHexes } from './movement'
+import { createRandom, type Random } from './random'
+import { cureAmount, isEffect, OPPOSITE_EFFECT, SPELLS, spellDamage, type SpellId } from './spells'
+import type { BattleEvent, Casualties, GameState, Move, Player, Unit } from './types'
+import { opponentOf, PLAYER_NAMES } from './types'
 
-const MAX_LOG = 60
-/** Damage multiplier for a unit that is defending. */
-export const DEFEND_FACTOR = 0.7
-/** Damage multiplier for an archer shooting with an enemy next to it. */
-export const OBSTRUCTED_FACTOR = 0.5
-
-type Board = Pick<GameState, 'units' | 'obstacles'>
+const MAX_LOG = 80
 
 export function activeUnit(state: GameState): Unit | undefined {
   return state.units.find((unit) => unit.id === state.queue[0])
 }
 
-export function unitAt(units: Unit[], hex: Hex): Unit | undefined {
-  return units.find((unit) => sameHex(unit.position, hex))
-}
-
-function isBlocked(board: Board, hex: Hex): boolean {
-  return (
-    !inBounds(hex) ||
-    board.obstacles.some((obstacle) => sameHex(obstacle, hex)) ||
-    board.units.some((unit) => sameHex(unit.position, hex))
-  )
-}
-
-/** Every hex the unit can walk to, keyed by hexKey, with the path there (start included). */
-export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
-  const paths = new Map<string, Hex[]>()
-  const visited = new Set([hexKey(unit.position)])
-  let frontier: Hex[][] = [[unit.position]]
-  for (let step = 0; step < UNIT_STATS[unit.type].move; step++) {
-    const nextFrontier: Hex[][] = []
-    for (const path of frontier) {
-      for (const neighbor of neighbors(path[path.length - 1])) {
-        const key = hexKey(neighbor)
-        if (visited.has(key) || isBlocked(board, neighbor)) continue
-        visited.add(key)
-        const newPath = [...path, neighbor]
-        paths.set(key, newPath)
-        nextFrontier.push(newPath)
-      }
-    }
-    frontier = nextFrontier
-  }
-  return paths
-}
-
-export function isEnemyAdjacent(units: Unit[], unit: Unit): boolean {
-  return units.some((other) => other.owner !== unit.owner && hexDistance(other.position, unit.position) === 1)
-}
-
-/** Hexes a melee unit can strike the target from: where it stands, or any reachable hex next to the target. */
-export function attackOrigins(board: Board, unit: Unit, target: Unit): Hex[] {
-  if (UNIT_STATS[unit.type].ranged) return []
-  const origins: Hex[] = []
-  if (hexDistance(unit.position, target.position) === 1) origins.push(unit.position)
-  const reach = reachableHexes(board, unit)
-  for (const neighbor of neighbors(target.position)) {
-    if (reach.has(hexKey(neighbor))) origins.push(neighbor)
-  }
-  return origins
-}
-
-export function canAttack(board: Board, unit: Unit, target: Unit): boolean {
-  if (target.owner === unit.owner) return false
-  return UNIT_STATS[unit.type].ranged || attackOrigins(board, unit, target).length > 0
-}
-
-export function damageFor(units: Unit[], attacker: Unit, target: Unit): number {
-  const stats = UNIT_STATS[attacker.type]
-  let damage = stats.damage
-  if (stats.ranged && isEnemyAdjacent(units, attacker)) damage *= OBSTRUCTED_FACTOR
-  if (target.defending) damage *= DEFEND_FACTOR
-  return Math.max(1, Math.floor(damage))
-}
-
 /**
- * Turn order for a round: higher initiative first. Units with equal initiative
+ * Turn order for a round: faster stacks first. Stacks with equal speed
  * alternate between the sides, and the side that goes first swaps each round.
  */
 export function buildQueue(units: Unit[], round: number): string[] {
   const firstPlayer: Player = round % 2 === 1 ? 'red' : 'blue'
-  const initiatives = [...new Set(units.map((unit) => UNIT_STATS[unit.type].initiative))].sort(
-    (higher, lower) => lower - higher,
-  )
+  const speeds = [...new Set(units.map(effectiveSpeed))].sort((higher, lower) => lower - higher)
   const queue: string[] = []
-  for (const initiative of initiatives) {
-    const group = units.filter((unit) => UNIT_STATS[unit.type].initiative === initiative)
+  for (const speed of speeds) {
+    const group = units.filter((unit) => effectiveSpeed(unit) === speed)
     const firstSide = group.filter((unit) => unit.owner === firstPlayer)
     const secondSide = group.filter((unit) => unit.owner !== firstPlayer)
     for (let index = 0; index < Math.max(firstSide.length, secondSide.length); index++) {
@@ -100,10 +34,218 @@ export function buildQueue(units: Unit[], round: number): string[] {
   return queue
 }
 
+/** Why the active player's hero can't cast this spell on this stack, or null if they can. */
+export function castProblem(state: GameState, spell: SpellId, targetId: string): string | null {
+  const actor = activeUnit(state)
+  if (!actor || state.winner) return 'The battle is over.'
+  const hero = state.heroes[actor.owner]
+  const target = state.units.find((unit) => unit.id === targetId)
+  if (hero.hasCastThisRound) return 'Your hero has already cast a spell this round.'
+  if (hero.mana < SPELLS[spell].cost) return 'Not enough mana.'
+  if (!target) return 'No target.'
+  const wantsEnemy = SPELLS[spell].target === 'enemy'
+  if (wantsEnemy !== (target.owner !== actor.owner)) return wantsEnemy ? 'Target an enemy stack.' : 'Target one of your stacks.'
+  return null
+}
+
+/** A mutable workng copy used while one move is resolved. */
+interface Draft {
+  units: Unit[]
+  heroes: Record<Player, Hero>
+  casualties: Casualties
+  events: BattleEvent[]
+  log: string[]
+  random: Random
+}
+
+function getUnit(draft: Draft, id: string): Unit | undefined {
+  return draft.units.find((unit) => unit.id === id)
+}
+
+function updateUnit(draft: Draft, id: string, changes: Partial<Unit>) {
+  draft.units = draft.units.map((unit) => (unit.id === id ? { ...unit, ...changes } : unit))
+}
+
+const describe = (unit: Unit): string => `${unit.label} (${unit.count})`
+
+function walk(draft: Draft, obstacles: GameState['obstacles'], unitId: string, destination: Hex): number | null {
+  const unit = getUnit(draft, unitId)!
+  const path = reachableHexes({ units: draft.units, obstacles }, unit).get(hexKey(destination))
+  if (!path) return null
+  updateUnit(draft, unitId, { position: destination })
+  const flying = hasAbility(unit.type, 'flying')
+  draft.events.push({ kind: 'move', unitId, path, flying })
+  draft.log.push(`${unit.label} ${flying ? 'fly' : 'move'}.`)
+  return pathLength(path)
+}
+
+function recordLosses(draft: Draft, unit: Unit, kills: number) {
+  const losses = draft.casualties[unit.owner]
+  losses[unit.type] = (losses[unit.type] ?? 0) + kills
+}
+
+function strike(
+  draft: Draft,
+  attackerId: string,
+  targetId: string,
+  options: { ranged: boolean; retaliation: boolean; splash: boolean; hexesMoved: number },
+) {
+  const attacker = getUnit(draft, attackerId)!
+  const target = getUnit(draft, targetId)!
+  const roll = rollDamage(
+    attacker,
+    draft.heroes[attacker.owner],
+    target,
+    draft.heroes[target.owner],
+    { ranged: options.ranged, hexesMoved: options.hexesMoved, canBeLucky: !options.splash },
+    draft.random,
+  )
+  const result = afterDamage(target, roll.damage)
+  updateUnit(draft, targetId, { count: result.count, topHp: result.topHp })
+  recordLosses(draft, target, result.kills)
+  draft.events.push({
+    kind: 'attack',
+    attackerId,
+    targetId,
+    damage: roll.damage,
+    kills: result.kills,
+    ranged: options.ranged,
+    retaliation: options.retaliation,
+    splash: options.splash,
+    lucky: roll.lucky,
+    deathblow: roll.deathblow,
+    targetCount: result.count,
+    targetTopHp: result.topHp,
+  })
+
+  if (roll.lucky) draft.log.push(`Lucky strike! ${attacker.label} deal double damage.`)
+  if (roll.deathblow) draft.log.push(`Deathblow! ${attacker.label} deal double damage.`)
+  const verb = options.splash ? 'The death cloud hits' : options.retaliation ? 'strike back at' : options.ranged ? 'shoot' : 'attack'
+  const subject = options.splash ? '' : `${describe(attacker)} `
+  draft.log.push(`${subject}${verb} ${target.label} for ${roll.damage}. ${result.kills} perish.`)
+  if (result.count === 0) {
+    draft.events.push({ kind: 'death', unitId: targetId })
+    draft.log.push(`${target.label} are destroyed!`)
+  }
+}
+
+function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: string, from?: Hex): boolean {
+  const target = getUnit(draft, targetId)
+  if (!target) return false
+  const mode = attackMode(state, actor, target)
+  if (!mode) return false
+
+  if (mode === 'shoot') {
+    updateUnit(draft, actor.id, { shots: actor.shots - 1 })
+    strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
+    if (hasAbility(actor.type, 'deathCloud')) {
+      for (const neighbor of neighbors(target.position)) {
+        const caught = draft.units.find((unit) => sameHex(unit.position, neighbor) && unit.count > 0)
+        if (caught && !hasAbility(caught.type, 'undead')) {
+          strike(draft, actor.id, caught.id, { ranged: true, retaliation: false, splash: true, hexesMoved: 0 })
+        }
+      }
+    }
+    return true
+  }
+
+  const origin = from ?? actor.position
+  if (hexDistance(origin, target.position) !== 1) return false
+  let hexesMoved = 0
+  if (!sameHex(origin, actor.position)) {
+    const walked = walk(draft, state.obstacles, actor.id, origin)
+    if (walked === null) return false
+    hexesMoved = walked
+  }
+  strike(draft, actor.id, targetId, { ranged: false, retaliation: false, splash: false, hexesMoved })
+
+  const victim = getUnit(draft, targetId)!
+  if (victim.count > 0 && victim.retaliationsLeft > 0 && !hasAbility(actor.type, 'noRetaliation')) {
+    updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
+    strike(draft, targetId, actor.id, { ranged: false, retaliation: true, splash: false, hexesMoved: 0 })
+  }
+  return true
+}
+
+function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: string) {
+  const hero = draft.heroes[caster]
+  draft.heroes = { ...draft.heroes, [caster]: { ...hero, mana: hero.mana - SPELLS[spell].cost, hasCastThisRound: true } }
+  const target = getUnit(draft, targetId)!
+  const event: BattleEvent = {
+    kind: 'spell',
+    spell,
+    caster,
+    targetId,
+    damage: 0,
+    kills: 0,
+    targetCount: target.count,
+    targetTopHp: target.topHp,
+  }
+  draft.log.push(`${hero.name} casts ${SPELLS[spell].name} on ${target.label}.`)
+
+  const damage = spellDamage(spell, hero.spellPower)
+  if (damage > 0) {
+    const result = afterDamage(target, damage)
+    updateUnit(draft, targetId, { count: result.count, topHp: result.topHp })
+    recordLosses(draft, target, result.kills)
+    Object.assign(event, { damage, kills: result.kills, targetCount: result.count, targetTopHp: result.topHp })
+    draft.events.push(event)
+    draft.log.push(`${target.label} take ${damage} damage. ${result.kills} perish.`)
+    if (result.count === 0) {
+      draft.events.push({ kind: 'death', unitId: targetId })
+      draft.log.push(`${target.label} are destroyed!`)
+    }
+    return
+  }
+
+  if (spell === 'cure') {
+    const topHp = Math.min(CREATURES[target.type].hp, target.topHp + cureAmount(hero.spellPower))
+    const effects = target.effects.filter((active) => active.effect !== 'slow' && active.effect !== 'curse')
+    updateUnit(draft, targetId, { topHp, effects })
+    event.targetTopHp = topHp
+  } else if (isEffect(spell)) {
+    const opposite = OPPOSITE_EFFECT[spell]
+    const effects = target.effects.filter((active) => active.effect !== spell && active.effect !== opposite)
+    updateUnit(draft, targetId, { effects: [...effects, { effect: spell, roundsLeft: Math.max(1, hero.spellPower) }] })
+  }
+  draft.events.push(event)
+}
+
 function winnerOf(units: Unit[]): Player | null {
   if (!units.some((unit) => unit.owner === 'blue')) return 'red'
   if (!units.some((unit) => unit.owner === 'red')) return 'blue'
   return null
+}
+
+/** Called when a unit becomes active: its defend wears off and wraiths regenerate. */
+function startTurn(draft: Draft, unitId: string) {
+  const unit = getUnit(draft, unitId)
+  if (!unit) return
+  updateUnit(draft, unitId, { defending: false })
+  const fullHp = CREATURES[unit.type].hp
+  if (hasAbility(unit.type, 'regenerate') && !unit.waited && unit.topHp < fullHp) {
+    updateUnit(draft, unitId, { topHp: fullHp })
+    draft.events.push({ kind: 'regenerate', unitId, topHp: fullHp })
+    draft.log.push(`${unit.label} regenerate.`)
+  }
+}
+
+function startRound(draft: Draft, round: number): string[] {
+  draft.units = draft.units.map((unit) => ({
+    ...unit,
+    retaliationsLeft: hasAbility(unit.type, 'doubleRetaliation') ? 2 : 1,
+    waited: false,
+    hadMoraleTurn: false,
+    effects: unit.effects
+      .map((active) => ({ ...active, roundsLeft: active.roundsLeft - 1 }))
+      .filter((active) => active.roundsLeft > 0),
+  }))
+  draft.heroes = {
+    red: { ...draft.heroes.red, hasCastThisRound: false },
+    blue: { ...draft.heroes.blue, hasCastThisRound: false },
+  }
+  draft.log.push(`— Round ${round} —`)
+  return buildQueue(draft.units, round)
 }
 
 /** Applies the active unit's move. Returns the same state object if the move is not allowed. */
@@ -111,79 +253,103 @@ export function applyMove(state: GameState, move: Move): GameState {
   const actor = activeUnit(state)
   if (state.winner || !actor) return state
 
-  let units = state.units.map((unit) => (unit.id === actor.id ? { ...unit, defending: false } : unit))
-  const events: BattleEvent[] = []
-  const log: string[] = []
-  const getUnit = (id: string) => units.find((unit) => unit.id === id)!
-  const updateUnit = (id: string, changes: Partial<Unit>) => {
-    units = units.map((unit) => (unit.id === id ? { ...unit, ...changes } : unit))
+  const draft: Draft = {
+    units: state.units,
+    heroes: state.heroes,
+    casualties: { red: { ...state.casualties.red }, blue: { ...state.casualties.blue } },
+    events: [],
+    log: [],
+    random: createRandom(state.seed),
   }
-
-  const walkTo = (destination: Hex): boolean => {
-    const path = reachableHexes({ units, obstacles: state.obstacles }, getUnit(actor.id)).get(hexKey(destination))
-    if (!path) return false
-    updateUnit(actor.id, { position: destination })
-    events.push({ kind: 'move', unitId: actor.id, path })
-    log.push(`${actor.label} moves.`)
-    return true
-  }
-
-  const strike = (attackerId: string, targetId: string, retaliation: boolean) => {
-    const attacker = getUnit(attackerId)
-    const target = getUnit(targetId)
-    const ranged = UNIT_STATS[attacker.type].ranged && !retaliation
-    const damage = damageFor(units, attacker, target)
-    const targetHp = Math.max(0, target.hp - damage)
-    updateUnit(targetId, { hp: targetHp })
-    events.push({ kind: 'attack', attackerId, targetId, damage, ranged, retaliation, targetHp })
-    const verb = retaliation ? 'strikes back at' : ranged ? 'shoots' : 'attacks'
-    log.push(`${attacker.label} ${verb} ${target.label} for ${damage}.`)
-    if (targetHp === 0) {
-      events.push({ kind: 'death', unitId: targetId })
-      log.push(`${target.label} perishes!`)
-    }
-  }
+  let queue = state.queue
+  let round = state.round
+  /** Whether the actor's turn is over (casting a spell does not end it). */
+  let endsTurn = true
+  /** Only real actions can trigger good morale. */
+  let canTriggerMorale = false
 
   switch (move.type) {
     case 'move':
-      if (!walkTo(move.to)) return state
+      if (walk(draft, state.obstacles, actor.id, move.to) === null) return state
+      canTriggerMorale = true
+      break
+    case 'attack':
+      if (!performAttack(draft, state, actor, move.targetId, move.from)) return state
+      canTriggerMorale = true
       break
     case 'defend':
-      updateUnit(actor.id, { defending: true })
-      events.push({ kind: 'defend', unitId: actor.id })
-      log.push(`${actor.label} defends.`)
+      updateUnit(draft, actor.id, { defending: true })
+      draft.events.push({ kind: 'defend', unitId: actor.id })
+      draft.log.push(`${actor.label} defend.`)
       break
-    case 'attack': {
-      const target = state.units.find((unit) => unit.id === move.targetId)
-      if (!target || !canAttack(state, actor, target)) return state
-      const melee = !UNIT_STATS[actor.type].ranged
-      if (melee) {
-        const from = move.from ?? actor.position
-        if (hexDistance(from, target.position) !== 1) return state
-        if (!sameHex(from, actor.position) && !walkTo(from)) return state
-      }
-      strike(actor.id, target.id, false)
-      const victim = getUnit(target.id)
-      if (melee && victim.hp > 0 && !victim.retaliated) {
-        updateUnit(victim.id, { retaliated: true })
-        strike(victim.id, actor.id, true)
-      }
+    case 'wait':
+      if (actor.waited) return state
+      updateUnit(draft, actor.id, { waited: true })
+      draft.events.push({ kind: 'wait', unitId: actor.id })
+      draft.log.push(`${actor.label} wait.`)
+      queue = [...queue.slice(1), actor.id]
+      endsTurn = false
       break
+    case 'cast':
+      if (castProblem(state, move.spell, move.targetId)) return state
+      castSpell(draft, actor.owner, move.spell, move.targetId)
+      endsTurn = false
+      break
+    case 'retreat': {
+      draft.events.push({ kind: 'retreat', player: actor.owner })
+      draft.log.push(`${PLAYER_NAMES[actor.owner]} retreats from the battle!`)
+      const winner = opponentOf(actor.owner)
+      draft.log.push(`${PLAYER_NAMES[winner]} wins the battle!`)
+      return finish(state, draft, { queue: [], round, winner, retreated: actor.owner })
     }
   }
 
-  units = units.filter((unit) => unit.hp > 0)
-  let queue = state.queue.slice(1).filter((id) => units.some((unit) => unit.id === id))
-  let round = state.round
-  const winner = winnerOf(units)
+  draft.units = draft.units.filter((unit) => unit.count > 0)
+  queue = queue.filter((id) => draft.units.some((unit) => unit.id === id))
+  const winner = winnerOf(draft.units)
   if (winner) {
-    log.push(`${PLAYER_NAMES[winner]} wins the battle!`)
-  } else if (queue.length === 0) {
-    round++
-    units = units.map((unit) => ({ ...unit, retaliated: false }))
-    queue = buildQueue(units, round)
-    log.push(`— Round ${round} —`)
+    draft.log.push(`${PLAYER_NAMES[winner]} wins the battle!`)
+    return finish(state, draft, { queue, round, winner, retreated: null })
   }
 
-  return { ...state, units, queue, round, winner, events, log: [...state.log, ...log].slice(-MAX_LOG) }
+  if (move.type === 'wait') {
+    startTurn(draft, queue[0])
+    return finish(state, draft, { queue, round, winner: null, retreated: null })
+  }
+  if (!endsTurn) return finish(state, draft, { queue, round, winner: null, retreated: null })
+
+  const actorAfter = getUnit(draft, actor.id)
+  const hero = draft.heroes[actor.owner]
+  const moraleApplies = actorAfter && !hasAbility(actor.type, 'undead') && !actorAfter.hadMoraleTurn && hero.morale > 0
+  if (canTriggerMorale && moraleApplies && draft.random.chance(hero.morale / 24)) {
+    updateUnit(draft, actor.id, { hadMoraleTurn: true })
+    draft.events.push({ kind: 'morale', unitId: actor.id })
+    draft.log.push(`Good morale! ${actor.label} act again.`)
+    return finish(state, draft, { queue, round, winner: null, retreated: null })
+  }
+
+  queue = queue.filter((id) => id !== actor.id)
+  if (queue.length === 0) {
+    round++
+    queue = startRound(draft, round)
+  }
+  startTurn(draft, queue[0])
+  return finish(state, draft, { queue, round, winner: null, retreated: null })
+}
+
+function finish(
+  state: GameState,
+  draft: Draft,
+  outcome: { queue: string[]; round: number; winner: Player | null; retreated: Player | null },
+): GameState {
+  return {
+    ...state,
+    ...outcome,
+    units: draft.units,
+    heroes: draft.heroes,
+    casualties: draft.casualties,
+    events: draft.events,
+    log: [...state.log, ...draft.log].slice(-MAX_LOG),
+    seed: draft.random.seed(),
+  }
 }
