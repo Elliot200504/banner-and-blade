@@ -12,7 +12,7 @@ const GROUND: Record<Faction, string> = {
   inferno: '#4a1c16',
   tower: '#9aa6b4',
   fortress: '#3e4a2a',
-  conflux: '#3a3458',
+  conflux: '#6e9e4c',
 }
 
 /** Size of one "pixel" in the decorations, to match the sprites' chunky look. */
@@ -102,16 +102,21 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
     ),
     () => pixels([[-1, 0, 3, 1, '#4a5a2a'], [1, -1, 1, 1, '#4a5a2a']]),
   ],
+  // Conflux stands on bright grassland, lit by its four elements.
   conflux: [
-    () => (
-      <>
-        <circle r={5} fill="#9a7aff" opacity={0.15} />
-        {pixels([[0, -1, 1, 2, '#c8b8ff'], [-1, 0, 3, 1, '#a890ff']])}
-      </>
-    ),
-    () => pixels([[-2, 0, 1, 1, '#ff8a3a'], [0, -1, 1, 1, '#4ab8ff'], [2, 0, 1, 1, '#e8f4ff'], [0, 1, 1, 1, '#8a6a3a']]),
-    () => <polyline points="-9,1 -4,-1 0,1 5,-1 9,1" fill="none" stroke="#6a5aa8" strokeWidth={1.5} opacity={0.8} />,
-    () => <ellipse rx={8} ry={3} fill="#2a2444" opacity={0.7} />,
+    () => pixels([[0, -1, 1, 1, '#ffffff'], [-1, 0, 1, 1, '#ffffff'], [1, 0, 1, 1, '#ffffff'], [0, 1, 1, 1, '#ffffff'], [0, 0, 1, 1, '#ffe680']]),
+    () => pixels([[-1, -2, 1, 2, '#8ac460'], [0, -3, 1, 3, '#a0d470'], [1, -2, 1, 2, '#8ac460']]),
+    (pick) => {
+      const element = ['#ff9a4a', '#5ac8ff', '#f4fbff', '#c8a060'][Math.floor(pick * 4)]
+
+      return (
+        <>
+          <circle r={3} fill={element} opacity={0.25} />
+          {pixels([[0, 0, 1, 1, element]])}
+        </>
+      )
+    },
+    () => pixels([[0, -2, 1, 2, '#d8f4ff'], [-1, 0, 3, 1, '#a8dcf0'], [0, 1, 1, 1, '#88c0d8']]),
   ],
   dungeon: [
     () => (
