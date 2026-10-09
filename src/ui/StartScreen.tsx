@@ -1,25 +1,45 @@
 import { createHero, CREATURES, FACTIONS, PLAYER_NAMES, type Faction, type Player } from '../game'
 import { SpriteIcon } from './SpriteImage'
 
+/** Who plays a side: someone at the keyboard, or the computer. */
+export type Controller = 'human' | 'computer'
+
+const CONTROLLER_LABELS: Record<Controller, string> = { human: '🧑 Human', computer: '🤖 Computer' }
+
 interface StartScreenProps {
   factions: Record<Player, Faction>
+  controllers: Record<Player, Controller>
   onChangeFaction: (player: Player, faction: Faction) => void
+  onChangeController: (player: Player, controller: Controller) => void
   onStart: () => void
 }
 
 const FACTION_LIST: Faction[] = ['order', 'undead', 'dungeon']
 
-export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenProps) {
+export function StartScreen({ factions, controllers, onChangeFaction, onChangeController, onStart }: StartScreenProps) {
   return (
     <main className="start-screen">
       <div className="start-screen__crest">⚔️</div>
       <h1 className="start-screen__title">Banner &amp; Blade</h1>
-      <p className="start-screen__subtitle">Hot-seat hex battles · two players, one computer</p>
+      <p className="start-screen__subtitle">Hex battles · play the computer or a friend on the same screen</p>
 
       <div className="army-picker">
         {(['red', 'blue'] as const).map((player) => (
           <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
             <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
+            <div className="army-picker__factions" role="radiogroup" aria-label={`Who plays ${PLAYER_NAMES[player]}`}>
+              {(['human', 'computer'] as const).map((controller) => (
+                <button
+                  key={controller}
+                  role="radio"
+                  aria-checked={controllers[player] === controller}
+                  className={`faction-option${controllers[player] === controller ? ' faction-option--active' : ''}`}
+                  onClick={() => onChangeController(player, controller)}
+                >
+                  {CONTROLLER_LABELS[controller]}
+                </button>
+              ))}
+            </div>
             <div className="army-picker__factions" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} faction`}>
               {FACTION_LIST.map((faction) => (
                 <button

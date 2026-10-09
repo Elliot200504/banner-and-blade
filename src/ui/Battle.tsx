@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   activeUnit,
   afterDamage,
@@ -8,6 +8,7 @@ import {
   attackOrigins,
   breathVictim,
   castProblem,
+  chooseMove,
   createBattle,
   CREATURES,
   damageRange,
@@ -37,10 +38,14 @@ import { Modal } from './Modal'
 import { ResultOverlay } from './ResultOverlay'
 import { BattleLog, HeroPanel, UnitCard } from './SidePanel'
 import { Spellbook } from './Spellbook'
+import type { Controller } from './StartScreen'
 import { TurnQueue } from './TurnQueue'
 import { useAnimator } from './useAnimator'
 import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from './useBattleSpeed'
 import type { Theme } from './useTheme'
+
+/** A short pause before each computer move, so you can follow what it does. */
+const COMPUTER_DELAY_MS = 450
 
 /** What clicking the hex under the pointer would do. */
 type Intent =
@@ -51,13 +56,14 @@ type Intent =
 
 interface BattleProps {
   factions: Record<Player, Faction>
+  controllers: Record<Player, Controller>
   seed: number
   theme: Theme
   onPlayAgain: () => void
   onMainMenu: () => void
 }
 
-export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
+export function Battle({ factions, controllers, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
   const [state, setState] = useState<GameState>(() => createBattle(factions, seed))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
@@ -72,7 +78,11 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
 
   const actor = activeUnit(state)
   const modalOpen = spellbookOpen || retreatOpen || detailsUnitId !== null
-  const canAct = !animator.playing && !state.winner && actor !== undefined
+  /** Nothing is animating and someone has a turn to take. */
+  const ready = !animator.playing && !state.winner && actor !== undefined
+  const computerTurn = actor !== undefined && controllers[actor.owner] === 'computer'
+  /** Whether the person at the keyboard may act. */
+  const canAct = ready && !computerTurn
   const hero = actor ? state.heroes[actor.owner] : undefined
 
   const reachable = useMemo(
@@ -119,7 +129,7 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
 
   const perform = useCallback(
     async (move: Move) => {
-      if (!canAct) return
+      if (!ready) return
       const next = applyMove(state, move)
       if (next === state) return
       setSelectedHex(null)
@@ -128,8 +138,18 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
       setState(next)
       animator.finish()
     },
-    [canAct, state, animator, speed],
+    [ready, state, animator, speed],
   )
+
+  // The computer moves on its own turns. The latest perform is kept in a ref so that
+  // re-renders (like hovering the board) don't restart the pause before its move.
+  const performRef = useRef(perform)
+  performRef.current = perform
+  useEffect(() => {
+    if (!ready || !computerTurn || modalOpen) return
+    const timer = setTimeout(() => performRef.current(chooseMove(state)), COMPUTER_DELAY_MS * SPEED_FACTORS[speed])
+    return () => clearTimeout(timer)
+  }, [ready, computerTurn, modalOpen, state, speed])
 
   const performIntent = (chosen: Intent) => {
     if (chosen.kind === 'move') perform({ type: 'move', to: chosen.to })
@@ -156,6 +176,7 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
   useEffect(() => {
     if (modalOpen) return
     const handleKey = (event: KeyboardEvent) => {
+      if (!canAct) return
       const key = event.key.toLowerCase()
       if (key === 'd') perform({ type: 'defend' })
       else if (key === 'w') perform({ type: 'wait' })
@@ -223,7 +244,7 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
     <div className="battle">
       <div className="battle__heroes">
         <HeroPanel state={state} player="red" active={actor?.owner === 'red'} />
-        <TurnBanner state={state} actor={actor} />
+        <TurnBanner state={state} actor={actor} computer={computerTurn} />
         <HeroPanel state={state} player="blue" active={actor?.owner === 'blue'} />
       </div>
 
@@ -249,7 +270,9 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
           </div>
 
           <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
-            {statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
+            {computerTurn && actor && !state.winner
+              ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
+              : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
           </div>
 
           <div className="action-bar">
@@ -345,13 +368,13 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
   )
 }
 
-function TurnBanner({ state, actor }: { state: GameState; actor: Unit | undefined }) {
+function TurnBanner({ state, actor, computer }: { state: GameState; actor: Unit | undefined; computer: boolean }) {
   return (
     <div className={`turn-banner${actor && !state.winner ? ` turn-banner--${actor.owner}` : ''}`}>
       <span className="turn-banner__round">Round {state.round}</span>
       {actor && !state.winner && (
         <span>
-          {PLAYER_NAMES[actor.owner]}'s turn
+          {PLAYER_NAMES[actor.owner]}'s turn{computer ? ' (CPU)' : ''}
           <br />
           {actor.count} {CREATURES[actor.type].plural}
         </span>
