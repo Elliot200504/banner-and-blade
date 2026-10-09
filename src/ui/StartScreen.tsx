@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import {
   ARMY_BUDGET,
   armyCost,
@@ -24,6 +24,7 @@ import {
   type Player,
 } from '../game'
 import { specialtyText } from './heroText'
+import { HowToPlay } from './HowToPlay'
 import { Modal } from './Modal'
 import { Icon, SpriteIcon } from './SpriteImage'
 
@@ -53,7 +54,7 @@ interface StartScreenProps {
   onChangeHero: (player: Player, hero: HeroId) => void
   onChangeArmy: (player: Player, army: Army) => void
   onStart: () => void
-  themeToggle: ReactNode
+  onOpenSettings: () => void
 }
 
 export function StartScreen({
@@ -68,7 +69,7 @@ export function StartScreen({
   onChangeHero,
   onChangeArmy,
   onStart,
-  themeToggle,
+  onOpenSettings,
 }: StartScreenProps) {
   const [rulesOpen, setRulesOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
@@ -174,27 +175,16 @@ export function StartScreen({
         <button className="button button--secondary" onClick={() => setRulesOpen(true)}>
           How to play
         </button>
-        <div className="start-screen__theme">{themeToggle}</div>
+        <button className="button button--secondary" onClick={onOpenSettings}>
+          Settings
+        </button>
       </div>
 
       {sidePanel('blue')}
 
       {rulesOpen && (
-        <Modal title="How to play" onClose={() => setRulesOpen(false)} className="start-screen__rules">
-          <ul>
-            <li>Stacks act in order of speed. Watch the turn order bar to see who goes next.</li>
-            <li>Click a shaded hex to move. Click an enemy to attack; aim at the side you want to strike from.</li>
-            <li>Shooters have limited range and shots. With an enemy next to them they must fight in melee at half damage.</li>
-            <li>Enemies hit in melee strike back once per round (Griffins and Minotaurs twice; nobody strikes back at Vampires or Devils).</li>
-            <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
-            <li>Dragons shrug off spells of level 1 to 3. Angels and Devils hate each other and hit each other harder.</li>
-            <li>C: your hero casts one spell per round without ending the turn.</li>
-            <li>W: wait and act later this round. D: defend for extra defense.</li>
-            <li>Each side has {formatGold(ARMY_BUDGET)} gold to recruit its army: up to one stack of each creature.</li>
-            <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
-            <li>Good morale may grant an extra turn; luck may double damage.</li>
-            <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
-          </ul>
+        <Modal title="How to play" onClose={() => setRulesOpen(false)} className="rules">
+          <HowToPlay />
         </Modal>
       )}
     </main>

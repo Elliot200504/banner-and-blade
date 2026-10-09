@@ -259,13 +259,13 @@ select {
   padding: 6px 10px;
 }
 
-.theme-toggle {
+.choice-group {
   display: inline-flex;
   border: 2px solid var(--panel-border);
   box-shadow: var(--shadow);
 }
 
-.theme-toggle__option {
+.choice-group__option {
   font: inherit;
   font-size: calc(8px * var(--text-scale));
   padding: 6px 10px;
@@ -275,11 +275,11 @@ select {
   cursor: pointer;
 }
 
-.theme-toggle__option + .theme-toggle__option {
+.choice-group__option + .choice-group__option {
   border-left: 2px solid var(--panel-border);
 }
 
-.theme-toggle__option--active {
+.choice-group__option--active {
   background: var(--accent);
   color: var(--button-text);
 }
@@ -355,20 +355,6 @@ select {
   text-align: center;
 }
 
-.start-screen__theme {
-  margin-top: 24px;
-}
-
-/* Stacked, so the picker never gets wider than the centre column. */
-.start-screen__theme .theme-toggle {
-  flex-direction: column;
-}
-
-.start-screen__theme .theme-toggle__option + .theme-toggle__option {
-  border-left: none;
-  border-top: 2px solid var(--panel-border);
-}
-
 .start-screen__title {
   font-size: calc(22px * var(--text-scale));
   color: var(--title);
@@ -382,7 +368,7 @@ select {
   font-size: calc(8px * var(--text-scale));
 }
 
-.start-screen__rules ul {
+.rules__list {
   margin: 0;
   padding-left: 18px;
   display: grid;
@@ -514,17 +500,17 @@ select {
   gap: 6px;
 }
 
-.overlay__card.start-screen__rules {
+.overlay__card.rules {
   max-width: 920px;
 }
 
-.start-screen__rules ul {
+.rules__list {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 32px;
 }
 
 @media (max-width: 700px) {
-  .start-screen__rules ul {
+  .rules__list {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1429,6 +1415,67 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* ---------- Settings ---------- */
+
+/* Compact: a smaller text scale shrinks every font inside, the title and buttons included. */
+.overlay__card.settings {
+  --text-scale: 1.35;
+  max-width: 420px;
+  padding: 14px 16px;
+  font-size: calc(9px * var(--text-scale));
+}
+
+.settings .modal__header {
+  margin-bottom: 6px;
+}
+
+.settings .button {
+  padding: 6px 12px;
+}
+
+.settings__section + .settings__section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--frame-line);
+}
+
+.settings__heading {
+  margin: 0 0 6px;
+  font-family: var(--font-title);
+  font-size: calc(8px * var(--text-scale));
+  color: var(--highlight);
+}
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings__row + .settings__row {
+  margin-top: 6px;
+}
+
+.settings__label {
+  min-width: 6.5em;
+}
+
+.settings__volume {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--panel-border);
+}
+
+.settings__value {
+  min-width: 3em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rules__back {
+  margin-top: 16px;
 }
 
 .details .unit-card {

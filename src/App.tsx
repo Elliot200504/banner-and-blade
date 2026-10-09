@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { heroesOf, standardArmy, type Army, type Difficulty, type Faction, type HeroId, type Player } from './game'
 import { Battle } from './ui/Battle'
 import { StartScreen, type Controller } from './ui/StartScreen'
-import { ThemeToggle } from './ui/ThemeToggle'
+import { playMusic } from './ui/music'
+import { Settings } from './ui/Settings'
+import { playSound } from './ui/sound'
+import { useSoundSettings } from './ui/useSoundSettings'
 import { useTheme } from './ui/useTheme'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32)
@@ -16,6 +19,27 @@ export default function App() {
   const [armies, setArmies] = useState<Record<Player, Army>>({ red: standardArmy('castle'), blue: standardArmy('necropolis') })
   const [seed, setSeed] = useState(newSeed)
   const [theme, setTheme] = useTheme()
+  const [sound, setSound] = useSoundSettings()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  // Each theme has a calm song for the menu and a tense one for battle.
+  useEffect(() => {
+    playMusic(sound.musicEnabled ? `${theme}:${screen === 'start' ? 'menu' : 'battle'}` : null)
+  }, [theme, screen, sound.musicEnabled])
+
+  // Every enabled button clicks softly when pressed.
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const button = (event.target as Element | null)?.closest('button')
+
+      if (button && !button.disabled) {
+        playSound('click')
+      }
+    }
+    document.addEventListener('click', handleClick)
+
+    return () => document.removeEventListener('click', handleClick)
+  }, [])
 
   const startBattle = () => {
     setSeed(newSeed())
@@ -30,7 +54,9 @@ export default function App() {
           <button className="button button--secondary" onClick={() => setScreen('start')}>
             Main menu
           </button>
-          <ThemeToggle theme={theme} onChange={setTheme} />
+          <button className="button button--secondary" onClick={() => setSettingsOpen(true)}>
+            Settings
+          </button>
         </header>
       )}
       {screen === 'start' ? (
@@ -50,7 +76,7 @@ export default function App() {
           onChangeDifficulty={(player, difficulty) => setDifficulties((current) => ({ ...current, [player]: difficulty }))}
           onChangeArmy={(player, army) => setArmies((current) => ({ ...current, [player]: army }))}
           onStart={startBattle}
-          themeToggle={<ThemeToggle theme={theme} onChange={setTheme} />}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       ) : (
         <Battle
@@ -62,8 +88,18 @@ export default function App() {
           armies={armies}
           seed={seed}
           theme={theme}
+          paused={settingsOpen}
           onPlayAgain={startBattle}
           onMainMenu={() => setScreen('start')}
+        />
+      )}
+      {settingsOpen && (
+        <Settings
+          theme={theme}
+          onChangeTheme={setTheme}
+          sound={sound}
+          onChangeSound={setSound}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>

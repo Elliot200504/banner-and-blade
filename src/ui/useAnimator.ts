@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SPELLS, type BattleEvent, type CreatureType, type Player, type Unit } from '../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
+import { playSound, type SoundId } from './sound'
 
 const STEP_MS = 140
 const FLY_MS_PER_HEX = 80
@@ -22,6 +23,14 @@ const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
   orc: 'arrow',
   cyclops: 'magic',
   gog: 'fire',
+}
+
+const PROJECTILE_SOUND: Record<ProjectileKind, SoundId> = {
+  arrow: 'shoot',
+  holy: 'magic',
+  death: 'magic',
+  magic: 'magic',
+  fire: 'fire',
 }
 
 export interface FloatingText {
@@ -138,6 +147,7 @@ export function useAnimator() {
           stacks: { ...current.stacks, [targetId]: { count, topHp } },
           hit: { ...current.hit, [targetId]: true },
         }))
+        playSound('hit')
         addFloatingText(positions[targetId], `-${damage}`, 'damage')
 
         if (kills > 0) {
@@ -150,6 +160,7 @@ export function useAnimator() {
 
       const shoot = async (from: Point, to: Point, kind: ProjectileKind) => {
         const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
+        playSound(PROJECTILE_SOUND[kind])
         await tween(duration(Math.max(200, distanceBetween(from, to) * 0.8)), (progress) =>
           setProjectile({ position: between(from, to, progress), angle, kind }),
         )
@@ -167,6 +178,7 @@ export function useAnimator() {
               const from = positions[event.unitId]
               const to = hexToPixel(event.path[event.path.length - 1])
               const hexes = Math.max(1, distanceBetween(from, to) / 45)
+              playSound('fly')
               await tween(duration(FLY_MS_PER_HEX * hexes + 120), (progress) => {
                 const point = between(from, to, progress)
                 setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 18 })
@@ -177,6 +189,7 @@ export function useAnimator() {
               for (const step of event.path.slice(1)) {
                 const from = positions[event.unitId]
                 const to = hexToPixel(step)
+                playSound('step')
                 await tween(duration(STEP_MS), (progress) => {
                   const point = between(from, to, progress)
                   setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 3 })
@@ -198,11 +211,13 @@ export function useAnimator() {
               await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'archer'] ?? 'arrow')
             } else {
               const lunge = between(from, to, 0.35)
+              playSound('swing')
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(lunge, from, progress)))
             }
 
             if (event.lucky) {
+              playSound('lucky')
               addFloatingText(from, 'Lucky!', 'good', -24)
             }
 
@@ -223,6 +238,7 @@ export function useAnimator() {
               await shoot({ x: target.x - 60, y: target.y - 220 }, target, 'fire')
             } else if (event.spell === 'lightningBolt') {
               updateView((current) => ({ ...current, lightning: target }))
+              playSound('lightning')
               await sleep(duration(260))
               updateView((current) => ({ ...current, lightning: null }))
             }
@@ -230,7 +246,9 @@ export function useAnimator() {
             if (event.damage > 0) {
               await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)
             } else {
-              const color = SPELLS[event.spell].target === 'ally' ? 'var(--glow-good)' : 'var(--glow-bad)'
+              const helpful = SPELLS[event.spell].target === 'ally'
+              const color = helpful ? 'var(--glow-good)' : 'var(--glow-bad)'
+              playSound(helpful ? 'blessing' : 'curse')
               updateView((current) => ({
                 ...current,
                 glow: { ...current.glow, [event.targetId]: color },
@@ -246,36 +264,43 @@ export function useAnimator() {
 
           case 'death':
             updateView((current) => ({ ...current, dying: { ...current.dying, [event.unitId]: true } }))
+            playSound('death')
             await sleep(duration(DEATH_MS))
             break
 
           case 'regenerate':
             addFloatingText(positions[event.unitId], 'Regenerate', 'good')
+            playSound('regenerate')
             await sleep(duration(NOTE_MS))
             break
 
           case 'petrify':
             addFloatingText(positions[event.unitId], 'Petrified!', 'magic', -24)
+            playSound('petrify')
             await sleep(duration(NOTE_MS))
             break
 
           case 'stoneSkip':
             addFloatingText(positions[event.unitId], 'Stone', 'info')
+            playSound('petrify')
             await sleep(duration(NOTE_MS * 1.5))
             break
 
           case 'defend':
             addFloatingText(positions[event.unitId], 'Defend', 'info')
+            playSound('defend')
             await sleep(duration(NOTE_MS))
             break
 
           case 'wait':
             addFloatingText(positions[event.unitId], 'Wait', 'info')
+            playSound('wait')
             await sleep(duration(NOTE_MS))
             break
 
           case 'morale':
             addFloatingText(positions[event.unitId], 'Morale!', 'good')
+            playSound('morale')
             await sleep(duration(NOTE_MS * 1.5))
             break
 

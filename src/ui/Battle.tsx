@@ -67,6 +67,8 @@ interface BattleProps {
   armies: Record<Player, Army>
   seed: number
   theme: Theme
+  /** The settings window is open: the battle waits, and keys do nothing. */
+  paused: boolean
   onPlayAgain: () => void
   onMainMenu: () => void
 }
@@ -79,6 +81,7 @@ export function Battle({
   armies,
   seed,
   theme,
+  paused,
   onPlayAgain,
   onMainMenu,
 }: BattleProps) {
@@ -95,7 +98,7 @@ export function Battle({
   const animator = useAnimator()
 
   const actor = activeUnit(state)
-  const modalOpen = spellbookOpen || retreatOpen || detailsUnitId !== null
+  const modalOpen = paused || spellbookOpen || retreatOpen || detailsUnitId !== null
   /** Nothing is animating and someone has a turn to take. */
   const ready = !animator.playing && !state.winner && actor !== undefined
   const computerTurn = actor !== undefined && controllers[actor.owner] === 'computer'

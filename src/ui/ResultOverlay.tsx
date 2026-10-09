@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { CREATURES, FACTIONS, PLAYER_NAMES, type GameState, type Player } from '../game'
+import { playSound } from './sound'
 import { Icon, SpriteIcon } from './SpriteImage'
 
 interface ResultOverlayProps {
@@ -9,6 +11,10 @@ interface ResultOverlayProps {
 
 export function ResultOverlay({ state, onPlayAgain, onMainMenu }: ResultOverlayProps) {
   const winner = state.winner!
+
+  useEffect(() => {
+    playSound('victory')
+  }, [])
 
   return (
     <div className="overlay" role="dialog" aria-modal="true">
