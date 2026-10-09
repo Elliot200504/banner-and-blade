@@ -8,7 +8,7 @@ import type { GameState, Obstacle, ObstacleKind, Player, Unit } from './types'
 import { PLAYER_NAMES } from './types'
 
 /** Each half of the field looks like home for the army that starts there. */
-const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
+export const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
   castle: ['tree', 'rock'],
   rampart: ['oak', 'mushroom'],
   stronghold: ['boulder', 'totem'],

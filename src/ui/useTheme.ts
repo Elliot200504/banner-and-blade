@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 
-export type Theme = 'medieval' | 'synthwave'
+export type Theme = 'default' | 'medieval' | 'synthwave'
 
-const STORAGE_KEY = 'banner-and-blade:theme'
+export const THEMES: Theme[] = ['default', 'medieval', 'synthwave']
+
+const STORAGE_KEY = 'banner-and-blade:theme-v2'
 
 function loadTheme(): Theme {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'synthwave' ? 'synthwave' : 'medieval'
+    const stored = localStorage.getItem(STORAGE_KEY)
+
+    return THEMES.find((theme) => theme === stored) ?? 'default'
   } catch {
-    return 'medieval'
+    return 'default'
   }
 }
 

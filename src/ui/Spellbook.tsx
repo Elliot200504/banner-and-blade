@@ -1,5 +1,6 @@
 import { isSpellSpecialist, SPELLS, type Hero, type SpellId } from '../game'
 import { Modal } from './Modal'
+import { Icon, SpellIcon } from './SpriteImage'
 
 interface SpellbookProps {
   hero: Hero
@@ -23,10 +24,17 @@ export function Spellbook({ hero, onChoose, onClose }: SpellbookProps) {
 
           return (
             <button key={spell} className="spell" disabled={disabled} onClick={() => onChoose(spell)}>
-              <span className="spell__icon">{definition.icon}</span>
+              <span className="spell__icon">
+                <SpellIcon spell={spell} size={32} />
+              </span>
               <span className="spell__name">
                 {definition.name}
-                {isSpellSpecialist(hero, spell) && ' ★'}
+                {isSpellSpecialist(hero, spell) && (
+                  <>
+                    {' '}
+                    <Icon name="star" label="Specialty" />
+                  </>
+                )}
               </span>
               <span className="spell__cost">{definition.cost} mana</span>
               <span className="spell__description">{definition.description}</span>

@@ -1,5 +1,5 @@
 import { buildQueue, type GameState, type Unit } from '../game'
-import { SpriteIcon } from './SpriteImage'
+import { Icon, SpriteIcon } from './SpriteImage'
 
 interface TurnQueueProps {
   state: GameState
@@ -16,7 +16,6 @@ export function TurnQueue({ state, onHover }: TurnQueueProps) {
   const isUnit = (unit: Unit | undefined): unit is Unit => unit !== undefined
   const thisRound = state.queue.map(findUnit).filter(isUnit)
   const nextRound = buildQueue(state.units, state.round + 1).map(findUnit).filter(isUnit)
-
 
   return (
     <section className="turn-queue" aria-label="Turn order">
@@ -67,7 +66,11 @@ function QueueToken({ unit, label, faded = false, onHover }: QueueTokenProps) {
       {label && <span className="queue-token__label">{label}</span>}
       <SpriteIcon spriteId={unit.type} owner={unit.owner} size={34} mirrored={unit.owner === 'blue'} />
       <span className="queue-token__count">{unit.count}</span>
-      {unit.waited && !faded && <span className="queue-token__waited">⏳</span>}
+      {unit.waited && !faded && (
+        <span className="queue-token__waited">
+          <Icon name="wait" label="Waiting" />
+        </span>
+      )}
     </div>
   )
 }

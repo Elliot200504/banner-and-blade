@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react'
 import {
   ARMY_BUDGET,
   armyCost,
@@ -23,12 +24,13 @@ import {
   type Player,
 } from '../game'
 import { specialtyText } from './heroText'
-import { SpriteIcon } from './SpriteImage'
+import { Modal } from './Modal'
+import { Icon, SpriteIcon } from './SpriteImage'
 
 /** Who plays a side: someone at the keyboard, or the computer. */
 export type Controller = 'human' | 'computer'
 
-const CONTROLLER_LABELS: Record<Controller, string> = { human: '🧑 Human', computer: '🤖 Computer' }
+const CONTROLLER_LABELS: Record<Controller, string> = { human: 'Human', computer: 'Computer' }
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
 const DIFFICULTY_HINTS: Record<Difficulty, string> = {
@@ -51,6 +53,7 @@ interface StartScreenProps {
   onChangeHero: (player: Player, hero: HeroId) => void
   onChangeArmy: (player: Player, army: Army) => void
   onStart: () => void
+  themeToggle: ReactNode
 }
 
 export function StartScreen({
@@ -65,121 +68,135 @@ export function StartScreen({
   onChangeHero,
   onChangeArmy,
   onStart,
+  themeToggle,
 }: StartScreenProps) {
+  const [rulesOpen, setRulesOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
     const problem = armyProblem(armies[player], factions[player])
 
     return problem ? [`${PLAYER_NAMES[player]}: ${problem}`] : []
   })
 
-  return (
-    <main className="start-screen">
-      <div className="start-screen__crest">⚔️</div>
-      <h1 className="start-screen__title">Banner &amp; Blade</h1>
-      <p className="start-screen__subtitle">Hex battles · play the computer or a friend on the same screen</p>
-
-      <div className="army-picker">
-        {(['red', 'blue'] as const).map((player) => (
-          <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
-            <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
-            <div className="army-picker__factions" role="radiogroup" aria-label={`Who plays ${PLAYER_NAMES[player]}`}>
-              {(['human', 'computer'] as const).map((controller) => (
-                <button
-                  key={controller}
-                  role="radio"
-                  aria-checked={controllers[player] === controller}
-                  className={`faction-option${controllers[player] === controller ? ' faction-option--active' : ''}`}
-                  onClick={() => onChangeController(player, controller)}
-                >
-                  {CONTROLLER_LABELS[controller]}
-                </button>
-              ))}
-            </div>
-            {controllers[player] === 'computer' && (
-              <div
-                className="army-picker__factions army-picker__difficulty"
-                role="radiogroup"
-                aria-label={`${PLAYER_NAMES[player]} computer difficulty`}
-              >
-                {DIFFICULTIES.map((difficulty) => (
-                  <button
-                    key={difficulty}
-                    role="radio"
-                    aria-checked={difficulties[player] === difficulty}
-                    title={DIFFICULTY_HINTS[difficulty]}
-                    className={`faction-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
-                    onClick={() => onChangeDifficulty(player, difficulty)}
-                  >
-                    {DIFFICULTY_LABELS[difficulty]}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div
-              className="army-picker__factions army-picker__factions--grid"
-              role="radiogroup"
-              aria-label={`${PLAYER_NAMES[player]} faction`}
+  const sidePanel = (player: Player) => (
+    <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
+      <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
+      <div className="army-picker__controls">
+        <div className="army-picker__factions" role="radiogroup" aria-label={`Who plays ${PLAYER_NAMES[player]}`}>
+          {(['human', 'computer'] as const).map((controller) => (
+            <button
+              key={controller}
+              role="radio"
+              aria-checked={controllers[player] === controller}
+              className={`faction-option${controllers[player] === controller ? ' faction-option--active' : ''}`}
+              onClick={() => onChangeController(player, controller)}
             >
-              {FACTION_ORDER.map((faction) => (
-                <button
-                  key={faction}
-                  role="radio"
-                  aria-checked={factions[player] === faction}
-                  className={`faction-option${factions[player] === faction ? ' faction-option--active' : ''}`}
-                  onClick={() => onChangeFaction(player, faction)}
-                >
-                  {FACTIONS[faction].crest} {FACTIONS[faction].name}
-                </button>
-              ))}
-            </div>
-            <div className="hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
-              {heroesOf(factions[player]).map((id) => (
-                <button
-                  key={id}
-                  role="radio"
-                  aria-checked={heroes[player] === id}
-                  className={`hero-option${heroes[player] === id ? ' hero-option--active' : ''}`}
-                  onClick={() => onChangeHero(player, id)}
-                >
-                  <SpriteIcon spriteId={id} owner={player} size={40} />
-                  <span className="hero-option__name">{HEROES[id].name}</span>
-                  <span className="hero-option__class">{HEROES[id].title}</span>
-                </button>
-              ))}
-            </div>
-            <ArmyBuilder
-              player={player}
-              faction={factions[player]}
-              heroId={heroes[player]}
-              army={armies[player]}
-              onChange={(army) => onChangeArmy(player, army)}
-            />
-          </section>
+              {CONTROLLER_LABELS[controller]}
+            </button>
+          ))}
+        </div>
+        <div
+          className={`army-picker__factions${controllers[player] === 'computer' ? '' : ' army-picker__difficulty--hidden'}`}
+          role="radiogroup"
+          aria-label={`${PLAYER_NAMES[player]} computer difficulty`}
+          aria-hidden={controllers[player] !== 'computer'}
+        >
+          {DIFFICULTIES.map((difficulty) => (
+            <button
+              key={difficulty}
+              role="radio"
+              aria-checked={difficulties[player] === difficulty}
+              title={DIFFICULTY_HINTS[difficulty]}
+              tabIndex={controllers[player] === 'computer' ? 0 : -1}
+              className={`faction-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
+              onClick={() => onChangeDifficulty(player, difficulty)}
+            >
+              {DIFFICULTY_LABELS[difficulty]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div
+        className="army-picker__factions army-picker__factions--grid army-picker__towns"
+        role="radiogroup"
+        aria-label={`${PLAYER_NAMES[player]} faction`}
+      >
+        {FACTION_ORDER.map((faction) => (
+          <button
+            key={faction}
+            role="radio"
+            aria-checked={factions[player] === faction}
+            className={`faction-option${factions[player] === faction ? ' faction-option--active' : ''}`}
+            onClick={() => onChangeFaction(player, faction)}
+          >
+            <SpriteIcon spriteId={faction} owner={player} size={32} />
+            {FACTIONS[faction].name}
+          </button>
         ))}
       </div>
+      <div className="hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
+        {heroesOf(factions[player]).map((id) => (
+          <button
+            key={id}
+            role="radio"
+            aria-checked={heroes[player] === id}
+            className={`hero-option${heroes[player] === id ? ' hero-option--active' : ''}`}
+            onClick={() => onChangeHero(player, id)}
+          >
+            <SpriteIcon spriteId={id} owner={player} size={32} />
+            <span className="hero-option__text">
+              <span className="hero-option__name">{HEROES[id].name}</span>
+              <span className="hero-option__class">{HEROES[id].title}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <ArmyBuilder
+        player={player}
+        faction={factions[player]}
+        heroId={heroes[player]}
+        army={armies[player]}
+        onChange={(army) => onChangeArmy(player, army)}
+      />
+    </section>
+  )
 
-      {problems.length > 0 && <p className="start-screen__problem">{problems.join(' ')}</p>}
-      <button className="button button--large" onClick={onStart} disabled={problems.length > 0} autoFocus>
-        To battle!
-      </button>
+  return (
+    <main className="start-screen">
+      {sidePanel('red')}
 
-      <section className="panel start-screen__rules">
-        <h2 className="panel__title">How to play</h2>
-        <ul>
-          <li>Stacks act in order of speed. Watch the turn order bar to see who goes next.</li>
-          <li>Click a shaded hex to move. Click an enemy to attack; aim at the side you want to strike from.</li>
-          <li>Shooters have limited range and shots. With an enemy next to them they must fight in melee at half damage.</li>
-          <li>Enemies hit in melee strike back once per round (Griffins and Minotaurs twice; nobody strikes back at Vampires or Devils).</li>
-          <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
-          <li>Dragons shrug off spells of level 1 to 3. Angels and Devils hate each other and hit each other harder.</li>
-          <li>📖 C: your hero casts one spell per round without ending the turn.</li>
-          <li>⏳ W: wait and act later this round. 🛡️ D: defend for extra defense.</li>
-          <li>💰 Each side has {formatGold(ARMY_BUDGET)} gold to recruit its army: up to one stack of each creature.</li>
-          <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
-          <li>Good morale may grant an extra turn; luck may double damage.</li>
-          <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
-        </ul>
-      </section>
+      <div className="start-screen__center">
+        <h1 className="start-screen__title">Banner &amp; Blade</h1>
+        <p className="start-screen__subtitle">Hex battles against the computer or a friend on the same screen</p>
+        <button className="button button--large" onClick={onStart} disabled={problems.length > 0} autoFocus>
+          To battle!
+        </button>
+        {problems.length > 0 && <p className="start-screen__problem">{problems.join(' ')}</p>}
+        <button className="button button--secondary" onClick={() => setRulesOpen(true)}>
+          How to play
+        </button>
+        <div className="start-screen__theme">{themeToggle}</div>
+      </div>
+
+      {sidePanel('blue')}
+
+      {rulesOpen && (
+        <Modal title="How to play" onClose={() => setRulesOpen(false)} className="start-screen__rules">
+          <ul>
+            <li>Stacks act in order of speed. Watch the turn order bar to see who goes next.</li>
+            <li>Click a shaded hex to move. Click an enemy to attack; aim at the side you want to strike from.</li>
+            <li>Shooters have limited range and shots. With an enemy next to them they must fight in melee at half damage.</li>
+            <li>Enemies hit in melee strike back once per round (Griffins and Minotaurs twice; nobody strikes back at Vampires or Devils).</li>
+            <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
+            <li>Dragons shrug off spells of level 1 to 3. Angels and Devils hate each other and hit each other harder.</li>
+            <li>C: your hero casts one spell per round without ending the turn.</li>
+            <li>W: wait and act later this round. D: defend for extra defense.</li>
+            <li>Each side has {formatGold(ARMY_BUDGET)} gold to recruit its army: up to one stack of each creature.</li>
+            <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
+            <li>Good morale may grant an extra turn; luck may double damage.</li>
+            <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
+          </ul>
+        </Modal>
+      )}
     </main>
   )
 }
@@ -201,17 +218,15 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
     onChange(withStack(army, faction, type, allowed))
   }
 
-
   return (
     <div className="army-preview">
       <p className="army-preview__description">{FACTIONS[faction].description}</p>
-      <p className="army-preview__hero">
-        Hero: {hero.name}, {hero.title}
+      <p className="army-preview__specialty">
+        <Icon name="star" /> {specialtyText(hero)}
       </p>
-      <p className="army-preview__specialty">★ {specialtyText(hero)}</p>
       <div className="recruit__gold">
         <span>
-          💰 {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
+          <Icon name="gold" /> {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
         </span>
         <span className="recruit__presets">
           <button className="recruit__preset" onClick={() => onChange(standardArmy(faction))}>

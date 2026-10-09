@@ -1,5 +1,5 @@
 import { CREATURES, FACTIONS, PLAYER_NAMES, type GameState, type Player } from '../game'
-import { SpriteIcon } from './SpriteImage'
+import { Icon, SpriteIcon } from './SpriteImage'
 
 interface ResultOverlayProps {
   state: GameState
@@ -13,7 +13,9 @@ export function ResultOverlay({ state, onPlayAgain, onMainMenu }: ResultOverlayP
   return (
     <div className="overlay" role="dialog" aria-modal="true">
       <div className={`overlay__card result result--${winner}`}>
-        <div className="result__banner">🏆</div>
+        <div className="result__banner">
+          <Icon name="trophy" size={64} />
+        </div>
         <h2 className="result__title">{PLAYER_NAMES[winner]} wins!</h2>
         <p className="result__text">
           {state.retreated

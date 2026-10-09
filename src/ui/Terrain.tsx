@@ -101,13 +101,98 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
   ],
 }
 
+/** Synthwave: each homeland as a dark ground with its own neon color. */
+const NEON_GROUND: Record<Faction, string> = {
+  castle: '#0b1a3a',
+  rampart: '#062a1c',
+  stronghold: '#2a1606',
+  necropolis: '#1a0b2e',
+  dungeon: '#2a0828',
+  inferno: '#2e0606',
+}
+
+const NEON: Record<Faction, string> = {
+  castle: '#38bdf8',
+  rampart: '#34f5a0',
+  stronghold: '#ffb020',
+  necropolis: '#b46bff',
+  dungeon: '#ff4fd8',
+  inferno: '#ff3a3a',
+}
+
+/** One small faction glyph per homeland, drawn in its neon color among the circuit traces. */
+const NEON_GLYPHS: Record<Faction, (color: string) => ReactNode> = {
+  castle: (color) => <polygon points="0,-3 3,0 0,3 -3,0" fill="none" stroke={color} strokeWidth={1} />,
+  rampart: (color) => <polyline points="-3,2 0,-3 3,2" fill="none" stroke={color} strokeWidth={1} />,
+  stronghold: (color) => <polygon points="0,-3 3,2 -3,2" fill="none" stroke={color} strokeWidth={1} />,
+  necropolis: (color) => <path d="M0,-3 V3 M-2,-1 H2" stroke={color} strokeWidth={1} />,
+  dungeon: (color) => (
+    <>
+      <ellipse rx={3.5} ry={2} fill="none" stroke={color} strokeWidth={1} />
+      <circle r={1} fill={color} />
+    </>
+  ),
+  inferno: (color) => <polyline points="-3,2 -1,-1 0,1 1,-3 3,2" fill="none" stroke={color} strokeWidth={1} />,
+}
+
+const NEON_DECORATIONS: ((color: string, faction: Faction) => ReactNode)[] = [
+  (color) => (
+    <>
+      <polyline points="-9,0 -3,0 1,-4 8,-4" fill="none" stroke={color} strokeWidth={1} opacity={0.55} />
+      <circle cx={8} cy={-4} r={1.5} fill={color} />
+    </>
+  ),
+  (color) => (
+    <>
+      <circle r={4} fill={color} opacity={0.15} />
+      <circle r={1.5} fill={color} />
+    </>
+  ),
+  (color, faction) => <g opacity={0.8}>{NEON_GLYPHS[faction](color)}</g>,
+  (color) => (
+    <>
+      <polyline points="-8,3 -8,-1 4,-1 4,-4" fill="none" stroke={color} strokeWidth={1} opacity={0.45} />
+      <rect x={3} y={-5} width={2} height={2} fill={color} />
+    </>
+  ),
+]
+
+/** Grid spacing of the glowing floor lines in Synthwave. */
+const NEON_GRID = 24
+
+/**
+ * Turns a sprite into a glowing one-color hologram: brightness becomes the neon color, then a soft glow.
+ * Obstacles in Synthwave use these, by id `neon-<faction>`.
+ */
+function NeonFilter({ faction }: { faction: Faction }) {
+  const [red, green, blue] = [1, 3, 5].map((start) => parseInt(NEON[faction].slice(start, start + 2), 16) / 255)
+  const row = (channel: number) => `${0.3 * channel * 2.6} ${0.59 * channel * 2.6} ${0.11 * channel * 2.6} 0 ${channel * 0.15}`
+
+  return (
+    <filter id={`neon-${faction}`} x="-30%" y="-30%" width="160%" height="160%">
+      <feColorMatrix type="matrix" values={`${row(red)} ${row(green)} ${row(blue)} 0 0 0 1 0`} result="tinted" />
+      <feGaussianBlur in="tinted" stdDeviation={2} result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="tinted" />
+      </feMerge>
+    </filter>
+  )
+}
+
 interface TerrainProps {
   factions: Record<Player, Faction>
   obstacles: Obstacle[]
+  /** Draw the Synthwave version: neon grid and circuit traces instead of grass and stones. */
+  neon?: boolean
 }
 
 /** The ground under the hexes: Red's homeland on the left, Blue's on the right, blending in the middle. */
-export const Terrain = memo(function Terrain({ factions, obstacles }: TerrainProps) {
+export const Terrain = memo(function Terrain({ factions, obstacles, neon = false }: TerrainProps) {
+  if (neon) {
+    return <NeonTerrain factions={factions} obstacles={obstacles} />
+  }
+
   const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
   const details: ReactNode[] = []
 
@@ -137,7 +222,6 @@ export const Terrain = memo(function Terrain({ factions, obstacles }: TerrainPro
     }
   }
 
-
   return (
     <g className="terrain" aria-hidden="true">
       <defs>
@@ -158,3 +242,70 @@ export const Terrain = memo(function Terrain({ factions, obstacles }: TerrainPro
     </g>
   )
 })
+
+/** Synthwave ground: each homeland in its own neon, with a glowing floor grid and circuit traces. */
+function NeonTerrain({ factions, obstacles }: Omit<TerrainProps, 'neon'>) {
+  const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
+  const details: ReactNode[] = []
+
+  for (const hex of allHexes()) {
+    const { column } = hexToOffset(hex)
+
+    if (column === MIDDLE_COLUMN || blocked.has(hexKey(hex)) || noise(hex.q, hex.r, 0) > 0.4) {
+      continue
+    }
+
+    const faction = column < MIDDLE_COLUMN ? factions.red : factions.blue
+    const decorate = NEON_DECORATIONS[Math.floor(noise(hex.q, hex.r, 1) * NEON_DECORATIONS.length)]
+    const center = hexToPixel(hex)
+    const x = center.x + (noise(hex.q, hex.r, 2) - 0.5) * 20
+    const y = center.y + (noise(hex.q, hex.r, 3) - 0.5) * 16
+    details.push(
+      <g key={hexKey(hex)} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
+        {decorate(NEON[faction], faction)}
+      </g>,
+    )
+  }
+
+  const gridLines: ReactNode[] = []
+
+  for (let x = NEON_GRID; x < BOARD_WIDTH; x += NEON_GRID) {
+    const color = x < BOARD_WIDTH / 2 ? NEON[factions.red] : NEON[factions.blue]
+    gridLines.push(<line key={`x${x}`} x1={x} y1={0} x2={x} y2={BOARD_HEIGHT} stroke={color} />)
+  }
+
+  for (let y = NEON_GRID; y < BOARD_HEIGHT; y += NEON_GRID) {
+    gridLines.push(<line key={`y${y}`} x1={0} y1={y} x2={BOARD_WIDTH} y2={y} stroke="url(#neon-sides)" />)
+  }
+
+  return (
+    <g className="terrain terrain--neon" aria-hidden="true">
+      <defs>
+        <linearGradient id="neon-ground" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor={NEON_GROUND[factions.red]} />
+          <stop offset="0.44" stopColor={NEON_GROUND[factions.red]} />
+          <stop offset="0.56" stopColor={NEON_GROUND[factions.blue]} />
+          <stop offset="1" stopColor={NEON_GROUND[factions.blue]} />
+        </linearGradient>
+        <linearGradient id="neon-sides" gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={BOARD_WIDTH} y2={0}>
+          <stop offset="0" stopColor={NEON[factions.red]} />
+          <stop offset="0.44" stopColor={NEON[factions.red]} />
+          <stop offset="0.56" stopColor={NEON[factions.blue]} />
+          <stop offset="1" stopColor={NEON[factions.blue]} />
+        </linearGradient>
+        <radialGradient id="neon-vignette" cx="0.5" cy="0.5" r="0.75">
+          <stop offset="0.5" stopColor="#000" stopOpacity={0} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.55} />
+        </radialGradient>
+        <NeonFilter faction={factions.red} />
+        {factions.blue !== factions.red && <NeonFilter faction={factions.blue} />}
+      </defs>
+      <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#neon-ground)" />
+      <g strokeWidth={1} opacity={0.25}>
+        {gridLines}
+      </g>
+      {details}
+      <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#neon-vignette)" />
+    </g>
+  )
+}

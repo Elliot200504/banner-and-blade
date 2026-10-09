@@ -36,7 +36,6 @@ describe('army building', () => {
     })
   }
 
-
   it('rejects armies that are empty, too expensive or from another faction', () => {
     expect(armyProblem([], 'castle')).toMatch(/at least one/)
     expect(armyProblem([{ type: 'cavalier', count: 20 }], 'castle')).toMatch(/costs more/)

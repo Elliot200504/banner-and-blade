@@ -1,6 +1,8 @@
 import { memo } from 'react'
-import type { Player } from '../game'
+import type { Player, SpellId } from '../game'
+import { SPELL_ICONS } from './spellIcons'
 import { SPRITES, type Sprite, type SpriteId } from './sprites'
+import { UI_ICONS, type UiIconId } from './uiIcons'
 
 const SPRITE_SIZE = 16
 
@@ -42,14 +44,14 @@ function pixelRuns(sprite: Sprite): PixelRun[] {
   return runs
 }
 
-const RUNS_BY_SPRITE = new Map<SpriteId, PixelRun[]>()
+const RUNS_BY_SPRITE = new WeakMap<Sprite, PixelRun[]>()
 
-function runsFor(spriteId: SpriteId): PixelRun[] {
-  let runs = RUNS_BY_SPRITE.get(spriteId)
+function runsFor(sprite: Sprite): PixelRun[] {
+  let runs = RUNS_BY_SPRITE.get(sprite)
 
   if (!runs) {
-    runs = pixelRuns(SPRITES[spriteId])
-    RUNS_BY_SPRITE.set(spriteId, runs)
+    runs = pixelRuns(sprite)
+    RUNS_BY_SPRITE.set(sprite, runs)
   }
 
   return runs
@@ -67,19 +69,28 @@ interface SpriteImageProps {
 
 /** Draws a sprite with its bottom center at (0, 0). */
 export const SpriteImage = memo(function SpriteImage({ spriteId, owner, size, mirrored = false }: SpriteImageProps) {
-  const sprite = SPRITES[spriteId]
+  return <PixelArt sprite={SPRITES[spriteId]} owner={owner} size={size} mirrored={mirrored} />
+})
+
+interface PixelArtProps {
+  sprite: Sprite
+  owner?: Player
+  size: number
+  mirrored?: boolean
+}
+
+function PixelArt({ sprite, owner, size, mirrored = false }: PixelArtProps) {
   const pixelSize = size / SPRITE_SIZE
   const team = owner ? TEAM_COLORS[owner] : { main: '#888', dark: '#444' }
   const colorFor = (character: string) =>
     character === 'T' ? team.main : character === 't' ? team.dark : sprite.palette[character]
-
 
   return (
     <g
       transform={`scale(${mirrored ? -pixelSize : pixelSize} ${pixelSize}) translate(${-SPRITE_SIZE / 2} ${-SPRITE_SIZE})`}
       shapeRendering="crispEdges"
     >
-      {runsFor(spriteId).map((run) => (
+      {runsFor(sprite).map((run) => (
         <rect
           key={`${run.row}-${run.column}`}
           x={run.column}
@@ -91,13 +102,44 @@ export const SpriteImage = memo(function SpriteImage({ spriteId, owner, size, mi
       ))}
     </g>
   )
-})
+}
 
 /** A sprite as a standalone inline SVG, for portraits outside the board. */
 export function SpriteIcon({ spriteId, owner, size, mirrored }: SpriteImageProps) {
   return (
     <svg className="sprite-icon" width={size} height={size} viewBox={`${-size / 2} ${-size} ${size} ${size}`} aria-hidden="true">
       <SpriteImage spriteId={spriteId} owner={owner} size={size} mirrored={mirrored} />
+    </svg>
+  )
+}
+
+/** A spell's icon as a standalone inline SVG. */
+export function SpellIcon({ spell, size }: { spell: SpellId; size: number }) {
+  return (
+    <svg className="sprite-icon" width={size} height={size} viewBox={`${-size / 2} ${-size} ${size} ${size}`} aria-hidden="true">
+      <PixelArt sprite={SPELL_ICONS[spell]} size={size} />
+    </svg>
+  )
+}
+
+/** A UI icon drawn inside an SVG, with its bottom center at (0, 0). */
+export function IconImage({ name, size }: { name: UiIconId; size: number }) {
+  return <PixelArt sprite={UI_ICONS[name]} size={size} />
+}
+
+/** A UI icon as a standalone inline SVG that sits in a line of text. */
+export function Icon({ name, size = 16, label }: { name: UiIconId; size?: number; label?: string }) {
+  return (
+    <svg
+      className="sprite-icon sprite-icon--inline"
+      width={size}
+      height={size}
+      viewBox={`${-size / 2} ${-size} ${size} ${size}`}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+    >
+      <IconImage name={name} size={size} />
     </svg>
   )
 }

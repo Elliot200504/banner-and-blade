@@ -291,40 +291,34 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
 /** Who each hating creature hates. */
 export const HATES: Partial<Record<CreatureType, CreatureType>> = { angel: 'devil', devil: 'angel' }
 
-export const FACTIONS: Record<Faction, { name: string; crest: string; description: string; creatures: CreatureType[] }> = {
+export const FACTIONS: Record<Faction, { name: string; description: string; creatures: CreatureType[] }> = {
   castle: {
     name: 'Castle',
-    crest: '🛡️',
     description: 'Disciplined soldiers, holy monks, charging cavaliers and angels.',
     creatures: ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'angel'],
   },
   rampart: {
     name: 'Rampart',
-    crest: '🌳',
     description: 'Sharp-eyed elves, sturdy dwarves, living trees and green dragons.',
     creatures: ['centaur', 'dwarf', 'woodElf', 'pegasus', 'dendroidGuard', 'unicorn', 'greenDragon'],
   },
   stronghold: {
     name: 'Stronghold',
-    crest: '🪓',
     description: 'Goblin hordes, orc axe-throwers, cyclopes and crushing behemoths.',
     creatures: ['goblin', 'wolfRider', 'orc', 'ogre', 'roc', 'cyclops', 'behemoth'],
   },
   necropolis: {
     name: 'Necropolis',
-    crest: '💀',
     description: 'Endless bones, regenerating wights, death magic and bone dragons.',
     creatures: ['skeleton', 'walkingDead', 'wight', 'vampire', 'lich', 'blackKnight', 'boneDragon'],
   },
   dungeon: {
     name: 'Dungeon',
-    crest: '🐉',
     description: 'Hit-and-run harpies, petrifying medusas, manticores and dragon fire.',
     creatures: ['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'manticore', 'redDragon'],
   },
   inferno: {
     name: 'Inferno',
-    crest: '🔥',
     description: 'Swarming imps, fireball-throwing gogs, efreeti and devils.',
     creatures: ['imp', 'gog', 'hellHound', 'demon', 'pitFiend', 'efreet', 'devil'],
   },

@@ -7,10 +7,11 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet" />
     <script>
       try {
-        if (localStorage.getItem('banner-and-blade:theme') === 'synthwave') document.documentElement.dataset.theme = 'synthwave'
+        const theme = localStorage.getItem('banner-and-blade:theme-v2')
+        document.documentElement.dataset.theme = ['medieval', 'synthwave'].includes(theme) ? theme : 'default'
       } catch {}
     </script>
     <title>Banner &amp; Blade</title>

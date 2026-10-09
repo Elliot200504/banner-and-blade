@@ -194,7 +194,6 @@ function runInWorkers(jobs: Job[], workerCount: number): Promise<Result[]> {
     })
   })
 
-
   return Promise.all(workers).then(() => {
     process.stderr.write('\n\n')
 
@@ -274,7 +273,6 @@ function printReport(results: Result[], difficulty: Difficulty, against: Difficu
     return factionTallies.get(key)!
   }
 
-
   for (const result of results) {
     const { hero, opponent, heroSide } = result.job
     const heroFaction = HEROES[hero].faction
@@ -310,7 +308,6 @@ function printReport(results: Result[], difficulty: Difficulty, against: Difficu
       heroTallies.get(hero)!.add(result.winner, true)
     }
   }
-
 
   const factions = Object.keys(FACTIONS) as Faction[]
   const label = (level: Difficulty) => level[0].toUpperCase() + level.slice(1)
@@ -374,7 +371,6 @@ async function main() {
   process.stderr.write(`Playing ${jobs.length} games on ${workerCount} workers…\n`)
   printReport(await runInWorkers(jobs, workerCount), difficulty, against)
 }
-
 
 if (process.env.BALANCE_WORKER) {
   await runWorker()
