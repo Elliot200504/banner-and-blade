@@ -1,4 +1,5 @@
-import { createHero, CREATURES, FACTIONS, PLAYER_NAMES, type Faction, type Player } from '../game'
+import { createHero, CREATURES, FACTIONS, HEROES, heroesOf, PLAYER_NAMES, type Faction, type HeroId, type Player } from '../game'
+import { specialtyText } from './heroText'
 import { SpriteIcon } from './SpriteImage'
 
 /** Who plays a side: someone at the keyboard, or the computer. */
@@ -9,14 +10,24 @@ const CONTROLLER_LABELS: Record<Controller, string> = { human: '🧑 Human', com
 interface StartScreenProps {
   factions: Record<Player, Faction>
   controllers: Record<Player, Controller>
+  heroes: Record<Player, HeroId>
   onChangeFaction: (player: Player, faction: Faction) => void
   onChangeController: (player: Player, controller: Controller) => void
+  onChangeHero: (player: Player, hero: HeroId) => void
   onStart: () => void
 }
 
 const FACTION_LIST: Faction[] = ['order', 'undead', 'dungeon']
 
-export function StartScreen({ factions, controllers, onChangeFaction, onChangeController, onStart }: StartScreenProps) {
+export function StartScreen({
+  factions,
+  controllers,
+  heroes,
+  onChangeFaction,
+  onChangeController,
+  onChangeHero,
+  onStart,
+}: StartScreenProps) {
   return (
     <main className="start-screen">
       <div className="start-screen__crest">⚔️</div>
@@ -53,7 +64,22 @@ export function StartScreen({ factions, controllers, onChangeFaction, onChangeCo
                 </button>
               ))}
             </div>
-            <ArmyPreview player={player} faction={factions[player]} />
+            <div className="hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
+              {heroesOf(factions[player]).map((id) => (
+                <button
+                  key={id}
+                  role="radio"
+                  aria-checked={heroes[player] === id}
+                  className={`hero-option${heroes[player] === id ? ' hero-option--active' : ''}`}
+                  onClick={() => onChangeHero(player, id)}
+                >
+                  <SpriteIcon spriteId={id} owner={player} size={40} />
+                  <span className="hero-option__name">{HEROES[id].name}</span>
+                  <span className="hero-option__class">{HEROES[id].title}</span>
+                </button>
+              ))}
+            </div>
+            <ArmyPreview player={player} faction={factions[player]} heroId={heroes[player]} />
           </section>
         ))}
       </div>
@@ -72,6 +98,7 @@ export function StartScreen({ factions, controllers, onChangeFaction, onChangeCo
           <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
           <li>📖 C: your hero casts one spell per round without ending the turn.</li>
           <li>⏳ W: wait and act later this round. 🛡️ D: defend for extra defense.</li>
+          <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
           <li>Good morale may grant an extra turn; luck may double damage.</li>
           <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
         </ul>
@@ -80,17 +107,22 @@ export function StartScreen({ factions, controllers, onChangeFaction, onChangeCo
   )
 }
 
-function ArmyPreview({ player, faction }: { player: Player; faction: Faction }) {
-  const hero = createHero(faction)
+function ArmyPreview({ player, faction, heroId }: { player: Player; faction: Faction; heroId: HeroId }) {
+  const hero = createHero(heroId)
   return (
     <div className="army-preview">
       <p className="army-preview__description">{FACTIONS[faction].description}</p>
       <p className="army-preview__hero">
         Hero: {hero.name}, {hero.title}
       </p>
+      <p className="army-preview__specialty">★ {specialtyText(hero)}</p>
       <ul className="army-preview__units">
         {FACTIONS[faction].creatures.map((type) => (
-          <li key={type} title={CREATURES[type].plural}>
+          <li
+            key={type}
+            title={CREATURES[type].plural}
+            className={hero.specialty.kind === 'creature' && hero.specialty.creature === type ? 'army-preview__specialist' : undefined}
+          >
             <SpriteIcon spriteId={type} owner={player} size={40} mirrored={player === 'blue'} />
             <span>{CREATURES[type].armyCount}</span>
           </li>

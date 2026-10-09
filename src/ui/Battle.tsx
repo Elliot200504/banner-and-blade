@@ -23,10 +23,12 @@ import {
   shotProblem,
   spellDamage,
   SPELLS,
+  spellVictims,
   unitAt,
   type Faction,
   type GameState,
   type Hex,
+  type HeroId,
   type Move,
   type Player,
   type SpellId,
@@ -57,14 +59,15 @@ type Intent =
 interface BattleProps {
   factions: Record<Player, Faction>
   controllers: Record<Player, Controller>
+  heroes: Record<Player, HeroId>
   seed: number
   theme: Theme
   onPlayAgain: () => void
   onMainMenu: () => void
 }
 
-export function Battle({ factions, controllers, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => createBattle(factions, seed))
+export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
+  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
@@ -201,7 +204,9 @@ export function Battle({ factions, controllers, seed, theme, onPlayAgain, onMain
     pendingSpell ? state.units.filter((unit) => !castProblem(state, pendingSpell, unit.id)).map((unit) => unit.id) : [],
   )
   const targetUnitIds = new Set<string>()
-  if (intent && intent.kind !== 'move') {
+  if (intent?.kind === 'cast') {
+    for (const unit of spellVictims(state.units, intent.spell, intent.target)) targetUnitIds.add(unit.id)
+  } else if (intent && intent.kind !== 'move') {
     targetUnitIds.add(intent.target.id)
     if (intent.kind === 'shoot' && actor && hasAbility(actor.type, 'deathCloud')) {
       for (const unit of state.units) {
@@ -327,7 +332,9 @@ export function Battle({ factions, controllers, seed, theme, onPlayAgain, onMain
           onClose={() => setSpellbookOpen(false)}
           onChoose={(spell) => {
             setSpellbookOpen(false)
-            setPendingSpell(spell)
+            // Spells on everyone need no aiming: cast right away.
+            if (SPELLS[spell].target === 'everyone') perform({ type: 'cast', spell })
+            else setPendingSpell(spell)
           }}
         />
       )}
@@ -403,8 +410,10 @@ function statusText(
 
   if (pendingSpell) {
     if (intent?.kind === 'cast') {
-      const damage = spellDamage(intent.spell, attackerHero.spellPower)
-      const damageNote = damage > 0 ? ` – ${damage} damage, kills ${killsText(intent.target, damage, damage)}` : ''
+      const damage = spellDamage(intent.spell, attackerHero)
+      const victims = spellVictims(state.units, intent.spell, intent.target)
+      const others = victims.length > 1 ? ` (and ${victims.length - 1} more stack${victims.length > 2 ? 's' : ''})` : ''
+      const damageNote = damage > 0 ? ` – ${damage} damage, kills ${killsText(intent.target, damage, damage)}${others}` : ''
       return `Cast ${SPELLS[intent.spell].name} on ${intent.target.label}${damageNote}`
     }
     return `Choose a target for ${SPELLS[pendingSpell].name}. Esc to cancel.`

@@ -173,6 +173,7 @@ const PROJECTILE_COLORS: Record<ProjectileKind, string> = {
   holy: '#fde68a',
   death: '#4ade80',
   magic: '#93c5fd',
+  fire: '#fb923c',
 }
 
 function ProjectileShape({ projectile }: { projectile: Projectile }) {

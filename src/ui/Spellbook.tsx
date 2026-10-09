@@ -1,4 +1,4 @@
-import { SPELL_ORDER, SPELLS, type Hero, type SpellId } from '../game'
+import { isSpellSpecialist, SPELLS, type Hero, type SpellId } from '../game'
 import { Modal } from './Modal'
 
 interface SpellbookProps {
@@ -6,6 +6,8 @@ interface SpellbookProps {
   onChoose: (spell: SpellId) => void
   onClose: () => void
 }
+
+const TARGET_TEXT = { enemy: 'enemy', ally: 'ally', everyone: 'the whole field, no aiming' } as const
 
 export function Spellbook({ hero, onChoose, onClose }: SpellbookProps) {
   return (
@@ -15,16 +17,19 @@ export function Spellbook({ hero, onChoose, onClose }: SpellbookProps) {
         {hero.hasCastThisRound && ' · Already cast this round'}
       </p>
       <div className="spellbook__grid">
-        {SPELL_ORDER.map((spell) => {
+        {hero.spells.map((spell) => {
           const definition = SPELLS[spell]
           const disabled = hero.hasCastThisRound || hero.mana < definition.cost
           return (
             <button key={spell} className="spell" disabled={disabled} onClick={() => onChoose(spell)}>
               <span className="spell__icon">{definition.icon}</span>
-              <span className="spell__name">{definition.name}</span>
+              <span className="spell__name">
+                {definition.name}
+                {isSpellSpecialist(hero, spell) && ' ★'}
+              </span>
               <span className="spell__cost">{definition.cost} mana</span>
               <span className="spell__description">{definition.description}</span>
-              <span className="spell__target">Target: {definition.target === 'enemy' ? 'enemy' : 'ally'}</span>
+              <span className="spell__target">Target: {TARGET_TEXT[definition.target]}</span>
             </button>
           )
         })}

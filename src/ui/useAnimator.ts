@@ -10,7 +10,7 @@ const DEATH_MS = 450
 const NOTE_MS = 380
 const FLOAT_MS = 1100
 
-export type ProjectileKind = 'arrow' | 'holy' | 'death' | 'magic'
+export type ProjectileKind = 'arrow' | 'holy' | 'death' | 'magic' | 'fire'
 
 const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
   crossbowman: 'arrow',
@@ -189,6 +189,8 @@ export function useAnimator() {
             const target = positions[event.targetId]
             if (event.spell === 'magicArrow') {
               await shoot(casterPoint(event.caster), target, 'magic')
+            } else if (event.spell === 'meteorShower') {
+              await shoot({ x: target.x - 60, y: target.y - 220 }, target, 'fire')
             } else if (event.spell === 'lightningBolt') {
               updateView((current) => ({ ...current, lightning: target }))
               await sleep(duration(260))

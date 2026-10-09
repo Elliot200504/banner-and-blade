@@ -1,5 +1,5 @@
 import { CREATURES, FACTIONS, hasAbility, type Faction } from './creatures'
-import { createHero } from './heroes'
+import { createHero, HEROES, heroesOf, type Hero, type HeroId } from './heroes'
 import { COLUMNS, hexKey, offsetToHex, ROWS } from './hex'
 import { createRandom, type Random } from './random'
 import { buildQueue } from './rules'
@@ -11,7 +11,7 @@ const START_ROWS = [0, 2, 4, 6, 8, 10]
 const OBSTACLE_KINDS: ObstacleKind[] = ['rock', 'tree', 'deadTree']
 const OBSTACLE_PAIRS = 4
 
-function createArmy(owner: Player, faction: Faction): Unit[] {
+function createArmy(owner: Player, faction: Faction, hero: Hero): Unit[] {
   const column = owner === 'red' ? 0 : COLUMNS - 1
   return FACTIONS[faction].creatures.map((type, index) => {
     const stats = CREATURES[type]
@@ -30,6 +30,7 @@ function createArmy(owner: Player, faction: Faction): Unit[] {
       hadMoraleTurn: false,
       petrified: false,
       lostTurn: false,
+      specialty: hero.specialty.kind === 'creature' && hero.specialty.creature === type,
       effects: [],
     }
   })
@@ -56,12 +57,22 @@ function createObstacles(random: Random): Obstacle[] {
   return obstacles
 }
 
-export function createBattle(factions: Record<Player, Faction>, seed: number): GameState {
+/** Leads with the chosen hero, or the faction's first hero if none (or one of another faction) is chosen. */
+function heroFor(faction: Faction, chosen: HeroId | undefined): Hero {
+  return createHero(chosen && HEROES[chosen].faction === faction ? chosen : heroesOf(faction)[0])
+}
+
+export function createBattle(
+  factions: Record<Player, Faction>,
+  seed: number,
+  chosenHeroes: Partial<Record<Player, HeroId>> = {},
+): GameState {
   const random = createRandom(seed)
-  const units = [...createArmy('red', factions.red), ...createArmy('blue', factions.blue)]
+  const heroes = { red: heroFor(factions.red, chosenHeroes.red), blue: heroFor(factions.blue, chosenHeroes.blue) }
+  const units = [...createArmy('red', factions.red, heroes.red), ...createArmy('blue', factions.blue, heroes.blue)]
   return {
     units,
-    heroes: { red: createHero(factions.red), blue: createHero(factions.blue) },
+    heroes,
     factions,
     obstacles: createObstacles(random),
     round: 1,

@@ -3,7 +3,7 @@ import { CREATURES } from './creatures'
 import { hexDistance, type Hex } from './hex'
 import { attackMode, attackOrigins, isEnemyAdjacent, reachableHexes } from './movement'
 import { activeUnit, applyMove, castProblem } from './rules'
-import { SPELL_ORDER, type EffectId } from './spells'
+import { SPELLS, type EffectId } from './spells'
 import type { GameState, Move, Player, Unit } from './types'
 
 /**
@@ -106,11 +106,14 @@ export function actionMoves(state: GameState): Move[] {
 
 /** Every spell the active player's hero could cast right now. */
 export function spellMoves(state: GameState): Move[] {
-  return SPELL_ORDER.flatMap((spell) =>
-    state.units
+  const actor = activeUnit(state)
+  if (!actor) return []
+  return state.heroes[actor.owner].spells.flatMap((spell): Move[] => {
+    if (SPELLS[spell].target === 'everyone') return castProblem(state, spell) === null ? [{ type: 'cast', spell }] : []
+    return state.units
       .filter((unit) => castProblem(state, spell, unit.id) === null)
-      .map((unit): Move => ({ type: 'cast', spell, targetId: unit.id })),
-  )
+      .map((unit) => ({ type: 'cast', spell, targetId: unit.id }))
+  })
 }
 
 function bestOf(state: GameState, moves: Move[], player: Player): { move: Move; score: number } | null {

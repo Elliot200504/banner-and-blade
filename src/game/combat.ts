@@ -1,5 +1,5 @@
 import { CREATURES, hasAbility } from './creatures'
-import type { Hero } from './heroes'
+import { BLESS_SPECIALTY_BONUS, isSpellSpecialist, SPECIALTY_ATTACK, SPECIALTY_DEFENSE, SPECIALTY_SPEED, type Hero } from './heroes'
 import type { Random } from './random'
 import type { EffectId } from './spells'
 import type { Unit } from './types'
@@ -16,18 +16,18 @@ export const hasEffect = (unit: Unit, effect: EffectId): boolean =>
   unit.effects.some((active) => active.effect === effect)
 
 export function effectiveAttack(unit: Unit, hero: Hero): number {
-  return CREATURES[unit.type].attack + hero.attack
+  return CREATURES[unit.type].attack + hero.attack + (unit.specialty ? SPECIALTY_ATTACK : 0)
 }
 
 export function effectiveDefense(unit: Unit, hero: Hero): number {
-  let defense = CREATURES[unit.type].defense + hero.defense
+  let defense = CREATURES[unit.type].defense + hero.defense + (unit.specialty ? SPECIALTY_DEFENSE : 0)
   if (hasEffect(unit, 'stoneSkin')) defense += STONE_SKIN_DEFENSE
   if (unit.defending) defense += Math.max(1, Math.round(defense * DEFEND_BONUS))
   return defense
 }
 
 export function effectiveSpeed(unit: Unit): number {
-  let speed = CREATURES[unit.type].speed
+  let speed = CREATURES[unit.type].speed + (unit.specialty ? SPECIALTY_SPEED : 0)
   if (hasEffect(unit, 'haste')) speed += HASTE_SPEED
   if (hasEffect(unit, 'slow')) speed = Math.max(1, Math.floor(speed / 2))
   return speed
@@ -70,6 +70,7 @@ export function damageMultiplier(
   if (!options.ranged && hasAbility(attacker.type, 'charge') && !hasAbility(target.type, 'braced')) {
     multiplier *= 1 + CHARGE_BONUS_PER_HEX * options.hexesMoved
   }
+  if (hasEffect(attacker, 'bless') && isSpellSpecialist(attackerHero, 'bless')) multiplier *= 1 + BLESS_SPECIALTY_BONUS
   return multiplier
 }
 

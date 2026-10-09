@@ -35,6 +35,8 @@ export interface Unit {
   /** Turned to stone: loses its next turn and cannot strike back until then. */
   petrified: boolean
   lostTurn: boolean
+  /** Its hero specialises in this creature: more attack, defense and speed. */
+  specialty: boolean
   effects: ActiveEffect[]
 }
 
@@ -51,8 +53,8 @@ export type Move =
   | { type: 'attack'; targetId: string; from?: Hex }
   | { type: 'defend' }
   | { type: 'wait' }
-  /** The active player's hero casts a spell. Does not end the unit's turn. */
-  | { type: 'cast'; spell: SpellId; targetId: string }
+  /** The active player's hero casts a spell. Does not end the unit's turn. Spells on everyone take no target. */
+  | { type: 'cast'; spell: SpellId; targetId?: string }
   | { type: 'retreat' }
 
 /** What happened during the last move, in order. Used for the log and animations. */

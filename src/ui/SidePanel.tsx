@@ -12,6 +12,7 @@ import {
   type Player,
   type Unit,
 } from '../game'
+import { specialtyText } from './heroText'
 import { SpriteIcon } from './SpriteImage'
 
 export function HeroPanel({ state, player, active }: { state: GameState; player: Player; active: boolean }) {
@@ -19,12 +20,15 @@ export function HeroPanel({ state, player, active }: { state: GameState; player:
   return (
     <section className={`panel hero-panel hero-panel--${player}${active ? ' hero-panel--active' : ''}`}>
       <div className="hero-panel__name">
-        <span className="hero-panel__crest">{FACTIONS[state.factions[player]].crest}</span>
+        <div className={`hero-panel__portrait hero-panel__portrait--${player}`}>
+          <SpriteIcon spriteId={hero.id} owner={player} size={36} />
+        </div>
         <div>
           <div>{hero.name}</div>
           <div className="hero-panel__title">
-            {PLAYER_NAMES[player]} · {FACTIONS[state.factions[player]].name} {hero.title}
+            {FACTIONS[state.factions[player]].crest} {PLAYER_NAMES[player]} · {FACTIONS[state.factions[player]].name} {hero.title}
           </div>
+          <div className="hero-panel__specialty">★ {specialtyText(hero)}</div>
         </div>
       </div>
       <div className="hero-panel__stats">
@@ -54,6 +58,7 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
   const statusEffects = [
     unit.defending && 'Defending',
     unit.waited && 'Waiting',
+    unit.specialty && `★ ${hero.name}'s specialty`,
     unit.petrified && (unit.lostTurn ? 'Stone: breaks free on its next turn' : 'Petrified: loses its next turn'),
     unit.retaliationsLeft === 0 && 'No retaliation left',
   ].filter(Boolean)

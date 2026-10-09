@@ -6,12 +6,12 @@ function makeUnit(type: Unit['type'], owner: Unit['owner'], column: number, row:
   return {
     id: `${owner}-${type}`, label: `${owner} ${stats.plural}`, type, owner, position: offsetToHex(column, row),
     count: stats.armyCount, topHp: stats.hp, shots: stats.shots, retaliationsLeft: 1, defending: false,
-    waited: false, hadMoraleTurn: false, petrified: false, lostTurn: false, effects: [], ...changes,
+    waited: false, hadMoraleTurn: false, petrified: false, lostTurn: false, specialty: false, effects: [], ...changes,
   }
 }
 
 function battle(units: Unit[]): GameState {
-  const hero = { ...createHero('order'), morale: 0, luck: 0, mana: 0 }
+  const hero = { ...createHero('tyris'), morale: 0, luck: 0, mana: 0 }
   return { ...createBattle({ red: 'order', blue: 'undead' }, 1), units, obstacles: [], queue: units.map((unit) => unit.id), heroes: { red: hero, blue: hero } }
 }
 

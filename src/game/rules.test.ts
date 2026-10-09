@@ -10,6 +10,9 @@ import {
   CREATURES,
   damageRange,
   effectiveSpeed,
+  heroesOf,
+  castProblem as whyNotCast,
+  spellDamage,
   hexKey,
   moraleOf,
   hexToOffset,
@@ -25,7 +28,7 @@ import {
 
 /** A hero with no bonuses, morale or luck, so results are predictable. */
 function plainHero(changes: Partial<Hero> = {}): Hero {
-  return { ...createHero('order'), attack: 0, defense: 0, morale: 0, luck: 0, ...changes }
+  return { ...createHero('tyris'), attack: 0, defense: 0, morale: 0, luck: 0, ...changes }
 }
 
 function makeUnit(type: CreatureType, owner: Player, column: number, row: number, changes: Partial<Unit> = {}): Unit {
@@ -45,6 +48,7 @@ function makeUnit(type: CreatureType, owner: Player, column: number, row: number
     hadMoraleTurn: false,
     petrified: false,
     lostTurn: false,
+    specialty: false,
     effects: [],
     ...changes,
   }
@@ -309,7 +313,7 @@ describe('dungeon', () => {
     const state = createBattle({ red: 'dungeon', blue: 'order' }, 7)
     const types = state.units.filter((unit) => unit.owner === 'red').map((unit) => unit.type)
     expect(types).toEqual(['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'blackDragon'])
-    expect(state.heroes.red.name).toBe('Vyrex the Shadowlord')
+    expect(state.heroes.red.name).toBe('Lorelei')
   })
 
   it('harpies fly back to where they started after a melee attack', () => {
@@ -388,6 +392,76 @@ describe('dungeon', () => {
     const hero = plainHero({ morale: 1 })
     expect(moraleOf(makeUnit('minotaur', 'red', 0, 0), hero)).toBe(2)
     expect(moraleOf(makeUnit('troglodyte', 'red', 0, 0), hero)).toBe(1)
+  })
+})
+
+describe('heroes', () => {
+  it('each faction has three heroes, and the chosen one leads', () => {
+    expect(heroesOf('order')).toEqual(['tyris', 'edric', 'adela'])
+    expect(heroesOf('undead')).toEqual(['vokial', 'septienna', 'thant'])
+    expect(heroesOf('dungeon')).toEqual(['lorelei', 'dace', 'deemer'])
+    const state = createBattle({ red: 'order', blue: 'dungeon' }, 1, { red: 'adela', blue: 'tyris' })
+    expect(state.heroes.red.id).toBe('adela')
+    // A hero from another faction is ignored.
+    expect(state.heroes.blue.id).toBe('lorelei')
+  })
+
+  it("creature specialists lead their creatures better", () => {
+    const state = createBattle({ red: 'dungeon', blue: 'order' }, 1, { red: 'lorelei' })
+    const harpies = find(state, 'red-harpy')!
+    const troglodytes = find(state, 'red-troglodyte')!
+    expect(harpies.specialty).toBe(true)
+    expect(troglodytes.specialty).toBe(false)
+    expect(effectiveSpeed(harpies)).toBe(CREATURES.harpy.speed + 1)
+  })
+
+  it('only the specialist knows their special spell', () => {
+    const units = [makeUnit('swordsman', 'red', 0, 0), makeUnit('ghoul', 'blue', 14, 10)]
+    expect(whyNotCast(battle(units, { red: plainHero() }), 'deathRipple')).toMatch(/does not know/)
+    expect(whyNotCast(battle(units, { red: { ...createHero('septienna'), mana: 50 } }), 'deathRipple')).toBeNull()
+  })
+
+  it('death ripple hits every living stack and spares the undead', () => {
+    const hero = { ...createHero('septienna'), mana: 50 }
+    const units = [makeUnit('lich', 'red', 0, 0), makeUnit('swordsman', 'red', 0, 2), makeUnit('knight', 'blue', 14, 10)]
+    const next = applyMove(battle(units, { red: hero }), { type: 'cast', spell: 'deathRipple' })
+    const hit = next.events.flatMap((event) => (event.kind === 'spell' ? [event.targetId] : []))
+    expect(hit).toEqual(['red-swordsman', 'blue-knight'])
+    expect(spellDamage('deathRipple', hero)).toBe(Math.floor((10 + 5 * hero.spellPower) * 1.5))
+  })
+
+  it('meteor shower hits the target and everything next to it', () => {
+    const hero = { ...createHero('deemer'), mana: 50 }
+    const target = makeUnit('knight', 'blue', 7, 4)
+    const neighbour = makeUnit('swordsman', 'red', 8, 4)
+    const far = makeUnit('ghoul', 'blue', 12, 4)
+    const state = battle([makeUnit('troglodyte', 'red', 0, 0), target, neighbour, far], { red: hero })
+    const next = applyMove(state, { type: 'cast', spell: 'meteorShower', targetId: target.id })
+    const hit = next.events.flatMap((event) => (event.kind === 'spell' ? [event.targetId] : []))
+    expect(hit.sort()).toEqual([target.id, neighbour.id].sort())
+  })
+
+  it('animate dead raises fallen undead, but never past the starting stack', () => {
+    const hero = { ...createHero('thant'), mana: 50 }
+    const vampires = makeUnit('vampire', 'red', 0, 0, { count: 2, topHp: 10 })
+    const state = battle([vampires, makeUnit('knight', 'blue', 14, 10)], { red: hero })
+    const next = applyMove(state, { type: 'cast', spell: 'animateDead', targetId: vampires.id })
+    const raised = find(next, vampires.id)!
+    expect(raised.count).toBeGreaterThan(2)
+    expect(raised.count).toBeLessThanOrEqual(CREATURES.vampire.armyCount)
+    const living = battle([makeUnit('swordsman', 'red', 0, 0), makeUnit('knight', 'blue', 14, 10)], { red: hero })
+    expect(whyNotCast(living, 'animateDead', 'red-swordsman')).toMatch(/only works on the undead/)
+  })
+
+  it("Adela's blessings hit harder", () => {
+    const attacker = makeUnit('swordsman', 'red', 0, 0, { effects: [{ effect: 'bless', roundsLeft: 2 }] })
+    const target = makeUnit('knight', 'blue', 1, 0)
+    const adela = { ...createHero('adela'), attack: 0 }
+    const other = { ...createHero('tyris'), attack: 0 }
+    const options = { ranged: false, hexesMoved: 0 }
+    const withAdela = damageRange(attacker, adela, target, plainHero(), options).maximum
+    const withOther = damageRange(attacker, other, target, plainHero(), options).maximum
+    expect(withAdela).toBeGreaterThan(withOther)
   })
 })
 
