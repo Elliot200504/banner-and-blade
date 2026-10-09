@@ -31,6 +31,7 @@ import {
   type Player,
 } from '../game'
 import { About, GitHubLink } from './About'
+import { Changelog } from './Changelog'
 import { specialtyText } from './heroText'
 import { HeroStats } from './HeroStats'
 import { HowToPlay } from './HowToPlay'
@@ -126,6 +127,7 @@ export function StartScreen({
 }: StartScreenProps) {
   const [rulesOpen, setRulesOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
     const problem = armyProblem(armies[player], factions[player])
 
@@ -311,12 +313,21 @@ export function StartScreen({
         </Modal>
       )}
 
+      {changelogOpen && (
+        <Modal title="Changelog" onClose={() => setChangelogOpen(false)} className="about">
+          <Changelog />
+        </Modal>
+      )}
+
       <nav className="start-screen__corner" aria-label="More">
         <button className="button button--secondary" onClick={onOpenSettings}>
           Settings
         </button>
         <button className="button button--secondary" onClick={() => setAboutOpen(true)}>
           About
+        </button>
+        <button className="button button--secondary" onClick={() => setChangelogOpen(true)}>
+          Changelog
         </button>
         <GitHubLink />
       </nav>
