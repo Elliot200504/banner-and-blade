@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react'
-import { allHexes, COLUMNS, hexKey, hexToOffset, type Faction, type Obstacle, type Player } from '../game'
+import { allHexes, COLUMNS, hexKey, hexToOffset, type Faction, type Obstacle, type Player } from '../../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexToPixel } from './layout'
 
 /** Ground colors: each army fights on its own homeland's half of the field. */
