@@ -9,7 +9,7 @@ import {
   SPELLS,
   STONE_SKIN_SPECIALTY_DEFENSE,
   type Hero,
-} from '../game'
+} from '../../game'
 
 const percent = (bonus: number) => `+${Math.round(bonus * 100)}%`
 
