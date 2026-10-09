@@ -13,10 +13,10 @@ import {
   type GameState,
   type Player,
   type Unit,
-} from '../game'
+} from '../../game'
 import { specialtyText } from './heroText'
 import { HeroStats } from './HeroStats'
-import { Icon, SpellIcon, SpriteIcon } from './SpriteImage'
+import { Icon, SpellIcon, SpriteIcon } from '../art/SpriteImage'
 
 export function HeroPanel({ state, player, active }: { state: GameState; player: Player; active: boolean }) {
   const hero = state.heroes[player]
