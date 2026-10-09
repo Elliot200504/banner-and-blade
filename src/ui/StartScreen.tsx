@@ -3,6 +3,7 @@ import {
   ABILITY_DESCRIPTIONS,
   ARMY_BUDGET,
   armyCost,
+  baseOf,
   armyProblem,
   createHero,
   createRandom,
@@ -17,8 +18,11 @@ import {
   PLAYER_NAMES,
   randomArmy,
   standardArmy,
+  UPGRADES,
   WAR_MACHINES,
   withStack,
+  withUpgrade,
+  type BaseCreature,
   type Army,
   type CreatureType,
   type Difficulty,
@@ -180,6 +184,7 @@ export function StartScreen({
       <ArmyBuilder
         player={player}
         faction={factions[player]}
+        key={factions[player]}
         heroId={heroes[player]}
         army={armies[player]}
         onChange={(army) => onChangeArmy(player, army)}
@@ -228,6 +233,25 @@ interface ArmyBuilderProps {
 function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderProps) {
   const hero = createHero(heroId)
   const goldLeft = ARMY_BUDGET - armyCost(army)
+  /** Creatures marked for upgrading while the army has none of them yet. */
+  const [pendingUpgrades, setPendingUpgrades] = useState<Set<BaseCreature>>(new Set())
+  /** The version of a creature this row recruits: the one in the army, or the one chosen for when it joins. */
+  const rowType = (base: BaseCreature) =>
+    army.find((stack) => baseOf(stack.type) === base)?.type ?? (pendingUpgrades.has(base) ? UPGRADES[base] : base)
+  const toggleUpgrade = (base: BaseCreature, upgraded: boolean) => {
+    onChange(withUpgrade(army, faction, base, upgraded))
+    setPendingUpgrades((current) => {
+      const next = new Set(current)
+
+      if (upgraded) {
+        next.add(base)
+      } else {
+        next.delete(base)
+      }
+
+      return next
+    })
+  }
   const countOf = (type: CreatureType) => army.find((stack) => stack.type === type)?.count ?? 0
   const setCount = (type: CreatureType, count: number) => {
     const allowed = Math.max(0, Math.min(Math.floor(count) || 0, mostAffordable(army, type)))
@@ -261,15 +285,21 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
         </span>
       </div>
       <ul className="recruit">
-        {FACTIONS[faction].creatures.map((type) => {
+        {FACTIONS[faction].creatures.map((base) => {
+          const type = rowType(base)
+          const upgraded = type !== base
+          const other = upgraded ? base : UPGRADES[base]
           const stats = CREATURES[type]
           const count = countOf(type)
           const most = mostAffordable(army, type)
-          const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === type
+          const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === base
+          const upgradeTip = upgraded
+            ? `Back to ${CREATURES[base].plural} (${CREATURES[base].cost} gold each)`
+            : `Upgrade to ${CREATURES[other].plural} (${CREATURES[other].cost} gold each)\n${creatureSummary(other)}`
 
           return (
             <li
-              key={type}
+              key={base}
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
               <SpriteIcon spriteId={type} owner={player} size={32} mirrored={player === 'blue'} />
@@ -277,6 +307,15 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
               </span>
+              <button
+                className={`recruit__upgrade${upgraded ? ' recruit__upgrade--active' : ''}`}
+                aria-pressed={upgraded}
+                aria-label={`Upgrade ${CREATURES[base].plural} to ${CREATURES[UPGRADES[base]].plural}`}
+                title={upgradeTip}
+                onClick={() => toggleUpgrade(base, !upgraded)}
+              >
+                <Icon name="upgrade" />
+              </button>
               <span className="recruit__count">
                 <button
                   className="recruit__step"
