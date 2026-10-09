@@ -13,11 +13,11 @@ import {
   type Move,
   type Player,
   type Unit,
-} from '../game'
+} from '../../game'
 import { Board, type BoardHighlights, type DisplayUnit } from './Board'
 import { hexToPixel } from './layout'
 import { useAnimator } from './useAnimator'
-import type { Theme } from './useTheme'
+import type { Theme } from '../hooks/useTheme'
 
 /** How long each step shows what is about to be clicked, and how long the board rests after it. */
 const AIM_MS = 1500
