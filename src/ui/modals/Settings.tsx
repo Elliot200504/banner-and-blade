@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { HowToPlay } from './HowToPlay'
 import { Modal } from './Modal'
-import { playSound, type SoundSettings } from './sound'
-import { ThemeToggle } from './ThemeToggle'
-import type { Theme } from './useTheme'
+import { playSound, type SoundSettings } from '../audio/sound'
+import { ThemeToggle } from '../controls/ThemeToggle'
+import type { Theme } from '../hooks/useTheme'
 
 interface SettingsProps {
   theme: Theme
