@@ -1,4 +1,4 @@
-import { armyProblem, standardArmy, type Army } from './army'
+import { ARMY_BUDGETS, armyProblem, standardArmy, type Army } from './army'
 import { baseOf, CREATURES, hasAbility, isWarMachine, type Faction, type WarMachine } from './creatures'
 import { createHero, HEROES, heroesOf, type Hero, type HeroId } from './heroes'
 import { COLUMNS, hexKey, offsetToHex, ROWS } from './hex'
@@ -106,7 +106,8 @@ function heroFor(faction: Faction, chosen: HeroId | undefined): Hero {
 
 /** The recruited army, or the faction's standard army if none (or one that breaks the rules) is given. */
 function armyFor(faction: Faction, recruited: Army | undefined): Army {
-  if (!recruited || armyProblem(recruited, faction)) {
+  // Any army that fits the largest budget may take the field; the start screen holds each side to its own size.
+  if (!recruited || armyProblem(recruited, faction, ARMY_BUDGETS.large)) {
     return standardArmy(faction)
   }
 
