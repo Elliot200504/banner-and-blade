@@ -19,7 +19,7 @@ export const SPELLS: Record<SpellId, SpellDefinition> = {
   bless: { name: 'Bless', icon: '🌟', cost: 5, target: 'ally', description: 'Always deals maximum damage.' },
   curse: { name: 'Curse', icon: '💀', cost: 5, target: 'enemy', description: 'Always deals minimum damage.' },
   stoneSkin: { name: 'Stone Skin', icon: '🪨', cost: 5, target: 'ally', description: '+3 defense for power rounds.' },
-  cure: { name: 'Cure', icon: '💚', cost: 6, target: 'ally', description: 'Heals 10 + 5 × power and removes Slow and Curse.' },
+  cure: { name: 'Cure', icon: '💚', cost: 6, target: 'ally', description: 'Heals 10 + 5 × power and removes Slow, Curse and Petrify.' },
 }
 
 export const SPELL_ORDER: SpellId[] = ['magicArrow', 'lightningBolt', 'haste', 'slow', 'bless', 'curse', 'stoneSkin', 'cure']

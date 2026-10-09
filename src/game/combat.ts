@@ -10,6 +10,7 @@ export const HASTE_SPEED = 3
 export const CHARGE_BONUS_PER_HEX = 0.05
 export const MELEE_PENALTY = 0.5
 export const DEATHBLOW_CHANCE = 0.2
+export const PETRIFY_CHANCE = 0.2
 
 export const hasEffect = (unit: Unit, effect: EffectId): boolean =>
   unit.effects.some((active) => active.effect === effect)

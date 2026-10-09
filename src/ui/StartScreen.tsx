@@ -7,7 +7,7 @@ interface StartScreenProps {
   onStart: () => void
 }
 
-const FACTION_LIST: Faction[] = ['order', 'undead']
+const FACTION_LIST: Faction[] = ['order', 'undead', 'dungeon']
 
 export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenProps) {
   return (
@@ -29,7 +29,7 @@ export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenP
                   className={`faction-option${factions[player] === faction ? ' faction-option--active' : ''}`}
                   onClick={() => onChangeFaction(player, faction)}
                 >
-                  {faction === 'order' ? '🛡️' : '💀'} {FACTIONS[faction].name}
+                  {FACTIONS[faction].crest} {FACTIONS[faction].name}
                 </button>
               ))}
             </div>
@@ -48,7 +48,8 @@ export function StartScreen({ factions, onChangeFaction, onStart }: StartScreenP
           <li>Stacks act in order of speed. Watch the turn order bar to see who goes next.</li>
           <li>Click a shaded hex to move. Click an enemy to attack; aim at the side you want to strike from.</li>
           <li>Shooters have limited range and shots. With an enemy next to them they must fight in melee at half damage.</li>
-          <li>Enemies hit in melee strike back once per round (Gryphons twice; nobody strikes back at Vampires).</li>
+          <li>Enemies hit in melee strike back once per round (Gryphons and Minotaurs twice; nobody strikes back at Vampires).</li>
+          <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
           <li>📖 C: your hero casts one spell per round without ending the turn.</li>
           <li>⏳ W: wait and act later this round. 🛡️ D: defend for extra defense.</li>
           <li>Good morale may grant an extra turn; luck may double damage.</li>

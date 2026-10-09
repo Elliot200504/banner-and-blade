@@ -617,6 +617,10 @@ h3 {
   opacity: 0;
 }
 
+.unit--petrified .unit__sprite {
+  filter: grayscale(1) brightness(0.85);
+}
+
 .unit--spotlight .unit__sprite {
   filter: drop-shadow(0 0 4px var(--highlight)) drop-shadow(0 0 4px var(--highlight));
 }

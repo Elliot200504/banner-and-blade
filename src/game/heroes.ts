@@ -19,6 +19,7 @@ export interface Hero {
 const HERO_TEMPLATES: Record<Faction, Omit<Hero, 'mana' | 'maxMana' | 'hasCastThisRound'>> = {
   order: { name: 'Sir Aldric', title: 'Knight-Commander', attack: 2, defense: 2, spellPower: 2, knowledge: 2, morale: 2, luck: 1 },
   undead: { name: 'Morwen the Pale', title: 'Necromancer', attack: 1, defense: 2, spellPower: 3, knowledge: 3, morale: 0, luck: 1 },
+  dungeon: { name: 'Vyrex the Shadowlord', title: 'Warlock', attack: 2, defense: 1, spellPower: 3, knowledge: 2, morale: 1, luck: 1 },
 }
 
 export function createHero(faction: Faction): Hero {

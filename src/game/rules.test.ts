@@ -11,6 +11,7 @@ import {
   damageRange,
   effectiveSpeed,
   hexKey,
+  moraleOf,
   hexToOffset,
   offsetToHex,
   reachableHexes,
@@ -38,10 +39,11 @@ function makeUnit(type: CreatureType, owner: Player, column: number, row: number
     count: stats.armyCount,
     topHp: stats.hp,
     shots: stats.shots,
-    retaliationsLeft: type === 'gryphon' ? 2 : 1,
+    retaliationsLeft: stats.abilities.includes('doubleRetaliation') ? 2 : 1,
     defending: false,
     waited: false,
     hadMoraleTurn: false,
+    petrified: false,
     effects: [],
     ...changes,
   }
@@ -298,6 +300,80 @@ describe('spells', () => {
     expect(find(slowed, 'blue-ghoul')!.effects).toHaveLength(1)
     const nextRound = applyMove(applyMove(slowed, { type: 'defend' }), { type: 'defend' })
     expect(find(nextRound, 'blue-ghoul')!.effects).toHaveLength(0)
+  })
+})
+
+describe('dungeon', () => {
+  it('fields six dungeon stacks', () => {
+    const state = createBattle({ red: 'dungeon', blue: 'order' }, 7)
+    const types = state.units.filter((unit) => unit.owner === 'red').map((unit) => unit.type)
+    expect(types).toEqual(['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'blackDragon'])
+    expect(state.heroes.red.name).toBe('Vyrex the Shadowlord')
+  })
+
+  it('harpies fly back to where they started after a melee attack', () => {
+    const harpies = makeUnit('harpy', 'red', 0, 0)
+    const skeletons = makeUnit('skeleton', 'blue', 4, 0)
+    const next = applyMove(battle([harpies, skeletons]), { type: 'attack', targetId: skeletons.id, from: offsetToHex(3, 0) })
+    expect(find(next, harpies.id)?.position).toEqual(harpies.position)
+    expect(next.events.filter((event) => event.kind === 'attack')).toHaveLength(2)
+    expect(next.events[next.events.length - 1]).toMatchObject({ kind: 'move', unitId: harpies.id })
+  })
+
+  it('harpies already next to the target stay put', () => {
+    const harpies = makeUnit('harpy', 'red', 0, 0)
+    const skeletons = makeUnit('skeleton', 'blue', 1, 0)
+    const next = applyMove(battle([harpies, skeletons]), { type: 'attack', targetId: skeletons.id })
+    expect(next.events.some((event) => event.kind === 'move')).toBe(false)
+  })
+
+  it('medusas sometimes turn their target to stone', () => {
+    const outcomes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((seed) => {
+      const state = { ...battle([makeUnit('medusa', 'red', 0, 0), makeUnit('knight', 'blue', 5, 0)]), seed }
+      return applyMove(state, { type: 'attack', targetId: 'blue-knight' }).events.some((event) => event.kind === 'petrify')
+    })
+    expect(outcomes).toContain(true)
+    expect(outcomes).toContain(false)
+  })
+
+  it('a petrified stack loses its next turn, then recovers', () => {
+    const state = battle([makeUnit('knight', 'red', 0, 0), makeUnit('ghoul', 'blue', 14, 10, { petrified: true })])
+    const next = applyMove(state, { type: 'defend' })
+    expect(next.round).toBe(2)
+    expect(activeUnit(next)?.id).toBe('red-knight')
+    expect(find(next, 'blue-ghoul')?.petrified).toBe(false)
+    expect(next.events.some((event) => event.kind === 'stoneSkip')).toBe(true)
+  })
+
+  it('a petrified stack cannot strike back', () => {
+    const state = battle([makeUnit('swordsman', 'red', 0, 0), makeUnit('ghoul', 'blue', 1, 0, { petrified: true })])
+    const next = applyMove(state, { type: 'attack', targetId: 'blue-ghoul' })
+    expect(next.events.filter((event) => event.kind === 'attack')).toHaveLength(1)
+  })
+
+  it('cure breaks the stone', () => {
+    const hero = plainHero({ mana: 50 })
+    const state = battle([makeUnit('swordsman', 'red', 0, 0, { petrified: true }), makeUnit('ghoul', 'blue', 14, 10)], { red: hero })
+    const next = applyMove(state, { type: 'cast', spell: 'cure', targetId: 'red-swordsman' })
+    expect(find(next, 'red-swordsman')?.petrified).toBe(false)
+  })
+
+  it("the dragon's breath also burns the stack behind the target, even a friendly one", () => {
+    const dragons = makeUnit('blackDragon', 'red', 2, 4)
+    const target = makeUnit('ghoul', 'blue', 3, 4)
+    const behind = makeUnit('spearman', 'red', 4, 4)
+    const beside = makeUnit('skeleton', 'blue', 3, 3)
+    const next = applyMove(battle([dragons, target, behind, beside]), { type: 'attack', targetId: target.id })
+    const burned = next.events.flatMap((event) => (event.kind === 'attack' && event.splash ? [event.targetId] : []))
+    expect(burned).toEqual([behind.id])
+    expect(find(next, behind.id)!.count).toBeLessThan(behind.count)
+    expect(find(next, beside.id)!.count).toBe(beside.count)
+  })
+
+  it('minotaurs have one more morale than their hero', () => {
+    const hero = plainHero({ morale: 1 })
+    expect(moraleOf(makeUnit('minotaur', 'red', 0, 0), hero)).toBe(2)
+    expect(moraleOf(makeUnit('troglodyte', 'red', 0, 0), hero)).toBe(1)
   })
 })
 

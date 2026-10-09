@@ -16,6 +16,8 @@ const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
   crossbowman: 'arrow',
   priest: 'holy',
   lich: 'death',
+  beholder: 'magic',
+  medusa: 'arrow',
 }
 
 export interface FloatingText {
@@ -169,7 +171,7 @@ export function useAnimator() {
             const from = positions[event.attackerId]
             const to = positions[event.targetId]
             if (event.splash) {
-              // The death cloud spreads from the main target, no projectile of its own.
+              // Death clouds and dragon fire spread from the main target, with no projectile of their own.
             } else if (event.ranged) {
               await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'crossbowman'] ?? 'arrow')
             } else {
@@ -216,6 +218,16 @@ export function useAnimator() {
           case 'regenerate':
             addFloatingText(positions[event.unitId], 'Regenerate', 'good')
             await sleep(duration(NOTE_MS))
+            break
+
+          case 'petrify':
+            addFloatingText(positions[event.unitId], 'Petrified!', 'magic', -24)
+            await sleep(duration(NOTE_MS))
+            break
+
+          case 'stoneSkip':
+            addFloatingText(positions[event.unitId], 'Stone', 'info')
+            await sleep(duration(NOTE_MS * 1.5))
             break
 
           case 'defend':

@@ -32,6 +32,8 @@ export interface Unit {
   waited: boolean
   /** Has had a good-morale extra turn this round. */
   hadMoraleTurn: boolean
+  /** Turned to stone: loses its next turn and cannot strike back until then. */
+  petrified: boolean
   effects: ActiveEffect[]
 }
 
@@ -74,6 +76,9 @@ export type BattleEvent =
   | { kind: 'wait'; unitId: string }
   | { kind: 'morale'; unitId: string }
   | { kind: 'regenerate'; unitId: string; topHp: number }
+  | { kind: 'petrify'; unitId: string }
+  /** A petrified stack's turn comes up and is skipped. */
+  | { kind: 'stoneSkip'; unitId: string }
   | {
       kind: 'spell'
       spell: SpellId

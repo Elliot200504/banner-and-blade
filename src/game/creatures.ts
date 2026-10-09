@@ -1,4 +1,4 @@
-export type Faction = 'order' | 'undead'
+export type Faction = 'order' | 'undead' | 'dungeon'
 
 export type CreatureType =
   | 'spearman'
@@ -13,6 +13,12 @@ export type CreatureType =
   | 'vampire'
   | 'lich'
   | 'deathKnight'
+  | 'troglodyte'
+  | 'harpy'
+  | 'beholder'
+  | 'medusa'
+  | 'minotaur'
+  | 'blackDragon'
 
 export type Ability =
   | 'flying'
@@ -25,6 +31,10 @@ export type Ability =
   | 'deathblow'
   | 'noMeleePenalty'
   | 'undead'
+  | 'hitAndRun'
+  | 'petrify'
+  | 'steadfast'
+  | 'breath'
 
 export interface CreatureStats {
   name: string
@@ -107,6 +117,36 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
     hp: 100, attack: 16, defense: 16, minDamage: 15, maxDamage: 30, speed: 6, shots: 0, range: 0,
     abilities: ['undead', 'deathblow'], armyCount: 2,
   },
+  troglodyte: {
+    name: 'Troglodyte', plural: 'Troglodytes', faction: 'dungeon', tier: 1,
+    hp: 5, attack: 4, defense: 3, minDamage: 1, maxDamage: 3, speed: 4, shots: 0, range: 0,
+    abilities: [], armyCount: 22,
+  },
+  harpy: {
+    name: 'Harpy', plural: 'Harpies', faction: 'dungeon', tier: 2,
+    hp: 14, attack: 6, defense: 5, minDamage: 1, maxDamage: 4, speed: 6, shots: 0, range: 0,
+    abilities: ['flying', 'hitAndRun'], armyCount: 12,
+  },
+  beholder: {
+    name: 'Beholder', plural: 'Beholders', faction: 'dungeon', tier: 3,
+    hp: 22, attack: 9, defense: 7, minDamage: 3, maxDamage: 5, speed: 5, shots: 12, range: 6,
+    abilities: ['noMeleePenalty'], armyCount: 7,
+  },
+  medusa: {
+    name: 'Medusa', plural: 'Medusas', faction: 'dungeon', tier: 4,
+    hp: 25, attack: 9, defense: 9, minDamage: 6, maxDamage: 8, speed: 5, shots: 8, range: 5,
+    abilities: ['petrify'], armyCount: 5,
+  },
+  minotaur: {
+    name: 'Minotaur', plural: 'Minotaurs', faction: 'dungeon', tier: 5,
+    hp: 50, attack: 14, defense: 12, minDamage: 12, maxDamage: 20, speed: 6, shots: 0, range: 0,
+    abilities: ['steadfast', 'doubleRetaliation'], armyCount: 3,
+  },
+  blackDragon: {
+    name: 'Black Dragon', plural: 'Black Dragons', faction: 'dungeon', tier: 6,
+    hp: 110, attack: 17, defense: 15, minDamage: 18, maxDamage: 28, speed: 7, shots: 0, range: 0,
+    abilities: ['flying', 'breath'], armyCount: 2,
+  },
 }
 
 export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
@@ -120,18 +160,30 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
   deathblow: '20% chance to deal double damage.',
   noMeleePenalty: 'No penalty when fighting in melee.',
   undead: 'Undead: unaffected by morale and death clouds.',
+  hitAndRun: 'Flies back to where it started after a melee attack.',
+  petrify: '20% chance to turn the target to stone: it loses its next turn and cannot strike back.',
+  steadfast: '+1 morale on top of the hero.',
+  breath: 'Melee attacks also burn the stack behind the target, friend or foe.',
 }
 
-export const FACTIONS: Record<Faction, { name: string; description: string; creatures: CreatureType[] }> = {
+export const FACTIONS: Record<Faction, { name: string; crest: string; description: string; creatures: CreatureType[] }> = {
   order: {
     name: 'Order',
+    crest: '🛡️',
     description: 'Disciplined soldiers, holy priests and charging knights.',
     creatures: ['spearman', 'crossbowman', 'gryphon', 'swordsman', 'priest', 'knight'],
   },
   undead: {
     name: 'Undead',
+    crest: '💀',
     description: 'Endless bones, regenerating wraiths and death magic.',
     creatures: ['skeleton', 'ghoul', 'wraith', 'vampire', 'lich', 'deathKnight'],
+  },
+  dungeon: {
+    name: 'Dungeon',
+    crest: '🐉',
+    description: 'Hit-and-run harpies, petrifying medusas and dragon fire.',
+    creatures: ['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'blackDragon'],
   },
 }
 

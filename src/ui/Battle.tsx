@@ -6,6 +6,7 @@ import {
   applyMove,
   attackMode,
   attackOrigins,
+  breathVictim,
   castProblem,
   createBattle,
   CREATURES,
@@ -187,6 +188,10 @@ export function Battle({ factions, seed, theme, onPlayAgain, onMainMenu }: Battl
           targetUnitIds.add(unit.id)
         }
       }
+    }
+    if (intent.kind === 'melee' && actor && hasAbility(actor.type, 'breath')) {
+      const burned = breathVictim(state.units, intent.from, intent.target)
+      if (burned) targetUnitIds.add(burned.id)
     }
   }
 
@@ -394,7 +399,10 @@ function statusText(
     const damage = range.minimum === range.maximum ? `${range.maximum}` : `${range.minimum}–${range.maximum}`
     const verb = ranged ? 'Shoot' : 'Attack'
     const shotsLeft = ranged ? ` · ${actor.shots} shots left` : ''
-    return `${verb} ${intent.target.label}: ${damage} damage, kills ${killsText(intent.target, range.minimum, range.maximum)}${shotsLeft}`
+    const burned = !ranged && hasAbility(actor.type, 'breath') ? breathVictim(state.units, intent.from, intent.target) : undefined
+    const breathNote = burned ? ` · fire also burns ${burned.label}` : ''
+    const flyBack = !ranged && hasAbility(actor.type, 'hitAndRun') && intent.path.length > 0 ? ' · then flies back' : ''
+    return `${verb} ${intent.target.label}: ${damage} damage, kills ${killsText(intent.target, range.minimum, range.maximum)}${shotsLeft}${breathNote}${flyBack}`
   }
 
   if (hoveredUnit && hoveredUnit.owner !== actor.owner) {

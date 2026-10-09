@@ -216,6 +216,7 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
   if (hit) className += ' unit--hit'
   if (dying) className += ' unit--dying'
   if (spotlight) className += ' unit--spotlight'
+  if (unit.petrified) className += ' unit--petrified'
 
   return (
     <g className={className} transform={`translate(${point.x} ${point.y})`}>

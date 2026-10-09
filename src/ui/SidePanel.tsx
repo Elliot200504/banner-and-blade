@@ -19,7 +19,7 @@ export function HeroPanel({ state, player, active }: { state: GameState; player:
   return (
     <section className={`panel hero-panel hero-panel--${player}${active ? ' hero-panel--active' : ''}`}>
       <div className="hero-panel__name">
-        <span className="hero-panel__crest">{state.factions[player] === 'order' ? '🛡️' : '💀'}</span>
+        <span className="hero-panel__crest">{FACTIONS[state.factions[player]].crest}</span>
         <div>
           <div>{hero.name}</div>
           <div className="hero-panel__title">
@@ -54,6 +54,7 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
   const statusEffects = [
     unit.defending && 'Defending',
     unit.waited && 'Waiting',
+    unit.petrified && 'Petrified: loses its next turn',
     unit.retaliationsLeft === 0 && 'No retaliation left',
   ].filter(Boolean)
 

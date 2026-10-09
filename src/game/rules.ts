@@ -1,4 +1,4 @@
-import { afterDamage, effectiveSpeed, rollDamage } from './combat'
+import { afterDamage, effectiveSpeed, PETRIFY_CHANCE, rollDamage } from './combat'
 import { CREATURES, hasAbility } from './creatures'
 import type { Hero } from './heroes'
 import { hexDistance, hexKey, neighbors, sameHex, type Hex } from './hex'
@@ -9,6 +9,17 @@ import type { BattleEvent, Casualties, GameState, Move, Player, Unit } from './t
 import { opponentOf, PLAYER_NAMES } from './types'
 
 const MAX_LOG = 80
+
+/** A morale point is a 1 in 24 chance of an extra turn. Steadfast stacks get one more than their hero. */
+export function moraleOf(unit: Unit, hero: Hero): number {
+  return hero.morale + (hasAbility(unit.type, 'steadfast') ? 1 : 0)
+}
+
+/** The stack a dragon's breath also hits: the one right behind the target, seen from where the dragon strikes. */
+export function breathVictim(units: Unit[], from: Hex, target: Unit): Unit | undefined {
+  const behind = { q: 2 * target.position.q - from.q, r: 2 * target.position.r - from.r }
+  return units.find((unit) => unit.id !== target.id && unit.count > 0 && sameHex(unit.position, behind))
+}
 
 export function activeUnit(state: GameState): Unit | undefined {
   return state.units.find((unit) => unit.id === state.queue[0])
@@ -120,13 +131,27 @@ function strike(
 
   if (roll.lucky) draft.log.push(`Lucky strike! ${attacker.label} deal double damage.`)
   if (roll.deathblow) draft.log.push(`Deathblow! ${attacker.label} deal double damage.`)
-  const verb = options.splash ? 'The death cloud hits' : options.retaliation ? 'strike back at' : options.ranged ? 'shoot' : 'attack'
+  const splashVerb = hasAbility(attacker.type, 'breath') ? 'Dragon fire burns' : 'The death cloud hits'
+  const verb = options.splash ? splashVerb : options.retaliation ? 'strike back at' : options.ranged ? 'shoot' : 'attack'
   const subject = options.splash ? '' : `${describe(attacker)} `
   draft.log.push(`${subject}${verb} ${target.label} for ${roll.damage}. ${result.kills} perish.`)
   if (result.count === 0) {
     draft.events.push({ kind: 'death', unitId: targetId })
     draft.log.push(`${target.label} are destroyed!`)
+  } else if (hasAbility(attacker.type, 'petrify') && !options.splash && draft.random.chance(PETRIFY_CHANCE)) {
+    updateUnit(draft, targetId, { petrified: true })
+    draft.events.push({ kind: 'petrify', unitId: targetId })
+    draft.log.push(`${target.label} are turned to stone!`)
   }
+}
+
+/** A melee blow, plus the dragon's breath on whoever stands behind the target. */
+function meleeStrike(draft: Draft, attackerId: string, targetId: string, options: { retaliation: boolean; hexesMoved: number }) {
+  const attacker = getUnit(draft, attackerId)!
+  const target = getUnit(draft, targetId)!
+  const burned = hasAbility(attacker.type, 'breath') ? breathVictim(draft.units, attacker.position, target) : undefined
+  strike(draft, attackerId, targetId, { ranged: false, splash: false, ...options })
+  if (burned) strike(draft, attackerId, burned.id, { ranged: false, retaliation: options.retaliation, splash: true, hexesMoved: 0 })
 }
 
 function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: string, from?: Hex): boolean {
@@ -157,12 +182,20 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
     if (walked === null) return false
     hexesMoved = walked
   }
-  strike(draft, actor.id, targetId, { ranged: false, retaliation: false, splash: false, hexesMoved })
+  meleeStrike(draft, actor.id, targetId, { retaliation: false, hexesMoved })
 
   const victim = getUnit(draft, targetId)!
-  if (victim.count > 0 && victim.retaliationsLeft > 0 && !hasAbility(actor.type, 'noRetaliation')) {
+  const canRetaliate = victim.count > 0 && victim.retaliationsLeft > 0 && !victim.petrified
+  if (canRetaliate && !hasAbility(actor.type, 'noRetaliation')) {
     updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
-    strike(draft, targetId, actor.id, { ranged: false, retaliation: true, splash: false, hexesMoved: 0 })
+    meleeStrike(draft, targetId, actor.id, { retaliation: true, hexesMoved: 0 })
+  }
+
+  const survivor = getUnit(draft, actor.id)!
+  if (hasAbility(actor.type, 'hitAndRun') && survivor.count > 0 && !sameHex(survivor.position, actor.position)) {
+    updateUnit(draft, actor.id, { position: actor.position })
+    draft.events.push({ kind: 'move', unitId: actor.id, path: [survivor.position, actor.position], flying: true })
+    draft.log.push(`${actor.label} fly back.`)
   }
   return true
 }
@@ -201,7 +234,7 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   if (spell === 'cure') {
     const topHp = Math.min(CREATURES[target.type].hp, target.topHp + cureAmount(hero.spellPower))
     const effects = target.effects.filter((active) => active.effect !== 'slow' && active.effect !== 'curse')
-    updateUnit(draft, targetId, { topHp, effects })
+    updateUnit(draft, targetId, { topHp, effects, petrified: false })
     event.targetTopHp = topHp
   } else if (isEffect(spell)) {
     const opposite = OPPOSITE_EFFECT[spell]
@@ -227,6 +260,28 @@ function startTurn(draft: Draft, unitId: string) {
     updateUnit(draft, unitId, { topHp: fullHp })
     draft.events.push({ kind: 'regenerate', unitId, topHp: fullHp })
     draft.log.push(`${unit.label} regenerate.`)
+  }
+}
+
+/**
+ * Starts the turn of the stack at the front of the queue, beginning a new round when the queue is empty.
+ * Petrified stacks are skipped and come out of the stone.
+ */
+function beginNextTurn(draft: Draft, queue: string[], round: number): { queue: string[]; round: number } {
+  for (;;) {
+    if (queue.length === 0) {
+      round++
+      queue = startRound(draft, round)
+    }
+    const unit = getUnit(draft, queue[0])!
+    if (!unit.petrified) {
+      startTurn(draft, unit.id)
+      return { queue, round }
+    }
+    updateUnit(draft, unit.id, { petrified: false, defending: false })
+    draft.events.push({ kind: 'stoneSkip', unitId: unit.id })
+    draft.log.push(`${unit.label} are stone and lose their turn.`)
+    queue = queue.slice(1)
   }
 }
 
@@ -313,15 +368,16 @@ export function applyMove(state: GameState, move: Move): GameState {
   }
 
   if (move.type === 'wait') {
-    startTurn(draft, queue[0])
-    return finish(state, draft, { queue, round, winner: null, retreated: null })
+    return finish(state, draft, { ...beginNextTurn(draft, queue, round), winner: null, retreated: null })
   }
   if (!endsTurn) return finish(state, draft, { queue, round, winner: null, retreated: null })
 
   const actorAfter = getUnit(draft, actor.id)
   const hero = draft.heroes[actor.owner]
-  const moraleApplies = actorAfter && !hasAbility(actor.type, 'undead') && !actorAfter.hadMoraleTurn && hero.morale > 0
-  if (canTriggerMorale && moraleApplies && draft.random.chance(hero.morale / 24)) {
+  const morale = moraleOf(actor, hero)
+  const moraleApplies =
+    actorAfter && !hasAbility(actor.type, 'undead') && !actorAfter.hadMoraleTurn && !actorAfter.petrified && morale > 0
+  if (canTriggerMorale && moraleApplies && draft.random.chance(morale / 24)) {
     updateUnit(draft, actor.id, { hadMoraleTurn: true })
     draft.events.push({ kind: 'morale', unitId: actor.id })
     draft.log.push(`Good morale! ${actor.label} act again.`)
@@ -329,12 +385,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   }
 
   queue = queue.filter((id) => id !== actor.id)
-  if (queue.length === 0) {
-    round++
-    queue = startRound(draft, round)
-  }
-  startTurn(draft, queue[0])
-  return finish(state, draft, { queue, round, winner: null, retreated: null })
+  return finish(state, draft, { ...beginNextTurn(draft, queue, round), winner: null, retreated: null })
 }
 
 function finish(

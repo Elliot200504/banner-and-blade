@@ -28,6 +28,7 @@ function createArmy(owner: Player, faction: Faction): Unit[] {
       defending: false,
       waited: false,
       hadMoraleTurn: false,
+      petrified: false,
       effects: [],
     }
   })
