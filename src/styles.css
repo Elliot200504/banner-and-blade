@@ -16,7 +16,6 @@
 :root,
 :root[data-theme='default'] {
   --background: #140b07;
-  --background-image: none;
   --panel: #2a160b;
   --panel-image: linear-gradient(160deg, rgba(255, 220, 160, 0.07) 0%, transparent 45%, rgba(0, 0, 0, 0.3) 100%),
     repeating-linear-gradient(115deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 9px),
@@ -65,7 +64,6 @@
 /* Medieval: cold grey castle stone, iron frames and torch-orange buttons. */
 :root[data-theme='medieval'] {
   --background: #121417;
-  --background-image: none;
   --panel: #1f2226;
   --panel-image: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, transparent 45%, rgba(0, 0, 0, 0.35) 100%),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 14px),
@@ -114,7 +112,6 @@
 /* Synthwave: deep purple night, neon pink frames and cyan lettering. */
 :root[data-theme='synthwave'] {
   --background: #140c28;
-  --background-image: none;
   --panel: #170f2e;
   --panel-image: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, transparent 45%, rgba(0, 0, 0, 0.3) 100%),
     repeating-linear-gradient(0deg, rgba(255, 46, 151, 0.07) 0 1px, transparent 1px 16px),
@@ -174,7 +171,13 @@ body {
   margin: 0;
   overflow: hidden;
   background-color: var(--background);
-  background-image: var(--background-image);
+  /*
+   * No coloured glows: the edges simply fall into shadow, like an old screen or lamplight,
+   * and a faint grain keeps the flat colour from looking like digital fill.
+   */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 100% 80% at 50% 45%, rgba(255, 245, 230, 0.06) 0%, transparent 45%, rgba(0, 0, 0, 0.7) 100%);
   color: var(--text);
   font-family: var(--font);
   font-size: calc(10px * var(--text-scale));
@@ -203,6 +206,47 @@ select {
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 16px 12px;
+}
+
+/* The picture behind everything, under the menu and the battle. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Darkened and tinted toward the theme so the panels stay readable, with the edges falling into shadow. */
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 80% at 50% 45%, transparent 40%, rgba(0, 0, 0, 0.75) 100%);
+}
+
+.backdrop--texture {
+  background-size: 640px;
+  background-repeat: repeat;
+  filter: brightness(0.38) saturate(0.75);
+}
+
+/* The whole field, never cropped, with its sides fading into the page so the side cards sit beside the armies. */
+.backdrop--battlefield {
+  display: flex;
+  justify-content: center;
+  filter: brightness(0.38) saturate(0.85);
+}
+
+.backdrop__field {
+  height: 100%;
+  max-width: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+
+.backdrop__field .board {
+  width: 100%;
+  height: 100%;
 }
 
 /* The start screen uses the full width, so the two sides sit at the edges of the screen. */
@@ -608,7 +652,14 @@ select {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  padding: 10px;
+  /* Sized to fit; on a very short window it still scrolls, but without a visible scrollbar. */
+  scrollbar-width: none;
+}
+
+.army-picker__side::-webkit-scrollbar {
+  display: none;
 }
 
 .army-picker__side--red {
@@ -617,6 +668,128 @@ select {
 
 .army-picker__side--blue {
   border-color: var(--blue);
+}
+
+/* Over the battlefield backdrop: see-through panels with a thin frame, so the field and armies show through. */
+.start-screen .army-picker__side {
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  backdrop-filter: blur(3px);
+  border-width: 1px;
+  box-shadow: var(--shadow);
+}
+
+/* A side's drawer slides out of its screen edge, and its closed card slides back into it. */
+.start-screen .army-picker__side--red,
+.side-summary--red {
+  animation: slide-from-left 0.25s ease-out;
+}
+
+.start-screen .army-picker__side--blue,
+.side-summary--blue {
+  animation: slide-from-right 0.25s ease-out;
+}
+
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-screen .army-picker__side,
+  .side-summary {
+    animation: none;
+  }
+}
+
+/* The closed drawer: a slim card of the picks, pinned to its edge. */
+.side-summary {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  padding: 10px 14px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  backdrop-filter: blur(3px);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.side-summary .panel__title {
+  margin-bottom: 2px;
+}
+
+.side-summary--red {
+  justify-self: start;
+  border-color: var(--red);
+}
+
+.side-summary--blue {
+  justify-self: end;
+  align-items: flex-end;
+  text-align: right;
+  border-color: var(--blue);
+}
+
+.side-summary:hover {
+  border-color: var(--title);
+}
+
+.side-summary__line {
+  font-size: calc(9px * var(--text-scale));
+}
+
+/* On a side that isn't ready yet: what clicking the card is for. */
+.side-summary__cue {
+  font-size: calc(9px * var(--text-scale));
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* The army at a glance: each stack as a small sprite with its count. */
+.side-summary__army {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 4px;
+}
+
+.side-summary__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.side-summary__count {
+  font-size: calc(7px * var(--text-scale));
+  color: var(--text-muted);
+}
+
+/* Choices not yet picked are outlined; the picked one stays filled, so it stands out. */
+.start-screen .faction-option:not(.faction-option--active),
+.start-screen .hero-option:not(.hero-option--active) {
+  background: rgba(0, 0, 0, 0.25);
+  border-width: 1px;
+}
+
+.start-screen .faction-option:not(.faction-option--active):hover,
+.start-screen .hero-option:not(.hero-option--active):hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: var(--title);
 }
 
 .army-picker__side .panel__title {
@@ -644,7 +817,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 2px 8px;
 }
 
 .controller-choice--open .faction-option {
@@ -656,6 +829,14 @@ select {
 
 .controller-choice--open .faction-option:hover {
   border-color: var(--title);
+}
+
+.drawer-label {
+  margin: 0 0 2px;
+  font-size: calc(7px * var(--text-scale));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* Each step of a side's setup slides in when the choice before it reveals it. */
@@ -684,7 +865,7 @@ select {
   font: inherit;
   font-size: calc(10px * var(--text-scale));
   flex: 1;
-  padding: 10px 8px;
+  padding: 6px 8px;
   border: 2px solid var(--panel-border);
   text-shadow: 0 1px 0 #000;
   background: var(--button-secondary);
@@ -709,7 +890,7 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 3px 10px;
   border: 2px solid var(--panel-border);
   text-shadow: 0 1px 0 #000;
   background: var(--button-secondary);
@@ -830,7 +1011,7 @@ select {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .recruit__row {
@@ -849,8 +1030,9 @@ select {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  /* Name and cost on one line, so every row stays slim and the whole army fits without scrolling. */
+  align-items: baseline;
+  gap: 8px;
   font-size: calc(9px * var(--text-scale));
 }
 
@@ -890,14 +1072,14 @@ select {
 
 .recruit__step {
   width: 22px;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .recruit__input {
   font: inherit;
   font-size: calc(9px * var(--text-scale));
   width: 44px;
-  padding: 4px 2px;
+  padding: 2px 2px;
   text-align: center;
   border: 2px solid var(--edge);
   background: var(--status-background);
@@ -912,68 +1094,15 @@ select {
   margin: 0;
 }
 
-.machines {
-  display: grid;
-  grid-template-columns: auto repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 4px;
+.recruit__upgrade-gap {
+  flex: none;
+  width: 26px;
 }
 
-.machines__title {
-  align-self: center;
-  font-size: calc(8px * var(--text-scale));
-  color: var(--text-muted);
-  line-height: 1.1;
-  max-width: 5em;
-}
-
-.machines__option {
-  font: inherit;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
-  text-align: left;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.3);
-  border: 2px solid transparent;
-  cursor: pointer;
-  opacity: 0.6;
-}
-
-.machines__option--bought {
-  opacity: 1;
-  border-color: var(--panel-border);
-  background: var(--accent);
-}
-
-.machines__option:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.machines__name {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  font-size: calc(8px * var(--text-scale));
-  line-height: 1.1;
-}
-
-/* Short windows: cost on the name's line, no faction blurb or hero class, so all seven stacks still fit. */
+/* Short windows: no hero class, so the army still fits. */
 @media (max-height: 720px) {
-  .army-picker__side {
-    gap: 6px;
-  }
-
   .hero-option__class {
     display: none;
-  }
-
-  .recruit__name {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 8px;
   }
 }
 

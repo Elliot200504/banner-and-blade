@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ABILITY_DESCRIPTIONS,
   ARMY_BUDGET,
@@ -125,6 +125,25 @@ export function StartScreen({
   onOpenSettings,
 }: StartScreenProps) {
   const [rulesOpen, setRulesOpen] = useState(false)
+  // Each side is a drawer: slid into its edge as a card of the picks, and open only while choosing.
+  const [drawersOpen, setDrawersOpen] = useState<Record<Player, boolean>>({ red: false, blue: false })
+  const drawers = { red: useRef<HTMLElement>(null), blue: useRef<HTMLElement>(null) }
+
+  // Clicking anywhere outside an open drawer slides it shut.
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+
+      setDrawersOpen((current) => ({
+        red: current.red && (drawers.red.current?.contains(target) ?? false),
+        blue: current.blue && (drawers.blue.current?.contains(target) ?? false),
+      }))
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    // The refs are stable, so the listener only needs adding once.
+  }, [])
   const [aboutOpen, setAboutOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
     const problem = armyProblem(armies[player], factions[player])
@@ -196,65 +215,120 @@ export function StartScreen({
   )
 
   const townStep = (player: Player) => (
-    <div
-      className="setup-step army-picker__factions army-picker__factions--grid army-picker__towns"
-      role="radiogroup"
-      aria-label={`${PLAYER_NAMES[player]} faction`}
-    >
-      {FACTION_ORDER.map((faction) => {
-        const picked = setup[player].town && factions[player] === faction
+    <div className="setup-step">
+      <h3 className="drawer-label">Town</h3>
+      <div
+        className="army-picker__factions army-picker__factions--grid army-picker__towns"
+        role="radiogroup"
+        aria-label={`${PLAYER_NAMES[player]} faction`}
+      >
+        {FACTION_ORDER.map((faction) => {
+          const picked = setup[player].town && factions[player] === faction
 
-        return (
-          <button
-            key={faction}
-            role="radio"
-            aria-checked={picked}
-            className={optionClass(picked)}
-            onClick={() => {
-              // A new town comes with its own heroes, so the hero has to be picked again.
-              if (!picked) {
-                onChangeFaction(player, faction)
-                pick(player, { town: true, hero: false })
-              }
-            }}
-          >
-            <SpriteIcon spriteId={faction} owner={player} size={32} />
-            {FACTIONS[faction].name}
-          </button>
-        )
-      })}
+          return (
+            <button
+              key={faction}
+              role="radio"
+              aria-checked={picked}
+              className={optionClass(picked)}
+              onClick={() => {
+                // A new town comes with its own heroes, so the hero has to be picked again.
+                if (!picked) {
+                  onChangeFaction(player, faction)
+                  pick(player, { town: true, hero: false })
+                }
+              }}
+            >
+              <SpriteIcon spriteId={faction} owner={player} size={32} />
+              {FACTIONS[faction].name}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 
   const heroStep = (player: Player) => (
-    <div className="setup-step hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
-      {heroesOf(factions[player]).map((id) => {
-        const picked = setup[player].hero && heroes[player] === id
+    <div className="setup-step">
+      <h3 className="drawer-label">Hero</h3>
+      <div className="hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
+        {heroesOf(factions[player]).map((id) => {
+          const picked = setup[player].hero && heroes[player] === id
 
-        return (
-          <button
-            key={id}
-            role="radio"
-            aria-checked={picked}
-            className={`hero-option${picked ? ' hero-option--active' : ''}`}
-            onClick={() => {
-              onChangeHero(player, id)
-              pick(player, { hero: true })
-            }}
-          >
-            <SpriteIcon spriteId={id} owner={player} size={32} />
-            <span className="hero-option__text">
-              <span className="hero-option__name">{HEROES[id].name}</span>
-              <span className="hero-option__class">{HEROES[id].title}</span>
-            </span>
-          </button>
-        )
-      })}
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={picked}
+              className={`hero-option${picked ? ' hero-option--active' : ''}`}
+              onClick={() => {
+                onChangeHero(player, id)
+                pick(player, { hero: true })
+              }}
+            >
+              <SpriteIcon spriteId={id} owner={player} size={32} />
+              <span className="hero-option__text">
+                <span className="hero-option__name">{HEROES[id].name}</span>
+                <span className="hero-option__class">{HEROES[id].title}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 
-  const sidePanel = (player: Player) => (
-    <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
+  /** The closed drawer: a slim card with the side's picks, which slides the drawer back open. */
+  const sideSummary = (player: Player) => {
+    const picks = setup[player]
+    const lines: string[] = []
+
+    if (picks.controller) {
+      lines.push(
+        controllers[player] === 'computer' && picks.difficulty
+          ? `Computer · ${DIFFICULTY_LABELS[difficulties[player]]}`
+          : CONTROLLER_LABELS[controllers[player]],
+      )
+    }
+
+    if (picks.town) {
+      lines.push(picks.hero ? `${FACTIONS[factions[player]].name} · ${HEROES[heroes[player]].name}` : FACTIONS[factions[player]].name)
+    }
+
+    const army = picks.hero ? armies[player].filter((stack) => stack.count > 0) : []
+
+    return (
+      <button
+        key={player}
+        className={`panel side-summary side-summary--${player}`}
+        onClick={() => setDrawersOpen((current) => ({ ...current, [player]: true }))}
+      >
+        <span className="panel__title">{PLAYER_NAMES[player]} player</span>
+        {lines.map((line) => (
+          <span key={line} className="side-summary__line">
+            {line}
+          </span>
+        ))}
+        {!picks.hero && <span className="side-summary__cue">Assign team</span>}
+        {army.length > 0 && (
+          <span className="side-summary__army">
+            {army.map((stack) => (
+              <span key={stack.type} className="side-summary__stack" title={`${stack.count} ${CREATURES[stack.type].plural}`}>
+                <SpriteIcon spriteId={stack.type} owner={player} size={24} mirrored={player === 'blue'} />
+                <span className="side-summary__count">{stack.count}</span>
+              </span>
+            ))}
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  const sidePanel = (player: Player) =>
+    drawersOpen[player] ? sideDrawer(player) : sideSummary(player)
+
+  const sideDrawer = (player: Player) => (
+    <section key={player} ref={drawers[player]} className={`panel army-picker__side army-picker__side--${player}`}>
       <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
       {playerStep(player)}
       {playerChosen(player) && townStep(player)}
@@ -403,7 +477,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
               key={base}
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
-              <SpriteIcon spriteId={type} owner={player} size={32} mirrored={player === 'blue'} />
+              <SpriteIcon spriteId={type} owner={player} size={28} mirrored={player === 'blue'} />
               <span className="recruit__name" title={creatureSummary(type)}>
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
@@ -450,28 +524,54 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           )
         })}
       </ul>
-      <div className="machines" role="group" aria-label={`${PLAYER_NAMES[player]} war machines`}>
-        <span className="machines__title">War machines</span>
-        {WAR_MACHINES.map((machine) => {
-          const bought = countOf(machine) > 0
+      <div>
+        <h3 className="drawer-label">War machines</h3>
+        <ul className="recruit" aria-label={`${PLAYER_NAMES[player]} war machines`}>
+          {WAR_MACHINES.map((machine) => {
+            const stats = CREATURES[machine]
+            const count = countOf(machine)
+            const most = mostAffordable(army, machine)
 
-          return (
-            <button
-              key={machine}
-              className={`machines__option${bought ? ' machines__option--bought' : ''}`}
-              aria-pressed={bought}
-              title={creatureSummary(machine)}
-              disabled={!bought && mostAffordable(army, machine) === 0}
-              onClick={() => setCount(machine, bought ? 0 : 1)}
-            >
-              <SpriteIcon spriteId={machine} owner={player} size={24} mirrored={player === 'blue'} />
-              <span className="machines__name">
-                {CREATURES[machine].name}
-                <span className="recruit__cost">{CREATURES[machine].cost} gold</span>
-              </span>
-            </button>
-          )
-        })}
+            return (
+              <li key={machine} className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}`}>
+                <SpriteIcon spriteId={machine} owner={player} size={28} mirrored={player === 'blue'} />
+                <span className="recruit__name" title={creatureSummary(machine)}>
+                  {stats.name}
+                  <span className="recruit__cost">{stats.cost} gold</span>
+                </span>
+                {/* War machines have no upgrade; the gap keeps their counters in line with the creatures'. */}
+                <span className="recruit__upgrade-gap" />
+                <span className="recruit__count">
+                  <button
+                    className="recruit__step"
+                    aria-label={`No ${stats.name}`}
+                    disabled={count === 0}
+                    onClick={() => setCount(machine, 0)}
+                  >
+                    −
+                  </button>
+                  <input
+                    className="recruit__input"
+                    type="number"
+                    min={0}
+                    max={most}
+                    value={count}
+                    aria-label={`${PLAYER_NAMES[player]} ${stats.name}`}
+                    onChange={(event) => setCount(machine, Number(event.target.value))}
+                  />
+                  <button
+                    className="recruit__step"
+                    aria-label={`Buy ${stats.name}`}
+                    disabled={count >= most}
+                    onClick={() => setCount(machine, 1)}
+                  >
+                    +
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     </div>
   )
