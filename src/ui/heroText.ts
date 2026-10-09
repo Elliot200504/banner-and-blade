@@ -30,6 +30,10 @@ export function specialtyText(hero: Pick<Hero, 'specialty'>): string {
     return `${name}: hasted stacks get +${HASTE_SPECIALTY_SPEED} more speed`
   }
 
+  if (specialty.spell === 'deathRipple') {
+    return `${name}: ${percent(SPELL_SPECIALTY_BONUS - 1)} damage, and it hurts enemy undead too`
+  }
+
   const what = specialty.spell === 'animateDead' || specialty.spell === 'cure' ? 'healing' : 'damage'
 
   return `${name}: ${percent(SPELL_SPECIALTY_BONUS - 1)} ${what}`

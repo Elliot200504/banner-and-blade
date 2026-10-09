@@ -23,6 +23,9 @@ const AGGRESSION_PER_ROUND = 0.05
 const PATIENT_ROUNDS = 8
 /** Score lost by a shooter with an enemy next to it, as a share of the stack's value. */
 const BLOCKED_PENALTY = 0.3
+/** The computer gives up once its army is worth less than this share of the enemy's, from this round on. */
+const RETREAT_SHARE = 0.15
+const RETREAT_FROM_ROUND = 3
 /** How much an active effect changes a stack's worth, at full strength. */
 const EFFECT_WEIGHT: Record<EffectId, number> = { haste: 0.15, bless: 0.2, stoneSkin: 0.15, slow: -0.2, curse: -0.2 }
 
@@ -41,14 +44,16 @@ interface Profile {
   /** Score lost per hex a stack is beyond striking or shooting distance of the nearest enemy, as a share of its value. */
   distancePenalty: number
   castsSpells: boolean
+  /** Waits for the enemy to come closer when it has nothing to attack. */
+  waits: boolean
   /** Picks at random among this many of the best moves. */
   choices: number
 }
 
 const PROFILES: Record<Difficulty, Profile> = {
-  easy: { samples: 1, aggression: 1.2, distancePenalty: 0.02, castsSpells: false, choices: 3 },
-  normal: { samples: 3, aggression: 1.2, distancePenalty: 0.02, castsSpells: true, choices: 1 },
-  hard: { samples: 8, aggression: 1.5, distancePenalty: 0.03, castsSpells: true, choices: 1 },
+  easy: { samples: 1, aggression: 1.2, distancePenalty: 0.02, castsSpells: false, waits: false, choices: 3 },
+  normal: { samples: 3, aggression: 1.2, distancePenalty: 0.02, castsSpells: true, waits: true, choices: 1 },
+  hard: { samples: 8, aggression: 1.5, distancePenalty: 0.03, castsSpells: true, waits: true, choices: 1 },
 }
 
 const isShooter = (unit: Unit) => CREATURES[unit.type].range > 0 && unit.shots > 0
@@ -114,6 +119,32 @@ export function scoreState(
   }
 
   return score
+}
+
+const armyValue = (state: GameState, player: Player): number =>
+  state.units.filter((unit) => unit.owner === player).reduce((total, unit) => total + stackValue(unit), 0)
+
+/** Whether the battle is lost beyond hope: better to flee than to be wiped out. */
+export function shouldRetreat(state: GameState, player: Player): boolean {
+  if (state.round < RETREAT_FROM_ROUND) {
+    return false
+  }
+
+  const enemy = state.units.find((unit) => unit.owner !== player)?.owner
+
+  return enemy !== undefined && armyValue(state, player) < RETREAT_SHARE * armyValue(state, enemy)
+}
+
+/**
+ * Whether the stack should wait rather than make `best`: when it has nothing to attack,
+ * no enemy is next to it, and an enemy still has to act this round and may come closer.
+ */
+function shouldWait(state: GameState, actor: Unit, best: Move): boolean {
+  if (actor.waited || best.type === 'attack' || isEnemyAdjacent(state.units, actor)) {
+    return false
+  }
+
+  return state.queue.slice(1).some((id) => state.units.find((unit) => unit.id === id)?.owner !== actor.owner)
 }
 
 const enemyPositionsOf = (state: GameState, player: Player): Hex[] =>
@@ -233,6 +264,10 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
   const player = actor.owner
   const profile = PROFILES[difficulty]
 
+  if (shouldRetreat(state, player)) {
+    return { type: 'retreat' }
+  }
+
   if (profile.castsSpells) {
     const bestSpell = bestOf(state, spellMoves(state), player, profile)
     const now = scoreState(state, player, enemyPositionsOf(state, player), profile)
@@ -242,5 +277,11 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
     }
   }
 
-  return bestOf(state, actionMoves(state), player, profile)?.move ?? { type: 'defend' }
+  const best = bestOf(state, actionMoves(state), player, profile)?.move ?? { type: 'defend' }
+
+  if (profile.waits && shouldWait(state, actor, best)) {
+    return { type: 'wait' }
+  }
+
+  return best
 }

@@ -13,6 +13,7 @@ import {
   type Unit,
 } from '../game'
 import { specialtyText } from './heroText'
+import { HeroStats } from './HeroStats'
 import { Icon, SpellIcon, SpriteIcon } from './SpriteImage'
 
 export function HeroPanel({ state, player, active }: { state: GameState; player: Player; active: boolean }) {
@@ -36,23 +37,7 @@ export function HeroPanel({ state, player, active }: { state: GameState; player:
         </div>
       </div>
       <div className="hero-panel__vitals">
-        <div className="hero-panel__stats">
-          <span title="Attack">
-            <Icon name="attack" label="Attack" /> {hero.attack}
-          </span>
-          <span title="Defense">
-            <Icon name="defense" label="Defense" /> {hero.defense}
-          </span>
-          <span title="Spell power">
-            <Icon name="spellPower" label="Spell power" /> {hero.spellPower}
-          </span>
-          <span title="Morale">
-            <Icon name="morale" label="Morale" /> {hero.morale > 0 ? `+${hero.morale}` : hero.morale}
-          </span>
-          <span title="Luck">
-            <Icon name="luck" label="Luck" /> +{hero.luck}
-          </span>
-        </div>
+        <HeroStats hero={hero} />
         <div className="mana-bar" title={`Mana ${hero.mana}/${hero.maxMana}`}>
           <div className="mana-bar__fill" style={{ width: `${(hero.mana / hero.maxMana) * 100}%` }} />
           <span className="mana-bar__label">

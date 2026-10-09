@@ -289,7 +289,9 @@ export function Battle({
   const targetUnitIds = new Set<string>()
 
   if (intent?.kind === 'cast') {
-    for (const unit of spellVictims(state.units, intent.spell, intent.target)) {
+    const caster = actor && { owner: actor.owner, hero: state.heroes[actor.owner] }
+
+    for (const unit of spellVictims(state.units, intent.spell, intent.target, caster)) {
       targetUnitIds.add(unit.id)
     }
   } else if (intent && intent.kind !== 'move') {
@@ -514,7 +516,7 @@ function statusText(
   if (pendingSpell) {
     if (intent?.kind === 'cast') {
       const damage = spellDamage(intent.spell, attackerHero)
-      const victims = spellVictims(state.units, intent.spell, intent.target)
+      const victims = spellVictims(state.units, intent.spell, intent.target, { owner: actor.owner, hero: attackerHero })
       const others = victims.length > 1 ? ` (and ${victims.length - 1} more stack${victims.length > 2 ? 's' : ''})` : ''
       const damageNote = damage > 0 ? ` – ${damage} damage, kills ${killsText(intent.target, damage, damage)}${others}` : ''
 

@@ -117,12 +117,23 @@ export function castProblem(state: GameState, spell: SpellId, targetId?: string)
   return null
 }
 
-/** Every stack a spell would hit: the whole living field, the target and its surroundings, or just the target. Immune stacks are left out. */
-export function spellVictims(units: Unit[], spell: SpellId, target: Unit | undefined): Unit[] {
+/**
+ * Every stack a spell would hit: the whole living field, the target and its surroundings, or just the target. Immune stacks are left out.
+ * A Death Ripple specialist's ripple also reaches the enemy's undead, so it still works against Necropolis.
+ */
+export function spellVictims(
+  units: Unit[],
+  spell: SpellId,
+  target: Unit | undefined,
+  caster?: { owner: Player; hero: Pick<Hero, 'specialty'> },
+): Unit[] {
   const affected = units.filter((unit) => !isImmune(unit, spell))
 
   if (spell === 'deathRipple') {
-    return affected.filter((unit) => !hasAbility(unit.type, 'undead'))
+    const reachesUndead = (unit: Unit) =>
+      caster !== undefined && isSpellSpecialist(caster.hero, spell) && unit.owner !== caster.owner
+
+    return affected.filter((unit) => !hasAbility(unit.type, 'undead') || reachesUndead(unit))
   }
 
   if (!target) {
@@ -359,7 +370,7 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   const damage = spellDamage(spell, hero)
 
   if (damage > 0) {
-    for (const victim of spellVictims(draft.units, spell, target)) {
+    for (const victim of spellVictims(draft.units, spell, target, { owner: caster, hero })) {
       if (resists(draft, victim, caster, spell)) {
         continue
       }
