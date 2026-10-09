@@ -1,4 +1,4 @@
-import type { CreatureType, Faction, HeroId, ObstacleKind } from '../game'
+import { UPGRADES, type BaseCreature, type CreatureType, type Faction, type HeroId, type ObstacleKind, type UpgradedCreature } from '../game'
 
 export interface Sprite {
   /** Maps a pixel character to a CSS color. '.' is always transparent and is not listed. */
@@ -26,7 +26,7 @@ const BONE = '#e8e0c8'
 const BONE_SHADOW = '#a89c80'
 const GOLD = '#f0c040'
 
-export const SPRITES: Record<SpriteId, Sprite> = {
+const BASE_SPRITES: Record<Exclude<SpriteId, UpgradedCreature>, Sprite> = {
   ballista: {
     palette: { o: OUTLINE, w: WOOD, W: '#5a3a1a', m: STEEL, M: DARK_STEEL },
     pixels: [
@@ -1807,3 +1807,83 @@ export const SPRITES: Record<SpriteId, Sprite> = {
     ],
   },
 }
+
+/** Each upgrade wears its creature's look, tinted toward a color of its own. */
+const UPGRADE_TINTS: Record<UpgradedCreature, string> = {
+  halberdier: '#e8c860',
+  marksman: '#3a8a3a',
+  royalGriffin: '#f0c040',
+  crusader: '#f0d070',
+  zealot: '#f0e0a0',
+  champion: '#f0c040',
+  archangel: '#ffb000',
+  centaurCaptain: '#c08040',
+  battleDwarf: '#c0c8d0',
+  grandElf: '#40c060',
+  silverPegasus: '#90b0d8',
+  dendroidSoldier: '#8a6a30',
+  warUnicorn: '#f0e0ff',
+  goldDragon: '#ffcc30',
+  hobgoblin: '#c06030',
+  wolfRaider: '#606870',
+  orcChieftain: '#c03030',
+  ogreMage: '#6040c0',
+  thunderbird: '#40a0ff',
+  cyclopsKing: '#c0a040',
+  ancientBehemoth: '#d8c8a0',
+  skeletonWarrior: '#a0b0c0',
+  zombie: '#60a060',
+  wraith: '#7040a0',
+  vampireLord: '#c02040',
+  powerLich: '#40e080',
+  dreadKnight: '#6020a0',
+  ghostDragon: '#a0f0ff',
+  infernalTroglodyte: '#c04020',
+  harpyHag: '#a040a0',
+  evilEye: '#40c040',
+  medusaQueen: '#c0a020',
+  minotaurKing: '#f0c040',
+  scorpicore: '#c04040',
+  blackDragon: '#202028',
+  familiar: '#ff8020',
+  magog: '#ff4000',
+  cerberus: '#802020',
+  hornedDemon: '#a02060',
+  pitLord: '#ff6000',
+  efreetSultan: '#ffd040',
+  archDevil: '#500818',
+}
+
+/** How far each color moves toward the upgrade's tint. */
+const TINT_STRENGTH = 0.5
+
+const channels = (color: string) => [1, 3, 5].map((start) => parseInt(color.slice(start, start + 2), 16))
+
+/** Outlines, skin and near-black shadows keep their color, so the creature still reads as itself. */
+function keepsColor(color: string): boolean {
+  const [red, green, blue] = channels(color)
+
+  return color === OUTLINE || color === SKIN || 0.3 * red + 0.59 * green + 0.11 * blue < 40
+}
+
+function mix(color: string, tint: string): string {
+  const tintChannels = channels(tint)
+
+  return `#${channels(color)
+    .map((channel, index) => Math.round(channel + (tintChannels[index] - channel) * TINT_STRENGTH).toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+function tinted(sprite: Sprite, tint: string): Sprite {
+  const palette = Object.fromEntries(
+    Object.entries(sprite.palette).map(([character, color]) => [character, keepsColor(color) ? color : mix(color, tint)]),
+  )
+
+  return { palette, pixels: sprite.pixels }
+}
+
+const UPGRADE_SPRITES = Object.fromEntries(
+  Object.entries(UPGRADES).map(([base, upgrade]) => [upgrade, tinted(BASE_SPRITES[base as BaseCreature], UPGRADE_TINTS[upgrade])]),
+) as Record<UpgradedCreature, Sprite>
+
+export const SPRITES: Record<SpriteId, Sprite> = { ...BASE_SPRITES, ...UPGRADE_SPRITES }

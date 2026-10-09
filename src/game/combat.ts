@@ -113,7 +113,7 @@ export function damageMultiplier(
     multiplier *= 1 + CHARGE_BONUS_PER_HEX * options.hexesMoved
   }
 
-  if (HATES[attacker.type] === target.type) {
+  if (HATES[attacker.type]?.includes(target.type)) {
     multiplier *= 1 + HATRED_BONUS
   }
 

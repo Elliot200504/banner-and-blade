@@ -1,5 +1,18 @@
-import { CREATURES, FACTIONS, isWarMachine, WAR_MACHINES, type CreatureType, type Faction } from './creatures'
+import {
+  baseOf,
+  CREATURES,
+  FACTIONS,
+  isWarMachine,
+  UPGRADES,
+  WAR_MACHINES,
+  type BaseCreature,
+  type CreatureType,
+  type Faction,
+} from './creatures'
 import type { Random } from './random'
+
+/** Chance that each stack in a random army is upgraded. */
+const RANDOM_UPGRADE_CHANCE = 0.35
 
 /** Gold each side may spend on recruits. Every standard army fits within it. */
 export const ARMY_BUDGET = 11_000
@@ -42,8 +55,8 @@ export function armyProblem(army: Army, faction: Faction): string | null {
     return `Only ${FACTIONS[faction].name} creatures can join this army.`
   }
 
-  if (new Set(stacks.map((stack) => stack.type)).size !== stacks.length) {
-    return 'Each creature can form only one stack.'
+  if (new Set(stacks.map((stack) => baseOf(stack.type))).size !== stacks.length) {
+    return 'Each creature can form only one stack, upgraded or not.'
   }
 
   if (armyCost(stacks) > ARMY_BUDGET) {
@@ -53,12 +66,15 @@ export function armyProblem(army: Army, faction: Faction): string | null {
   return null
 }
 
-/** The army with `type` set to `count` creatures, kept in the faction's order with war machines last. Zero removes the stack. */
+/**
+ * The army with `type` set to `count` creatures, kept in the faction's order with war machines last.
+ * Zero removes the stack; a stack replaces the other version (plain or upgraded) of the same creature.
+ */
 export function withStack(army: Army, faction: Faction, type: CreatureType, count: number): Army {
-  const counts = new Map(army.map((stack) => [stack.type, stack.count]))
+  const counts = new Map(army.filter((stack) => stack.type === type || baseOf(stack.type) !== baseOf(type)).map((stack) => [stack.type, stack.count]))
   counts.set(type, count)
 
-  return [...FACTIONS[faction].creatures, ...WAR_MACHINES]
+  return [...FACTIONS[faction].creatures.flatMap((base) => [base, UPGRADES[base]]), ...WAR_MACHINES]
     .filter((creature) => (counts.get(creature) ?? 0) > 0)
     .map((creature) => ({ type: creature, count: counts.get(creature)! }))
 }
@@ -72,6 +88,22 @@ export function mostAffordable(army: Army, type: CreatureType): number {
 }
 
 /**
+ * The army with the stack of `base` swapped to its upgrade (or back). It keeps as many creatures as the gold allows.
+ */
+export function withUpgrade(army: Army, faction: Faction, base: BaseCreature, upgraded: boolean): Army {
+  const current = army.find((stack) => baseOf(stack.type) === base)
+
+  if (!current) {
+    return army
+  }
+
+  const type = upgraded ? UPGRADES[base] : base
+  const without = army.filter((stack) => stack !== current)
+
+  return withStack(without, faction, type, Math.min(current.count, mostAffordable(without, type)))
+}
+
+/**
  * A random army for the faction: three to six kinds of creature, the budget split
  * between them at random, and any change spent on whatever still fits.
  */
@@ -81,7 +113,8 @@ export function randomArmy(faction: Faction, random: Random): Army {
   const chosen: CreatureType[] = []
 
   while (chosen.length < kinds) {
-    chosen.push(pool.splice(random.integer(0, pool.length - 1), 1)[0])
+    const base = pool.splice(random.integer(0, pool.length - 1), 1)[0]
+    chosen.push(random.chance(RANDOM_UPGRADE_CHANCE) ? UPGRADES[base] : base)
   }
 
   const weights = chosen.map(() => 0.5 + random.next())

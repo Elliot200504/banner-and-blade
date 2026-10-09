@@ -12,6 +12,7 @@ export type UiIconId =
   | 'trophy'
   | 'gold'
   | 'star'
+  | 'upgrade'
 
 const GOLD_PALETTE = { o: '#2a1a00', y: '#ffd040', Y: '#c89a20', w: '#fff4c0' }
 
@@ -224,6 +225,27 @@ export const UI_ICONS: Record<UiIconId, Sprite> = {
       '..oyyyyyyyyYYo..',
       '...ooYYYYYYoo...',
       '.....oooooo.....',
+      '................',
+    ],
+  },
+  upgrade: {
+    palette: GOLD_PALETTE,
+    pixels: [
+      '................',
+      '.......oo.......',
+      '......oyyo......',
+      '.....oywyYo.....',
+      '....oywyyyYo....',
+      '...oyyyooyyYo...',
+      '..oYYoo..ooYYo..',
+      '..ooo.oooo.ooo..',
+      '.....oyyyyo.....',
+      '....oywyyyYo....',
+      '...oyyyooyyYo...',
+      '..oyYoo..ooYYo..',
+      '..oYo......oYo..',
+      '..ooo......ooo..',
+      '................',
       '................',
     ],
   },

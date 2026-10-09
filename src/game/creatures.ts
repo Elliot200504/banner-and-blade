@@ -3,14 +3,25 @@ export type Faction = 'castle' | 'rampart' | 'stronghold' | 'necropolis' | 'dung
 /** Machines any army can buy: they never move, and fight or help from where they stand. */
 export type WarMachine = 'ballista' | 'firstAidTent' | 'ammoCart'
 
-export type CreatureType =
-  | WarMachine
+/** The creatures each town recruits before upgrading. */
+export type BaseCreature =
   | 'pikeman' | 'archer' | 'griffin' | 'swordsman' | 'monk' | 'cavalier' | 'angel'
   | 'centaur' | 'dwarf' | 'woodElf' | 'pegasus' | 'dendroidGuard' | 'unicorn' | 'greenDragon'
   | 'goblin' | 'wolfRider' | 'orc' | 'ogre' | 'roc' | 'cyclops' | 'behemoth'
   | 'skeleton' | 'walkingDead' | 'wight' | 'vampire' | 'lich' | 'blackKnight' | 'boneDragon'
   | 'troglodyte' | 'harpy' | 'beholder' | 'medusa' | 'minotaur' | 'manticore' | 'redDragon'
   | 'imp' | 'gog' | 'hellHound' | 'demon' | 'pitFiend' | 'efreet' | 'devil'
+
+/** The stronger, pricier version of each creature, as in HoMM3. */
+export type UpgradedCreature =
+  | 'halberdier' | 'marksman' | 'royalGriffin' | 'crusader' | 'zealot' | 'champion' | 'archangel'
+  | 'centaurCaptain' | 'battleDwarf' | 'grandElf' | 'silverPegasus' | 'dendroidSoldier' | 'warUnicorn' | 'goldDragon'
+  | 'hobgoblin' | 'wolfRaider' | 'orcChieftain' | 'ogreMage' | 'thunderbird' | 'cyclopsKing' | 'ancientBehemoth'
+  | 'skeletonWarrior' | 'zombie' | 'wraith' | 'vampireLord' | 'powerLich' | 'dreadKnight' | 'ghostDragon'
+  | 'infernalTroglodyte' | 'harpyHag' | 'evilEye' | 'medusaQueen' | 'minotaurKing' | 'scorpicore' | 'blackDragon'
+  | 'familiar' | 'magog' | 'cerberus' | 'hornedDemon' | 'pitLord' | 'efreetSultan' | 'archDevil'
+
+export type CreatureType = WarMachine | BaseCreature | UpgradedCreature
 
 export type Ability =
   | 'flying'
@@ -33,6 +44,10 @@ export type Ability =
   | 'magicResistance'
   | 'crushing'
   | 'cursing'
+  | 'doubleShot'
+  | 'doubleStrike'
+  | 'unlimitedRetaliation'
+  | 'lifeDrain'
   | 'warMachine'
   | 'firstAid'
   | 'ammoSupply'
@@ -286,6 +301,216 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
     hp: 160, attack: 19, defense: 21, minDamage: 30, maxDamage: 40, speed: 11, shots: 0, range: 0,
     abilities: ['flying', 'noRetaliation', 'hatred'], armyCount: 1, cost: 2700,
   },
+  halberdier: {
+    name: 'Halberdier', plural: 'Halberdiers', faction: 'castle', tier: 1,
+    hp: 10, attack: 6, defense: 5, minDamage: 2, maxDamage: 3, speed: 5, shots: 0, range: 0,
+    abilities: ['braced'], armyCount: 14, cost: 75,
+  },
+  marksman: {
+    name: 'Marksman', plural: 'Marksmen', faction: 'castle', tier: 2,
+    hp: 10, attack: 6, defense: 3, minDamage: 2, maxDamage: 3, speed: 6, shots: 24, range: 7,
+    abilities: ['doubleShot'], armyCount: 9, cost: 150,
+  },
+  royalGriffin: {
+    name: 'Royal Griffin', plural: 'Royal Griffins', faction: 'castle', tier: 3,
+    hp: 25, attack: 9, defense: 9, minDamage: 3, maxDamage: 6, speed: 9, shots: 0, range: 0,
+    abilities: ['flying', 'unlimitedRetaliation'], armyCount: 7, cost: 240,
+  },
+  crusader: {
+    name: 'Crusader', plural: 'Crusaders', faction: 'castle', tier: 4,
+    hp: 35, attack: 12, defense: 12, minDamage: 7, maxDamage: 10, speed: 6, shots: 0, range: 0,
+    abilities: ['doubleStrike'], armyCount: 4, cost: 400,
+  },
+  zealot: {
+    name: 'Zealot', plural: 'Zealots', faction: 'castle', tier: 5,
+    hp: 30, attack: 12, defense: 10, minDamage: 10, maxDamage: 12, speed: 7, shots: 24, range: 7,
+    abilities: ['noMeleePenalty'], armyCount: 3, cost: 450,
+  },
+  champion: {
+    name: 'Champion', plural: 'Champions', faction: 'castle', tier: 6,
+    hp: 100, attack: 16, defense: 16, minDamage: 20, maxDamage: 25, speed: 9, shots: 0, range: 0,
+    abilities: ['charge'], armyCount: 2, cost: 1200,
+  },
+  archangel: {
+    name: 'Archangel', plural: 'Archangels', faction: 'castle', tier: 7,
+    hp: 250, attack: 30, defense: 30, minDamage: 50, maxDamage: 50, speed: 18, shots: 0, range: 0,
+    abilities: ['flying', 'hatred', 'steadfast'], armyCount: 1, cost: 5000,
+  },
+  centaurCaptain: {
+    name: 'Centaur Captain', plural: 'Centaur Captains', faction: 'rampart', tier: 1,
+    hp: 10, attack: 6, defense: 3, minDamage: 2, maxDamage: 3, speed: 8, shots: 0, range: 0,
+    abilities: [], armyCount: 14, cost: 90,
+  },
+  battleDwarf: {
+    name: 'Battle Dwarf', plural: 'Battle Dwarves', faction: 'rampart', tier: 2,
+    hp: 20, attack: 7, defense: 7, minDamage: 2, maxDamage: 4, speed: 5, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 8, cost: 150,
+  },
+  grandElf: {
+    name: 'Grand Elf', plural: 'Grand Elves', faction: 'rampart', tier: 3,
+    hp: 15, attack: 9, defense: 5, minDamage: 3, maxDamage: 5, speed: 7, shots: 24, range: 7,
+    abilities: ['doubleShot'], armyCount: 7, cost: 225,
+  },
+  silverPegasus: {
+    name: 'Silver Pegasus', plural: 'Silver Pegasi', faction: 'rampart', tier: 4,
+    hp: 30, attack: 9, defense: 10, minDamage: 5, maxDamage: 9, speed: 12, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 5, cost: 275,
+  },
+  dendroidSoldier: {
+    name: 'Dendroid Soldier', plural: 'Dendroid Soldiers', faction: 'rampart', tier: 5,
+    hp: 65, attack: 9, defense: 12, minDamage: 10, maxDamage: 14, speed: 4, shots: 0, range: 0,
+    abilities: [], armyCount: 3, cost: 425,
+  },
+  warUnicorn: {
+    name: 'War Unicorn', plural: 'War Unicorns', faction: 'rampart', tier: 6,
+    hp: 110, attack: 15, defense: 14, minDamage: 18, maxDamage: 22, speed: 9, shots: 0, range: 0,
+    abilities: [], armyCount: 2, cost: 950,
+  },
+  goldDragon: {
+    name: 'Gold Dragon', plural: 'Gold Dragons', faction: 'rampart', tier: 7,
+    hp: 250, attack: 27, defense: 27, minDamage: 40, maxDamage: 50, speed: 16, shots: 0, range: 0,
+    abilities: ['flying', 'breath', 'spellImmune'], armyCount: 1, cost: 4000,
+  },
+  hobgoblin: {
+    name: 'Hobgoblin', plural: 'Hobgoblins', faction: 'stronghold', tier: 1,
+    hp: 5, attack: 5, defense: 3, minDamage: 1, maxDamage: 2, speed: 7, shots: 0, range: 0,
+    abilities: [], armyCount: 15, cost: 50,
+  },
+  wolfRaider: {
+    name: 'Wolf Raider', plural: 'Wolf Raiders', faction: 'stronghold', tier: 2,
+    hp: 10, attack: 8, defense: 5, minDamage: 3, maxDamage: 4, speed: 8, shots: 0, range: 0,
+    abilities: ['doubleStrike'], armyCount: 9, cost: 140,
+  },
+  orcChieftain: {
+    name: 'Orc Chieftain', plural: 'Orc Chieftains', faction: 'stronghold', tier: 3,
+    hp: 20, attack: 8, defense: 4, minDamage: 2, maxDamage: 5, speed: 5, shots: 24, range: 6,
+    abilities: [], armyCount: 7, cost: 165,
+  },
+  ogreMage: {
+    name: 'Ogre Mage', plural: 'Ogre Magi', faction: 'stronghold', tier: 4,
+    hp: 60, attack: 13, defense: 7, minDamage: 6, maxDamage: 12, speed: 5, shots: 0, range: 0,
+    abilities: [], armyCount: 4, cost: 400,
+  },
+  thunderbird: {
+    name: 'Thunderbird', plural: 'Thunderbirds', faction: 'stronghold', tier: 5,
+    hp: 60, attack: 13, defense: 11, minDamage: 11, maxDamage: 15, speed: 11, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 3, cost: 700,
+  },
+  cyclopsKing: {
+    name: 'Cyclops King', plural: 'Cyclops Kings', faction: 'stronghold', tier: 6,
+    hp: 70, attack: 17, defense: 13, minDamage: 16, maxDamage: 20, speed: 8, shots: 24, range: 7,
+    abilities: [], armyCount: 2, cost: 1100,
+  },
+  ancientBehemoth: {
+    name: 'Ancient Behemoth', plural: 'Ancient Behemoths', faction: 'stronghold', tier: 7,
+    hp: 300, attack: 19, defense: 19, minDamage: 30, maxDamage: 50, speed: 9, shots: 0, range: 0,
+    abilities: ['crushing'], armyCount: 1, cost: 3000,
+  },
+  skeletonWarrior: {
+    name: 'Skeleton Warrior', plural: 'Skeleton Warriors', faction: 'necropolis', tier: 1,
+    hp: 6, attack: 6, defense: 6, minDamage: 1, maxDamage: 3, speed: 5, shots: 0, range: 0,
+    abilities: ['undead'], armyCount: 12, cost: 70,
+  },
+  zombie: {
+    name: 'Zombie', plural: 'Zombies', faction: 'necropolis', tier: 2,
+    hp: 20, attack: 5, defense: 5, minDamage: 2, maxDamage: 3, speed: 4, shots: 0, range: 0,
+    abilities: ['undead'], armyCount: 8, cost: 125,
+  },
+  wraith: {
+    name: 'Wraith', plural: 'Wraiths', faction: 'necropolis', tier: 3,
+    hp: 18, attack: 7, defense: 7, minDamage: 3, maxDamage: 5, speed: 7, shots: 0, range: 0,
+    abilities: ['undead', 'flying', 'regenerate'], armyCount: 7, cost: 230,
+  },
+  vampireLord: {
+    name: 'Vampire Lord', plural: 'Vampire Lords', faction: 'necropolis', tier: 4,
+    hp: 40, attack: 10, defense: 10, minDamage: 5, maxDamage: 8, speed: 9, shots: 0, range: 0,
+    abilities: ['undead', 'flying', 'noRetaliation', 'lifeDrain'], armyCount: 4, cost: 500,
+  },
+  powerLich: {
+    name: 'Power Lich', plural: 'Power Liches', faction: 'necropolis', tier: 5,
+    hp: 40, attack: 13, defense: 10, minDamage: 11, maxDamage: 15, speed: 7, shots: 24, range: 7,
+    abilities: ['undead', 'deathCloud'], armyCount: 3, cost: 600,
+  },
+  dreadKnight: {
+    name: 'Dread Knight', plural: 'Dread Knights', faction: 'necropolis', tier: 6,
+    hp: 120, attack: 18, defense: 18, minDamage: 15, maxDamage: 30, speed: 9, shots: 0, range: 0,
+    abilities: ['undead', 'cursing', 'deathblow'], armyCount: 2, cost: 1500,
+  },
+  ghostDragon: {
+    name: 'Ghost Dragon', plural: 'Ghost Dragons', faction: 'necropolis', tier: 7,
+    hp: 200, attack: 19, defense: 17, minDamage: 25, maxDamage: 50, speed: 14, shots: 0, range: 0,
+    abilities: ['undead', 'flying', 'fearsome'], armyCount: 1, cost: 3000,
+  },
+  infernalTroglodyte: {
+    name: 'Infernal Troglodyte', plural: 'Infernal Troglodytes', faction: 'dungeon', tier: 1,
+    hp: 6, attack: 5, defense: 4, minDamage: 1, maxDamage: 3, speed: 5, shots: 0, range: 0,
+    abilities: [], armyCount: 14, cost: 65,
+  },
+  harpyHag: {
+    name: 'Harpy Hag', plural: 'Harpy Hags', faction: 'dungeon', tier: 2,
+    hp: 14, attack: 6, defense: 6, minDamage: 1, maxDamage: 4, speed: 9, shots: 0, range: 0,
+    abilities: ['flying', 'hitAndRun', 'noRetaliation'], armyCount: 8, cost: 170,
+  },
+  evilEye: {
+    name: 'Evil Eye', plural: 'Evil Eyes', faction: 'dungeon', tier: 3,
+    hp: 22, attack: 10, defense: 8, minDamage: 3, maxDamage: 5, speed: 7, shots: 24, range: 6,
+    abilities: ['noMeleePenalty'], armyCount: 7, cost: 280,
+  },
+  medusaQueen: {
+    name: 'Medusa Queen', plural: 'Medusa Queens', faction: 'dungeon', tier: 4,
+    hp: 30, attack: 10, defense: 10, minDamage: 6, maxDamage: 8, speed: 6, shots: 8, range: 5,
+    abilities: ['petrify', 'noMeleePenalty'], armyCount: 4, cost: 330,
+  },
+  minotaurKing: {
+    name: 'Minotaur King', plural: 'Minotaur Kings', faction: 'dungeon', tier: 5,
+    hp: 50, attack: 15, defense: 15, minDamage: 12, maxDamage: 20, speed: 8, shots: 0, range: 0,
+    abilities: ['steadfast', 'doubleRetaliation'], armyCount: 3, cost: 575,
+  },
+  scorpicore: {
+    name: 'Scorpicore', plural: 'Scorpicores', faction: 'dungeon', tier: 6,
+    hp: 80, attack: 16, defense: 14, minDamage: 14, maxDamage: 20, speed: 11, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 2, cost: 1050,
+  },
+  blackDragon: {
+    name: 'Black Dragon', plural: 'Black Dragons', faction: 'dungeon', tier: 7,
+    hp: 300, attack: 25, defense: 25, minDamage: 40, maxDamage: 50, speed: 15, shots: 0, range: 0,
+    abilities: ['flying', 'breath', 'spellImmune'], armyCount: 1, cost: 4000,
+  },
+  familiar: {
+    name: 'Familiar', plural: 'Familiars', faction: 'inferno', tier: 1,
+    hp: 4, attack: 4, defense: 4, minDamage: 1, maxDamage: 2, speed: 7, shots: 0, range: 0,
+    abilities: [], armyCount: 15, cost: 60,
+  },
+  magog: {
+    name: 'Magog', plural: 'Magogs', faction: 'inferno', tier: 2,
+    hp: 13, attack: 7, defense: 4, minDamage: 2, maxDamage: 4, speed: 6, shots: 24, range: 6,
+    abilities: [], armyCount: 8, cost: 175,
+  },
+  cerberus: {
+    name: 'Cerberus', plural: 'Cerberi', faction: 'inferno', tier: 3,
+    hp: 25, attack: 10, defense: 8, minDamage: 2, maxDamage: 7, speed: 8, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 5, cost: 250,
+  },
+  hornedDemon: {
+    name: 'Horned Demon', plural: 'Horned Demons', faction: 'inferno', tier: 4,
+    hp: 40, attack: 10, defense: 10, minDamage: 7, maxDamage: 9, speed: 6, shots: 0, range: 0,
+    abilities: [], armyCount: 4, cost: 270,
+  },
+  pitLord: {
+    name: 'Pit Lord', plural: 'Pit Lords', faction: 'inferno', tier: 5,
+    hp: 45, attack: 13, defense: 13, minDamage: 13, maxDamage: 17, speed: 7, shots: 0, range: 0,
+    abilities: [], armyCount: 3, cost: 700,
+  },
+  efreetSultan: {
+    name: 'Efreet Sultan', plural: 'Efreet Sultans', faction: 'inferno', tier: 6,
+    hp: 90, attack: 16, defense: 14, minDamage: 16, maxDamage: 24, speed: 13, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 2, cost: 1100,
+  },
+  archDevil: {
+    name: 'Arch Devil', plural: 'Arch Devils', faction: 'inferno', tier: 7,
+    hp: 200, attack: 26, defense: 28, minDamage: 30, maxDamage: 40, speed: 17, shots: 0, range: 0,
+    abilities: ['flying', 'noRetaliation', 'hatred'], armyCount: 1, cost: 4500,
+  },
 }
 
 export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
@@ -303,21 +528,86 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
   petrify: '20% chance to turn the target to stone: it loses its next turn and cannot strike back until it breaks free.',
   steadfast: '+1 morale on top of the hero.',
   breath: 'Melee attacks also burn the stack behind the target, friend or foe.',
-  hatred: '+50% damage against its sworn enemy (Angels and Devils hate each other).',
+  hatred: '+50% damage against its sworn enemies (Angels and Devils, and their upgrades, hate each other).',
   fearsome: 'Enemy stacks have 1 less morale while it lives.',
   spellImmune: 'Immune to spells of level 1 to 3, from friend or foe.',
   magicResistance: '20% chance to shrug off a hostile spell.',
   crushing: "Its blows ignore 40% of the target's defense.",
   cursing: '20% chance that its melee blows curse the target for 3 rounds.',
+  doubleShot: 'Shoots twice.',
+  doubleStrike: 'Strikes twice in melee: once before the target strikes back, and once after.',
+  unlimitedRetaliation: 'Strikes back at every attacker.',
+  lifeDrain: 'Its melee blows heal it by the damage dealt to the living, raising its fallen.',
   warMachine: 'War machine: never moves, never strikes back, and spells and morale do not affect it.',
   firstAid: 'At the start of each round, heals 25 to 50 health on the top creature of your most wounded stack.',
   ammoSupply: 'While it stands, your shooters never run out of shots.',
 }
 
 /** Who each hating creature hates. */
-export const HATES: Partial<Record<CreatureType, CreatureType>> = { angel: 'devil', devil: 'angel' }
+export const HATES: Partial<Record<CreatureType, CreatureType[]>> = {
+  angel: ['devil', 'archDevil'],
+  archangel: ['devil', 'archDevil'],
+  devil: ['angel', 'archangel'],
+  archDevil: ['angel', 'archangel'],
+}
 
-export const FACTIONS: Record<Faction, { name: string; description: string; creatures: CreatureType[] }> = {
+/** Each creature's upgrade. */
+export const UPGRADES: Record<BaseCreature, UpgradedCreature> = {
+  pikeman: 'halberdier',
+  archer: 'marksman',
+  griffin: 'royalGriffin',
+  swordsman: 'crusader',
+  monk: 'zealot',
+  cavalier: 'champion',
+  angel: 'archangel',
+  centaur: 'centaurCaptain',
+  dwarf: 'battleDwarf',
+  woodElf: 'grandElf',
+  pegasus: 'silverPegasus',
+  dendroidGuard: 'dendroidSoldier',
+  unicorn: 'warUnicorn',
+  greenDragon: 'goldDragon',
+  goblin: 'hobgoblin',
+  wolfRider: 'wolfRaider',
+  orc: 'orcChieftain',
+  ogre: 'ogreMage',
+  roc: 'thunderbird',
+  cyclops: 'cyclopsKing',
+  behemoth: 'ancientBehemoth',
+  skeleton: 'skeletonWarrior',
+  walkingDead: 'zombie',
+  wight: 'wraith',
+  vampire: 'vampireLord',
+  lich: 'powerLich',
+  blackKnight: 'dreadKnight',
+  boneDragon: 'ghostDragon',
+  troglodyte: 'infernalTroglodyte',
+  harpy: 'harpyHag',
+  beholder: 'evilEye',
+  medusa: 'medusaQueen',
+  minotaur: 'minotaurKing',
+  manticore: 'scorpicore',
+  redDragon: 'blackDragon',
+  imp: 'familiar',
+  gog: 'magog',
+  hellHound: 'cerberus',
+  demon: 'hornedDemon',
+  pitFiend: 'pitLord',
+  efreet: 'efreetSultan',
+  devil: 'archDevil',
+}
+
+const BASE_OF = Object.fromEntries(Object.entries(UPGRADES).map(([base, upgrade]) => [upgrade, base])) as Record<
+  UpgradedCreature,
+  BaseCreature
+>
+
+export const isUpgraded = (type: CreatureType): type is UpgradedCreature => type in BASE_OF
+
+/** The creature a stack is a version of: itself, or the creature it is an upgrade of. */
+export const baseOf = (type: CreatureType): CreatureType => (isUpgraded(type) ? BASE_OF[type] : type)
+
+export const FACTIONS: Record<Faction, { name: string; description: string; creatures: BaseCreature[] }> = {
   castle: {
     name: 'Castle',
     description: 'Disciplined soldiers, holy monks, charging cavaliers and angels.',
