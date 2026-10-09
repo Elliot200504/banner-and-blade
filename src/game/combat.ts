@@ -6,6 +6,7 @@ import {
   SPECIALTY_ATTACK,
   SPECIALTY_DEFENSE,
   SPECIALTY_SPEED,
+  STONE_SKIN_SPECIALTY_DEFENSE,
   type Hero,
 } from './heroes'
 import type { Random } from './random'
@@ -35,8 +36,10 @@ export function effectiveAttack(unit: Unit, hero: Hero): number {
 export function effectiveDefense(unit: Unit, hero: Hero): number {
   let defense = CREATURES[unit.type].defense + hero.defense + (unit.specialty ? SPECIALTY_DEFENSE : 0)
 
-  if (hasEffect(unit, 'stoneSkin')) {
-    defense += STONE_SKIN_DEFENSE
+  const stoneSkin = unit.effects.find((active) => active.effect === 'stoneSkin')
+
+  if (stoneSkin) {
+    defense += STONE_SKIN_DEFENSE + (stoneSkin.boosted ? STONE_SKIN_SPECIALTY_DEFENSE : 0)
   }
 
   if (unit.defending) {

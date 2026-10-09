@@ -1,4 +1,4 @@
-export type Faction = 'castle' | 'rampart' | 'stronghold' | 'necropolis' | 'dungeon' | 'inferno'
+export type Faction = 'castle' | 'rampart' | 'stronghold' | 'necropolis' | 'dungeon' | 'inferno' | 'tower' | 'fortress' | 'conflux'
 
 /** Machines any army can buy: they never move, and fight or help from where they stand. */
 export type WarMachine = 'ballista' | 'firstAidTent' | 'ammoCart'
@@ -11,6 +11,9 @@ export type BaseCreature =
   | 'skeleton' | 'walkingDead' | 'wight' | 'vampire' | 'lich' | 'blackKnight' | 'boneDragon'
   | 'troglodyte' | 'harpy' | 'beholder' | 'medusa' | 'minotaur' | 'manticore' | 'redDragon'
   | 'imp' | 'gog' | 'hellHound' | 'demon' | 'pitFiend' | 'efreet' | 'devil'
+  | 'gremlin' | 'stoneGargoyle' | 'stoneGolem' | 'mage' | 'genie' | 'naga' | 'giant'
+  | 'gnoll' | 'lizardman' | 'serpentFly' | 'basilisk' | 'gorgon' | 'wyvern' | 'hydra'
+  | 'pixie' | 'airElemental' | 'waterElemental' | 'fireElemental' | 'earthElemental' | 'psychicElemental' | 'firebird'
 
 /** The stronger, pricier version of each creature, as in HoMM3. */
 export type UpgradedCreature =
@@ -20,6 +23,9 @@ export type UpgradedCreature =
   | 'skeletonWarrior' | 'zombie' | 'wraith' | 'vampireLord' | 'powerLich' | 'dreadKnight' | 'ghostDragon'
   | 'infernalTroglodyte' | 'harpyHag' | 'evilEye' | 'medusaQueen' | 'minotaurKing' | 'scorpicore' | 'blackDragon'
   | 'familiar' | 'magog' | 'cerberus' | 'hornedDemon' | 'pitLord' | 'efreetSultan' | 'archDevil'
+  | 'masterGremlin' | 'obsidianGargoyle' | 'ironGolem' | 'archMage' | 'masterGenie' | 'nagaQueen' | 'titan'
+  | 'gnollMarauder' | 'lizardWarrior' | 'dragonFly' | 'greaterBasilisk' | 'mightyGorgon' | 'wyvernMonarch' | 'chaosHydra'
+  | 'sprite' | 'stormElemental' | 'iceElemental' | 'energyElemental' | 'magmaElemental' | 'magicElemental' | 'phoenix'
 
 export type CreatureType = WarMachine | BaseCreature | UpgradedCreature
 
@@ -294,12 +300,117 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
   efreet: {
     name: 'Efreet', plural: 'Efreeti', faction: 'inferno', tier: 6,
     hp: 90, attack: 16, defense: 12, minDamage: 16, maxDamage: 24, speed: 9, shots: 0, range: 0,
-    abilities: ['flying'], armyCount: 2, cost: 900,
+    abilities: ['flying', 'hatred'], armyCount: 2, cost: 900,
   },
   devil: {
     name: 'Devil', plural: 'Devils', faction: 'inferno', tier: 7,
     hp: 160, attack: 19, defense: 21, minDamage: 30, maxDamage: 40, speed: 11, shots: 0, range: 0,
     abilities: ['flying', 'noRetaliation', 'hatred'], armyCount: 1, cost: 2700,
+  },
+  gremlin: {
+    name: 'Gremlin', plural: 'Gremlins', faction: 'tower', tier: 1,
+    hp: 4, attack: 3, defense: 3, minDamage: 1, maxDamage: 2, speed: 4, shots: 0, range: 0,
+    abilities: [], armyCount: 16, cost: 30,
+  },
+  stoneGargoyle: {
+    name: 'Stone Gargoyle', plural: 'Stone Gargoyles', faction: 'tower', tier: 2,
+    hp: 16, attack: 6, defense: 6, minDamage: 2, maxDamage: 3, speed: 6, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 9, cost: 130,
+  },
+  stoneGolem: {
+    name: 'Stone Golem', plural: 'Stone Golems', faction: 'tower', tier: 3,
+    hp: 30, attack: 7, defense: 10, minDamage: 4, maxDamage: 5, speed: 3, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 6, cost: 150,
+  },
+  mage: {
+    name: 'Mage', plural: 'Mages', faction: 'tower', tier: 4,
+    hp: 25, attack: 11, defense: 8, minDamage: 7, maxDamage: 9, speed: 5, shots: 24, range: 7,
+    abilities: ['noMeleePenalty'], armyCount: 4, cost: 350,
+  },
+  genie: {
+    name: 'Genie', plural: 'Genies', faction: 'tower', tier: 5,
+    hp: 40, attack: 12, defense: 12, minDamage: 13, maxDamage: 16, speed: 7, shots: 0, range: 0,
+    abilities: ['flying', 'hatred'], armyCount: 3, cost: 550,
+  },
+  naga: {
+    name: 'Naga', plural: 'Nagas', faction: 'tower', tier: 6,
+    hp: 110, attack: 16, defense: 13, minDamage: 20, maxDamage: 20, speed: 5, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 2, cost: 1100,
+  },
+  giant: {
+    name: 'Giant', plural: 'Giants', faction: 'tower', tier: 7,
+    hp: 150, attack: 19, defense: 16, minDamage: 40, maxDamage: 60, speed: 7, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 1, cost: 2000,
+  },
+  gnoll: {
+    name: 'Gnoll', plural: 'Gnolls', faction: 'fortress', tier: 1,
+    hp: 6, attack: 3, defense: 5, minDamage: 2, maxDamage: 3, speed: 4, shots: 0, range: 0,
+    abilities: [], armyCount: 12, cost: 50,
+  },
+  lizardman: {
+    name: 'Lizardman', plural: 'Lizardmen', faction: 'fortress', tier: 2,
+    hp: 14, attack: 5, defense: 6, minDamage: 2, maxDamage: 3, speed: 4, shots: 12, range: 6,
+    abilities: [], armyCount: 9, cost: 110,
+  },
+  serpentFly: {
+    name: 'Serpent Fly', plural: 'Serpent Flies', faction: 'fortress', tier: 3,
+    hp: 20, attack: 7, defense: 9, minDamage: 2, maxDamage: 5, speed: 9, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 8, cost: 220,
+  },
+  basilisk: {
+    name: 'Basilisk', plural: 'Basilisks', faction: 'fortress', tier: 4,
+    hp: 35, attack: 11, defense: 11, minDamage: 6, maxDamage: 10, speed: 5, shots: 0, range: 0,
+    abilities: ['petrify'], armyCount: 4, cost: 325,
+  },
+  gorgon: {
+    name: 'Gorgon', plural: 'Gorgons', faction: 'fortress', tier: 5,
+    hp: 70, attack: 10, defense: 14, minDamage: 12, maxDamage: 16, speed: 5, shots: 0, range: 0,
+    abilities: [], armyCount: 3, cost: 525,
+  },
+  wyvern: {
+    name: 'Wyvern', plural: 'Wyverns', faction: 'fortress', tier: 6,
+    hp: 70, attack: 14, defense: 14, minDamage: 14, maxDamage: 18, speed: 7, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 2, cost: 800,
+  },
+  hydra: {
+    name: 'Hydra', plural: 'Hydras', faction: 'fortress', tier: 7,
+    hp: 175, attack: 16, defense: 18, minDamage: 25, maxDamage: 45, speed: 5, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 1, cost: 2200,
+  },
+  pixie: {
+    name: 'Pixie', plural: 'Pixies', faction: 'conflux', tier: 1,
+    hp: 3, attack: 2, defense: 2, minDamage: 1, maxDamage: 2, speed: 7, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 20, cost: 25,
+  },
+  airElemental: {
+    name: 'Air Elemental', plural: 'Air Elementals', faction: 'conflux', tier: 2,
+    hp: 25, attack: 9, defense: 9, minDamage: 2, maxDamage: 8, speed: 7, shots: 0, range: 0,
+    abilities: [], armyCount: 6, cost: 250,
+  },
+  waterElemental: {
+    name: 'Water Elemental', plural: 'Water Elementals', faction: 'conflux', tier: 3,
+    hp: 30, attack: 8, defense: 10, minDamage: 3, maxDamage: 7, speed: 5, shots: 0, range: 0,
+    abilities: [], armyCount: 6, cost: 300,
+  },
+  fireElemental: {
+    name: 'Fire Elemental', plural: 'Fire Elementals', faction: 'conflux', tier: 4,
+    hp: 35, attack: 10, defense: 8, minDamage: 4, maxDamage: 6, speed: 6, shots: 0, range: 0,
+    abilities: [], armyCount: 5, cost: 350,
+  },
+  earthElemental: {
+    name: 'Earth Elemental', plural: 'Earth Elementals', faction: 'conflux', tier: 5,
+    hp: 40, attack: 10, defense: 10, minDamage: 4, maxDamage: 8, speed: 4, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 4, cost: 400,
+  },
+  psychicElemental: {
+    name: 'Psychic Elemental', plural: 'Psychic Elementals', faction: 'conflux', tier: 6,
+    hp: 75, attack: 15, defense: 13, minDamage: 10, maxDamage: 20, speed: 7, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 2, cost: 750,
+  },
+  firebird: {
+    name: 'Firebird', plural: 'Firebirds', faction: 'conflux', tier: 7,
+    hp: 150, attack: 18, defense: 18, minDamage: 30, maxDamage: 40, speed: 15, shots: 0, range: 0,
+    abilities: ['flying', 'breath'], armyCount: 1, cost: 1500,
   },
   halberdier: {
     name: 'Halberdier', plural: 'Halberdiers', faction: 'castle', tier: 1,
@@ -474,7 +585,7 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
   blackDragon: {
     name: 'Black Dragon', plural: 'Black Dragons', faction: 'dungeon', tier: 7,
     hp: 300, attack: 25, defense: 25, minDamage: 40, maxDamage: 50, speed: 15, shots: 0, range: 0,
-    abilities: ['flying', 'breath', 'spellImmune'], armyCount: 1, cost: 4000,
+    abilities: ['flying', 'breath', 'spellImmune', 'hatred'], armyCount: 1, cost: 4000,
   },
   familiar: {
     name: 'Familiar', plural: 'Familiars', faction: 'inferno', tier: 1,
@@ -504,12 +615,117 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
   efreetSultan: {
     name: 'Efreet Sultan', plural: 'Efreet Sultans', faction: 'inferno', tier: 6,
     hp: 90, attack: 16, defense: 14, minDamage: 16, maxDamage: 24, speed: 13, shots: 0, range: 0,
-    abilities: ['flying'], armyCount: 2, cost: 1100,
+    abilities: ['flying', 'hatred'], armyCount: 2, cost: 1100,
   },
   archDevil: {
     name: 'Arch Devil', plural: 'Arch Devils', faction: 'inferno', tier: 7,
     hp: 200, attack: 26, defense: 28, minDamage: 30, maxDamage: 40, speed: 17, shots: 0, range: 0,
     abilities: ['flying', 'noRetaliation', 'hatred'], armyCount: 1, cost: 4500,
+  },
+  masterGremlin: {
+    name: 'Master Gremlin', plural: 'Master Gremlins', faction: 'tower', tier: 1,
+    hp: 4, attack: 4, defense: 4, minDamage: 1, maxDamage: 2, speed: 5, shots: 8, range: 6,
+    abilities: [], armyCount: 16, cost: 40,
+  },
+  obsidianGargoyle: {
+    name: 'Obsidian Gargoyle', plural: 'Obsidian Gargoyles', faction: 'tower', tier: 2,
+    hp: 16, attack: 7, defense: 7, minDamage: 2, maxDamage: 3, speed: 9, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 9, cost: 160,
+  },
+  ironGolem: {
+    name: 'Iron Golem', plural: 'Iron Golems', faction: 'tower', tier: 3,
+    hp: 35, attack: 9, defense: 10, minDamage: 4, maxDamage: 5, speed: 5, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 6, cost: 200,
+  },
+  archMage: {
+    name: 'Arch Mage', plural: 'Arch Mages', faction: 'tower', tier: 4,
+    hp: 30, attack: 12, defense: 9, minDamage: 7, maxDamage: 9, speed: 7, shots: 24, range: 8,
+    abilities: ['noMeleePenalty'], armyCount: 4, cost: 450,
+  },
+  masterGenie: {
+    name: 'Master Genie', plural: 'Master Genies', faction: 'tower', tier: 5,
+    hp: 40, attack: 12, defense: 12, minDamage: 13, maxDamage: 16, speed: 11, shots: 0, range: 0,
+    abilities: ['flying', 'hatred'], armyCount: 3, cost: 600,
+  },
+  nagaQueen: {
+    name: 'Naga Queen', plural: 'Naga Queens', faction: 'tower', tier: 6,
+    hp: 110, attack: 16, defense: 13, minDamage: 30, maxDamage: 30, speed: 7, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 2, cost: 1600,
+  },
+  titan: {
+    name: 'Titan', plural: 'Titans', faction: 'tower', tier: 7,
+    hp: 300, attack: 24, defense: 24, minDamage: 40, maxDamage: 60, speed: 11, shots: 24, range: 8,
+    abilities: ['noMeleePenalty', 'hatred'], armyCount: 1, cost: 5000,
+  },
+  gnollMarauder: {
+    name: 'Gnoll Marauder', plural: 'Gnoll Marauders', faction: 'fortress', tier: 1,
+    hp: 6, attack: 4, defense: 6, minDamage: 2, maxDamage: 3, speed: 5, shots: 0, range: 0,
+    abilities: [], armyCount: 12, cost: 70,
+  },
+  lizardWarrior: {
+    name: 'Lizard Warrior', plural: 'Lizard Warriors', faction: 'fortress', tier: 2,
+    hp: 15, attack: 6, defense: 8, minDamage: 2, maxDamage: 5, speed: 5, shots: 24, range: 7,
+    abilities: [], armyCount: 9, cost: 140,
+  },
+  dragonFly: {
+    name: 'Dragon Fly', plural: 'Dragon Flies', faction: 'fortress', tier: 3,
+    hp: 20, attack: 8, defense: 10, minDamage: 2, maxDamage: 5, speed: 13, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 8, cost: 240,
+  },
+  greaterBasilisk: {
+    name: 'Greater Basilisk', plural: 'Greater Basilisks', faction: 'fortress', tier: 4,
+    hp: 40, attack: 12, defense: 12, minDamage: 6, maxDamage: 10, speed: 7, shots: 0, range: 0,
+    abilities: ['petrify'], armyCount: 4, cost: 400,
+  },
+  mightyGorgon: {
+    name: 'Mighty Gorgon', plural: 'Mighty Gorgons', faction: 'fortress', tier: 5,
+    hp: 70, attack: 11, defense: 16, minDamage: 12, maxDamage: 16, speed: 6, shots: 0, range: 0,
+    abilities: ['deathblow'], armyCount: 3, cost: 600,
+  },
+  wyvernMonarch: {
+    name: 'Wyvern Monarch', plural: 'Wyvern Monarchs', faction: 'fortress', tier: 6,
+    hp: 70, attack: 14, defense: 14, minDamage: 18, maxDamage: 22, speed: 11, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 2, cost: 1100,
+  },
+  chaosHydra: {
+    name: 'Chaos Hydra', plural: 'Chaos Hydras', faction: 'fortress', tier: 7,
+    hp: 250, attack: 18, defense: 20, minDamage: 25, maxDamage: 45, speed: 7, shots: 0, range: 0,
+    abilities: ['noRetaliation'], armyCount: 1, cost: 3500,
+  },
+  sprite: {
+    name: 'Sprite', plural: 'Sprites', faction: 'conflux', tier: 1,
+    hp: 3, attack: 2, defense: 2, minDamage: 1, maxDamage: 3, speed: 9, shots: 0, range: 0,
+    abilities: ['flying', 'noRetaliation'], armyCount: 20, cost: 30,
+  },
+  stormElemental: {
+    name: 'Storm Elemental', plural: 'Storm Elementals', faction: 'conflux', tier: 2,
+    hp: 25, attack: 9, defense: 9, minDamage: 2, maxDamage: 8, speed: 8, shots: 24, range: 6,
+    abilities: [], armyCount: 6, cost: 275,
+  },
+  iceElemental: {
+    name: 'Ice Elemental', plural: 'Ice Elementals', faction: 'conflux', tier: 3,
+    hp: 30, attack: 8, defense: 10, minDamage: 3, maxDamage: 7, speed: 6, shots: 24, range: 6,
+    abilities: [], armyCount: 6, cost: 375,
+  },
+  energyElemental: {
+    name: 'Energy Elemental', plural: 'Energy Elementals', faction: 'conflux', tier: 4,
+    hp: 35, attack: 12, defense: 8, minDamage: 4, maxDamage: 6, speed: 8, shots: 0, range: 0,
+    abilities: ['flying'], armyCount: 5, cost: 400,
+  },
+  magmaElemental: {
+    name: 'Magma Elemental', plural: 'Magma Elementals', faction: 'conflux', tier: 5,
+    hp: 40, attack: 11, defense: 11, minDamage: 6, maxDamage: 10, speed: 6, shots: 0, range: 0,
+    abilities: ['magicResistance'], armyCount: 4, cost: 500,
+  },
+  magicElemental: {
+    name: 'Magic Elemental', plural: 'Magic Elementals', faction: 'conflux', tier: 6,
+    hp: 80, attack: 15, defense: 13, minDamage: 15, maxDamage: 25, speed: 9, shots: 0, range: 0,
+    abilities: ['noRetaliation', 'spellImmune'], armyCount: 2, cost: 800,
+  },
+  phoenix: {
+    name: 'Phoenix', plural: 'Phoenixes', faction: 'conflux', tier: 7,
+    hp: 200, attack: 21, defense: 18, minDamage: 30, maxDamage: 40, speed: 21, shots: 0, range: 0,
+    abilities: ['flying', 'breath'], armyCount: 1, cost: 2000,
   },
 }
 
@@ -528,7 +744,7 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
   petrify: '20% chance to turn the target to stone: it loses its next turn and cannot strike back until it breaks free.',
   steadfast: '+1 morale on top of the hero.',
   breath: 'Melee attacks also burn the stack behind the target, friend or foe.',
-  hatred: '+50% damage against its sworn enemies (Angels and Devils, and their upgrades, hate each other).',
+  hatred: '+50% damage against its sworn enemies: Angels and Devils, Genies and Efreet, Titans and Black Dragons hate each other.',
   fearsome: 'Enemy stacks have 1 less morale while it lives.',
   spellImmune: 'Immune to spells of level 1 to 3, from friend or foe.',
   magicResistance: '20% chance to shrug off a hostile spell.',
@@ -549,6 +765,12 @@ export const HATES: Partial<Record<CreatureType, CreatureType[]>> = {
   archangel: ['devil', 'archDevil'],
   devil: ['angel', 'archangel'],
   archDevil: ['angel', 'archangel'],
+  genie: ['efreet', 'efreetSultan'],
+  masterGenie: ['efreet', 'efreetSultan'],
+  efreet: ['genie', 'masterGenie'],
+  efreetSultan: ['genie', 'masterGenie'],
+  titan: ['blackDragon'],
+  blackDragon: ['titan'],
 }
 
 /** Each creature's upgrade. */
@@ -595,6 +817,27 @@ export const UPGRADES: Record<BaseCreature, UpgradedCreature> = {
   pitFiend: 'pitLord',
   efreet: 'efreetSultan',
   devil: 'archDevil',
+  gremlin: 'masterGremlin',
+  stoneGargoyle: 'obsidianGargoyle',
+  stoneGolem: 'ironGolem',
+  mage: 'archMage',
+  genie: 'masterGenie',
+  naga: 'nagaQueen',
+  giant: 'titan',
+  gnoll: 'gnollMarauder',
+  lizardman: 'lizardWarrior',
+  serpentFly: 'dragonFly',
+  basilisk: 'greaterBasilisk',
+  gorgon: 'mightyGorgon',
+  wyvern: 'wyvernMonarch',
+  hydra: 'chaosHydra',
+  pixie: 'sprite',
+  airElemental: 'stormElemental',
+  waterElemental: 'iceElemental',
+  fireElemental: 'energyElemental',
+  earthElemental: 'magmaElemental',
+  psychicElemental: 'magicElemental',
+  firebird: 'phoenix',
 }
 
 const BASE_OF = Object.fromEntries(Object.entries(UPGRADES).map(([base, upgrade]) => [upgrade, base])) as Record<
@@ -632,9 +875,23 @@ export const FACTIONS: Record<Faction, { name: string; creatures: BaseCreature[]
     name: 'Inferno',
     creatures: ['imp', 'gog', 'hellHound', 'demon', 'pitFiend', 'efreet', 'devil'],
   },
+  tower: {
+    name: 'Tower',
+    creatures: ['gremlin', 'stoneGargoyle', 'stoneGolem', 'mage', 'genie', 'naga', 'giant'],
+  },
+  fortress: {
+    name: 'Fortress',
+    creatures: ['gnoll', 'lizardman', 'serpentFly', 'basilisk', 'gorgon', 'wyvern', 'hydra'],
+  },
+  conflux: {
+    name: 'Conflux',
+    creatures: ['pixie', 'airElemental', 'waterElemental', 'fireElemental', 'earthElemental', 'psychicElemental', 'firebird'],
+  },
 }
 
-export const FACTION_ORDER: Faction[] = ['castle', 'rampart', 'stronghold', 'necropolis', 'dungeon', 'inferno']
+export const FACTION_ORDER: Faction[] = [
+  'castle', 'rampart', 'stronghold', 'necropolis', 'dungeon', 'inferno', 'tower', 'fortress', 'conflux',
+]
 
 export const hasAbility = (type: CreatureType, ability: Ability): boolean => CREATURES[type].abilities.includes(ability)
 

@@ -33,6 +33,14 @@ const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
   evilEye: 'magic',
   medusaQueen: 'arrow',
   magog: 'fire',
+  masterGremlin: 'arrow',
+  mage: 'magic',
+  archMage: 'magic',
+  titan: 'magic',
+  lizardman: 'arrow',
+  lizardWarrior: 'arrow',
+  stormElemental: 'magic',
+  iceElemental: 'magic',
 }
 
 const PROJECTILE_SOUND: Record<ProjectileKind, SoundId> = {

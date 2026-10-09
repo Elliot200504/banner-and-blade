@@ -9,6 +9,9 @@ export type HeroId =
   | 'vokial' | 'septienna' | 'thant'
   | 'lorelei' | 'dace' | 'deemer'
   | 'fiona' | 'rashka' | 'xyron'
+  | 'piquedram' | 'thane' | 'solmyr'
+  | 'broghild' | 'wystan' | 'merist'
+  | 'monere' | 'erdamon' | 'ciele'
 
 /** What a hero is especially good at: one kind of creature, or one spell. */
 export type Specialty = { kind: 'creature'; creature: CreatureType } | { kind: 'spell'; spell: SpellId }
@@ -54,6 +57,12 @@ const BARBARIAN: ClassStats = { title: 'Barbarian', attack: 4, defense: 0, spell
 const BATTLE_MAGE: ClassStats = { title: 'Battle Mage', attack: 2, defense: 1, spellPower: 2, knowledge: 2, morale: 1, luck: 1 }
 const DEMONIAC: ClassStats = { title: 'Demoniac', attack: 2, defense: 2, spellPower: 1, knowledge: 2, morale: 1, luck: 1 }
 const HERETIC: ClassStats = { title: 'Heretic', attack: 1, defense: 1, spellPower: 2, knowledge: 3, morale: 1, luck: 1 }
+const ALCHEMIST: ClassStats = { title: 'Alchemist', attack: 1, defense: 1, spellPower: 2, knowledge: 2, morale: 1, luck: 1 }
+const WIZARD: ClassStats = { title: 'Wizard', attack: 0, defense: 0, spellPower: 2, knowledge: 3, morale: 1, luck: 1 }
+const BEASTMASTER: ClassStats = { title: 'Beastmaster', attack: 0, defense: 4, spellPower: 1, knowledge: 1, morale: 1, luck: 1 }
+const WITCH: ClassStats = { title: 'Witch', attack: 0, defense: 1, spellPower: 2, knowledge: 2, morale: 1, luck: 1 }
+const PLANESWALKER: ClassStats = { title: 'Planeswalker', attack: 3, defense: 1, spellPower: 1, knowledge: 1, morale: 1, luck: 1 }
+const ELEMENTALIST: ClassStats = { title: 'Elementalist', attack: 0, defense: 0, spellPower: 3, knowledge: 3, morale: 1, luck: 1 }
 
 const creature = (type: CreatureType): Specialty => ({ kind: 'creature', creature: type })
 const spell = (id: SpellId): Specialty => ({ kind: 'spell', spell: id })
@@ -79,6 +88,15 @@ export const HEROES: Record<HeroId, HeroTemplate> = {
   fiona: { name: 'Fiona', ...DEMONIAC, faction: 'inferno', specialty: creature('hellHound'), extraSpells: [] },
   rashka: { name: 'Rashka', ...DEMONIAC, faction: 'inferno', specialty: creature('efreet'), extraSpells: [] },
   xyron: { name: 'Xyron', ...HERETIC, faction: 'inferno', specialty: spell('inferno'), extraSpells: ['inferno'] },
+  piquedram: { name: 'Piquedram', ...ALCHEMIST, faction: 'tower', specialty: creature('stoneGargoyle'), extraSpells: [] },
+  thane: { name: 'Thane', ...ALCHEMIST, faction: 'tower', specialty: creature('genie'), extraSpells: [] },
+  solmyr: { name: 'Solmyr', ...WIZARD, faction: 'tower', specialty: spell('lightningBolt'), extraSpells: [] },
+  broghild: { name: 'Broghild', ...BEASTMASTER, faction: 'fortress', specialty: creature('wyvern'), extraSpells: [] },
+  wystan: { name: 'Wystan', ...BEASTMASTER, faction: 'fortress', specialty: creature('lizardman'), extraSpells: [] },
+  merist: { name: 'Merist', ...WITCH, faction: 'fortress', specialty: spell('stoneSkin'), extraSpells: [] },
+  monere: { name: 'Monere', ...PLANESWALKER, faction: 'conflux', specialty: creature('psychicElemental'), extraSpells: [] },
+  erdamon: { name: 'Erdamon', ...PLANESWALKER, faction: 'conflux', specialty: creature('earthElemental'), extraSpells: [] },
+  ciele: { name: 'Ciele', ...ELEMENTALIST, faction: 'conflux', specialty: spell('magicArrow'), extraSpells: [] },
 }
 
 export const HERO_ORDER: HeroId[] = [
@@ -88,6 +106,9 @@ export const HERO_ORDER: HeroId[] = [
   'vokial', 'septienna', 'thant',
   'lorelei', 'dace', 'deemer',
   'fiona', 'rashka', 'xyron',
+  'piquedram', 'thane', 'solmyr',
+  'broghild', 'wystan', 'merist',
+  'monere', 'erdamon', 'ciele',
 ]
 
 export const heroesOf = (faction: Faction): HeroId[] => HERO_ORDER.filter((id) => HEROES[id].faction === faction)
@@ -102,6 +123,8 @@ export const SPELL_SPECIALTY_BONUS = 1.5
 export const BLESS_SPECIALTY_BONUS = 0.2
 /** Extra speed for stacks hasted by a Haste specialist. */
 export const HASTE_SPECIALTY_SPEED = 2
+/** Extra defense for stacks protected by a Stone Skin specialist. */
+export const STONE_SKIN_SPECIALTY_DEFENSE = 3
 
 export const isSpellSpecialist = (hero: Pick<Hero, 'specialty'>, id: SpellId): boolean =>
   hero.specialty.kind === 'spell' && hero.specialty.spell === id

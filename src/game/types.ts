@@ -47,6 +47,7 @@ export interface Unit {
 export type ObstacleKind =
   | 'rock' | 'tree' | 'oak' | 'mushroom' | 'boulder' | 'totem'
   | 'deadTree' | 'tombstone' | 'stalagmite' | 'crystal' | 'lavaRock' | 'fireVent'
+  | 'snowPine' | 'iceRock' | 'reeds' | 'swampLog' | 'runestone' | 'elementalShard'
 
 export interface Obstacle {
   position: Hex

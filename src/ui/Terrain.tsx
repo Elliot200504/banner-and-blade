@@ -10,6 +10,9 @@ const GROUND: Record<Faction, string> = {
   necropolis: '#323238',
   dungeon: '#5a412c',
   inferno: '#4a1c16',
+  tower: '#9aa6b4',
+  fortress: '#3e4a2a',
+  conflux: '#3a3458',
 }
 
 /** Size of one "pixel" in the decorations, to match the sprites' chunky look. */
@@ -82,6 +85,34 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
     () => <ellipse rx={9} ry={4} fill="#4d4b52" opacity={0.7} />,
     () => pixels([[-2, -2, 1, 1, '#b8b2a0'], [1, -1, 1, 1, '#b8b2a0'], [-1, 1, 1, 1, '#b8b2a0']]),
   ],
+  tower: [
+    () => pixels([[-3, 0, 6, 1, '#e8eef4'], [-2, -1, 4, 1, '#f4f8fc']]),
+    () => pixels([[0, -1, 1, 1, '#c8e4f4'], [-1, 0, 3, 1, '#a8d0e8'], [0, 1, 1, 1, '#c8e4f4']]),
+    () => <ellipse rx={9} ry={3} fill="#c2ccd8" opacity={0.7} />,
+    () => <polyline points="-8,0 -3,-1 2,1 8,-1" fill="none" stroke="#7a8698" strokeWidth={1.5} />,
+  ],
+  fortress: [
+    () => <ellipse rx={9} ry={4} fill="#2a3a24" opacity={0.75} />,
+    () => pixels([[-2, -3, 1, 3, '#6a8a3a'], [0, -4, 1, 4, '#7a9a44'], [2, -2, 1, 2, '#5a7a32'], [0, -5, 1, 1, '#8a5a2b']]),
+    () => (
+      <>
+        <ellipse cx={-2} cy={0} rx={3} ry={1.5} fill="#5a6a3a" />
+        <circle cx={2} cy={-1} r={1} fill="#9ab060" opacity={0.6} />
+      </>
+    ),
+    () => pixels([[-1, 0, 3, 1, '#4a5a2a'], [1, -1, 1, 1, '#4a5a2a']]),
+  ],
+  conflux: [
+    () => (
+      <>
+        <circle r={5} fill="#9a7aff" opacity={0.15} />
+        {pixels([[0, -1, 1, 2, '#c8b8ff'], [-1, 0, 3, 1, '#a890ff']])}
+      </>
+    ),
+    () => pixels([[-2, 0, 1, 1, '#ff8a3a'], [0, -1, 1, 1, '#4ab8ff'], [2, 0, 1, 1, '#e8f4ff'], [0, 1, 1, 1, '#8a6a3a']]),
+    () => <polyline points="-9,1 -4,-1 0,1 5,-1 9,1" fill="none" stroke="#6a5aa8" strokeWidth={1.5} opacity={0.8} />,
+    () => <ellipse rx={8} ry={3} fill="#2a2444" opacity={0.7} />,
+  ],
   dungeon: [
     () => (
       <>
@@ -109,6 +140,9 @@ const NEON_GROUND: Record<Faction, string> = {
   necropolis: '#1a0b2e',
   dungeon: '#2a0828',
   inferno: '#2e0606',
+  tower: '#0a1a2a',
+  fortress: '#0e1a08',
+  conflux: '#160a2e',
 }
 
 const NEON: Record<Faction, string> = {
@@ -118,6 +152,9 @@ const NEON: Record<Faction, string> = {
   necropolis: '#b46bff',
   dungeon: '#ff4fd8',
   inferno: '#ff3a3a',
+  tower: '#7ae0ff',
+  fortress: '#a8e030',
+  conflux: '#c08aff',
 }
 
 /** One small faction glyph per homeland, drawn in its neon color among the circuit traces. */
@@ -133,6 +170,9 @@ const NEON_GLYPHS: Record<Faction, (color: string) => ReactNode> = {
     </>
   ),
   inferno: (color) => <polyline points="-3,2 -1,-1 0,1 1,-3 3,2" fill="none" stroke={color} strokeWidth={1} />,
+  tower: (color) => <path d="M0,-3 V3 M-3,0 H3 M-2,-2 L2,2 M2,-2 L-2,2" stroke={color} strokeWidth={0.8} />,
+  fortress: (color) => <path d="M-3,1 Q-1.5,-2 0,1 Q1.5,-2 3,1" fill="none" stroke={color} strokeWidth={1} />,
+  conflux: (color) => <rect x={-2} y={-2} width={4} height={4} transform="rotate(45)" fill="none" stroke={color} strokeWidth={1} />,
 }
 
 const NEON_DECORATIONS: ((color: string, faction: Faction) => ReactNode)[] = [
