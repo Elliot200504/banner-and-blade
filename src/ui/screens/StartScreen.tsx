@@ -239,7 +239,7 @@ export function StartScreen({
                 }
               }}
             >
-              <SpriteIcon spriteId={faction} owner={player} size={24} />
+              <SpriteIcon spriteId={faction} owner={player} size={20} />
               {FACTIONS[faction].name}
             </button>
           )
@@ -436,10 +436,13 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
 
   return (
     <div className="army-preview">
-      <p className="army-preview__specialty">
-        <span className="army-preview__specialty-label">Hero bonus:</span> {specialtyText(hero)}
-      </p>
-      <HeroStats hero={hero} showKnowledge />
+      {/* The hero's bonus and stats share one line, so the whole army fits without scrolling. */}
+      <div className="army-preview__hero">
+        <p className="army-preview__specialty">
+          <span className="army-preview__specialty-label">Hero bonus:</span> {specialtyText(hero)}
+        </p>
+        <HeroStats hero={hero} showKnowledge />
+      </div>
       <div className="recruit__gold">
         <span>
           <Icon name="gold" /> {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
@@ -477,7 +480,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
               key={base}
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
-              <SpriteIcon spriteId={type} owner={player} size={28} mirrored={player === 'blue'} />
+              <SpriteIcon spriteId={type} owner={player} size={24} mirrored={player === 'blue'} />
               <span className="recruit__name" title={creatureSummary(type)}>
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
@@ -534,7 +537,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
 
             return (
               <li key={machine} className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}`}>
-                <SpriteIcon spriteId={machine} owner={player} size={28} mirrored={player === 'blue'} />
+                <SpriteIcon spriteId={machine} owner={player} size={24} mirrored={player === 'blue'} />
                 <span className="recruit__name" title={creatureSummary(machine)}>
                   {stats.name}
                   <span className="recruit__cost">{stats.cost} gold</span>
