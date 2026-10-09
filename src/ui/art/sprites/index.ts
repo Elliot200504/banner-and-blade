@@ -1,4 +1,4 @@
-import { UPGRADES, type BaseCreature, type CreatureType, type Faction, type HeroId, type ObstacleKind, type UpgradedCreature } from '../../game'
+import { UPGRADES, type BaseCreature, type CreatureType, type Faction, type HeroId, type ObstacleKind, type UpgradedCreature } from '../../../game'
 import { CASTLE_SPRITES, CASTLE_TINTS } from './castle'
 import { RAMPART_SPRITES, RAMPART_TINTS } from './rampart'
 import { STRONGHOLD_SPRITES, STRONGHOLD_TINTS } from './stronghold'
