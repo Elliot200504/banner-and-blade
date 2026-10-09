@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyMove } from '../game'
+import { applyMove } from '../../game'
 import { startingState, STEPS, withActor } from './BattleDemo'
 
 describe('How to play demo', () => {
