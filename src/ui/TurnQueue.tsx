@@ -8,11 +8,15 @@ interface TurnQueueProps {
 
 /** Who goes next: the rest of this round, then the next one. */
 export function TurnQueue({ state, onHover }: TurnQueueProps) {
-  if (state.winner) return null
+  if (state.winner) {
+    return null
+  }
+
   const findUnit = (id: string) => state.units.find((unit) => unit.id === id)
   const isUnit = (unit: Unit | undefined): unit is Unit => unit !== undefined
   const thisRound = state.queue.map(findUnit).filter(isUnit)
   const nextRound = buildQueue(state.units, state.round + 1).map(findUnit).filter(isUnit)
+
 
   return (
     <section className="turn-queue" aria-label="Turn order">
@@ -44,8 +48,15 @@ interface QueueTokenProps {
 
 function QueueToken({ unit, label, faded = false, onHover }: QueueTokenProps) {
   let className = `queue-token queue-token--${unit.owner}`
-  if (label === 'Now') className += ' queue-token--current'
-  if (faded) className += ' queue-token--faded'
+
+  if (label === 'Now') {
+    className += ' queue-token--current'
+  }
+
+  if (faded) {
+    className += ' queue-token--faded'
+  }
+
   return (
     <div
       className={className}

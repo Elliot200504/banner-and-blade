@@ -1,4 +1,27 @@
-import { createHero, CREATURES, FACTIONS, HEROES, heroesOf, PLAYER_NAMES, type Faction, type HeroId, type Player } from '../game'
+import {
+  ARMY_BUDGET,
+  armyCost,
+  armyProblem,
+  createHero,
+  createRandom,
+  CREATURES,
+  DIFFICULTIES,
+  FACTION_ORDER,
+  FACTIONS,
+  HEROES,
+  heroesOf,
+  mostAffordable,
+  PLAYER_NAMES,
+  randomArmy,
+  standardArmy,
+  withStack,
+  type Army,
+  type CreatureType,
+  type Difficulty,
+  type Faction,
+  type HeroId,
+  type Player,
+} from '../game'
 import { specialtyText } from './heroText'
 import { SpriteIcon } from './SpriteImage'
 
@@ -7,27 +30,48 @@ export type Controller = 'human' | 'computer'
 
 const CONTROLLER_LABELS: Record<Controller, string> = { human: '🧑 Human', computer: '🤖 Computer' }
 
+const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
+const DIFFICULTY_HINTS: Record<Difficulty, string> = {
+  easy: 'Makes loose moves and never casts spells.',
+  normal: 'Weighs every move carefully.',
+  hard: 'Thinks harder about the dice and presses the attack.',
+}
+
+const formatGold = (gold: number) => gold.toLocaleString('en-US')
+
 interface StartScreenProps {
   factions: Record<Player, Faction>
   controllers: Record<Player, Controller>
   heroes: Record<Player, HeroId>
+  difficulties: Record<Player, Difficulty>
+  armies: Record<Player, Army>
   onChangeFaction: (player: Player, faction: Faction) => void
   onChangeController: (player: Player, controller: Controller) => void
+  onChangeDifficulty: (player: Player, difficulty: Difficulty) => void
   onChangeHero: (player: Player, hero: HeroId) => void
+  onChangeArmy: (player: Player, army: Army) => void
   onStart: () => void
 }
-
-const FACTION_LIST: Faction[] = ['order', 'undead', 'dungeon']
 
 export function StartScreen({
   factions,
   controllers,
   heroes,
+  difficulties,
+  armies,
   onChangeFaction,
   onChangeController,
+  onChangeDifficulty,
   onChangeHero,
+  onChangeArmy,
   onStart,
 }: StartScreenProps) {
+  const problems = (['red', 'blue'] as const).flatMap((player) => {
+    const problem = armyProblem(armies[player], factions[player])
+
+    return problem ? [`${PLAYER_NAMES[player]}: ${problem}`] : []
+  })
+
   return (
     <main className="start-screen">
       <div className="start-screen__crest">⚔️</div>
@@ -51,8 +95,32 @@ export function StartScreen({
                 </button>
               ))}
             </div>
-            <div className="army-picker__factions" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} faction`}>
-              {FACTION_LIST.map((faction) => (
+            {controllers[player] === 'computer' && (
+              <div
+                className="army-picker__factions army-picker__difficulty"
+                role="radiogroup"
+                aria-label={`${PLAYER_NAMES[player]} computer difficulty`}
+              >
+                {DIFFICULTIES.map((difficulty) => (
+                  <button
+                    key={difficulty}
+                    role="radio"
+                    aria-checked={difficulties[player] === difficulty}
+                    title={DIFFICULTY_HINTS[difficulty]}
+                    className={`faction-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
+                    onClick={() => onChangeDifficulty(player, difficulty)}
+                  >
+                    {DIFFICULTY_LABELS[difficulty]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div
+              className="army-picker__factions army-picker__factions--grid"
+              role="radiogroup"
+              aria-label={`${PLAYER_NAMES[player]} faction`}
+            >
+              {FACTION_ORDER.map((faction) => (
                 <button
                   key={faction}
                   role="radio"
@@ -79,12 +147,19 @@ export function StartScreen({
                 </button>
               ))}
             </div>
-            <ArmyPreview player={player} faction={factions[player]} heroId={heroes[player]} />
+            <ArmyBuilder
+              player={player}
+              faction={factions[player]}
+              heroId={heroes[player]}
+              army={armies[player]}
+              onChange={(army) => onChangeArmy(player, army)}
+            />
           </section>
         ))}
       </div>
 
-      <button className="button button--large" onClick={onStart} autoFocus>
+      {problems.length > 0 && <p className="start-screen__problem">{problems.join(' ')}</p>}
+      <button className="button button--large" onClick={onStart} disabled={problems.length > 0} autoFocus>
         To battle!
       </button>
 
@@ -94,10 +169,12 @@ export function StartScreen({
           <li>Stacks act in order of speed. Watch the turn order bar to see who goes next.</li>
           <li>Click a shaded hex to move. Click an enemy to attack; aim at the side you want to strike from.</li>
           <li>Shooters have limited range and shots. With an enemy next to them they must fight in melee at half damage.</li>
-          <li>Enemies hit in melee strike back once per round (Gryphons and Minotaurs twice; nobody strikes back at Vampires).</li>
+          <li>Enemies hit in melee strike back once per round (Griffins and Minotaurs twice; nobody strikes back at Vampires or Devils).</li>
           <li>Medusas can turn a stack to stone: it loses its next turn and cannot strike back until then.</li>
+          <li>Dragons shrug off spells of level 1 to 3. Angels and Devils hate each other and hit each other harder.</li>
           <li>📖 C: your hero casts one spell per round without ending the turn.</li>
           <li>⏳ W: wait and act later this round. 🛡️ D: defend for extra defense.</li>
+          <li>💰 Each side has {formatGold(ARMY_BUDGET)} gold to recruit its army: up to one stack of each creature.</li>
           <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
           <li>Good morale may grant an extra turn; luck may double damage.</li>
           <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>
@@ -107,8 +184,24 @@ export function StartScreen({
   )
 }
 
-function ArmyPreview({ player, faction, heroId }: { player: Player; faction: Faction; heroId: HeroId }) {
+interface ArmyBuilderProps {
+  player: Player
+  faction: Faction
+  heroId: HeroId
+  army: Army
+  onChange: (army: Army) => void
+}
+
+function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderProps) {
   const hero = createHero(heroId)
+  const goldLeft = ARMY_BUDGET - armyCost(army)
+  const countOf = (type: CreatureType) => army.find((stack) => stack.type === type)?.count ?? 0
+  const setCount = (type: CreatureType, count: number) => {
+    const allowed = Math.max(0, Math.min(Math.floor(count) || 0, mostAffordable(army, type)))
+    onChange(withStack(army, faction, type, allowed))
+  }
+
+
   return (
     <div className="army-preview">
       <p className="army-preview__description">{FACTIONS[faction].description}</p>
@@ -116,17 +209,74 @@ function ArmyPreview({ player, faction, heroId }: { player: Player; faction: Fac
         Hero: {hero.name}, {hero.title}
       </p>
       <p className="army-preview__specialty">★ {specialtyText(hero)}</p>
-      <ul className="army-preview__units">
-        {FACTIONS[faction].creatures.map((type) => (
-          <li
-            key={type}
-            title={CREATURES[type].plural}
-            className={hero.specialty.kind === 'creature' && hero.specialty.creature === type ? 'army-preview__specialist' : undefined}
+      <div className="recruit__gold">
+        <span>
+          💰 {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
+        </span>
+        <span className="recruit__presets">
+          <button className="recruit__preset" onClick={() => onChange(standardArmy(faction))}>
+            Standard
+          </button>
+          <button
+            className="recruit__preset"
+            onClick={() => onChange(randomArmy(faction, createRandom(Math.floor(Math.random() * 2 ** 32))))}
           >
-            <SpriteIcon spriteId={type} owner={player} size={40} mirrored={player === 'blue'} />
-            <span>{CREATURES[type].armyCount}</span>
-          </li>
-        ))}
+            Random
+          </button>
+          <button className="recruit__preset" onClick={() => onChange([])}>
+            Clear
+          </button>
+        </span>
+      </div>
+      <ul className="recruit">
+        {FACTIONS[faction].creatures.map((type) => {
+          const stats = CREATURES[type]
+          const count = countOf(type)
+          const most = mostAffordable(army, type)
+          const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === type
+
+          return (
+            <li
+              key={type}
+              className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
+            >
+              <SpriteIcon spriteId={type} owner={player} size={32} mirrored={player === 'blue'} />
+              <span className="recruit__name">
+                {stats.plural}
+                <span className="recruit__cost">{stats.cost} gold each</span>
+              </span>
+              <span className="recruit__count">
+                <button
+                  className="recruit__step"
+                  aria-label={`Fewer ${stats.plural}`}
+                  title="Shift-click for 10 at a time"
+                  disabled={count === 0}
+                  onClick={(event) => setCount(type, count - (event.shiftKey ? 10 : 1))}
+                >
+                  −
+                </button>
+                <input
+                  className="recruit__input"
+                  type="number"
+                  min={0}
+                  max={most}
+                  value={count}
+                  aria-label={`${PLAYER_NAMES[player]} ${stats.plural}`}
+                  onChange={(event) => setCount(type, Number(event.target.value))}
+                />
+                <button
+                  className="recruit__step"
+                  aria-label={`More ${stats.plural}`}
+                  title="Shift-click for 10 at a time"
+                  disabled={count >= most}
+                  onClick={(event) => setCount(type, count + (event.shiftKey ? 10 : 1))}
+                >
+                  +
+                </button>
+              </span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

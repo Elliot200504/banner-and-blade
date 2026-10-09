@@ -27,6 +27,7 @@ export function pixelToHex(point: Point): Hex {
   const relativeY = point.y - OFFSET_Y
   const fractionalQ = ((Math.sqrt(3) / 3) * relativeX - relativeY / 3) / HEX_SIZE
   const fractionalR = ((2 / 3) * relativeY) / HEX_SIZE
+
   return roundHex(fractionalQ, fractionalR)
 }
 
@@ -38,18 +39,25 @@ function roundHex(fractionalQ: number, fractionalR: number): Hex {
   const differenceQ = Math.abs(roundedQ - fractionalQ)
   const differenceR = Math.abs(roundedR - fractionalR)
   const differenceS = Math.abs(roundedS - fractionalS)
-  if (differenceQ > differenceR && differenceQ > differenceS) roundedQ = -roundedR - roundedS
-  else if (differenceR > differenceS) roundedR = -roundedQ - roundedS
+
+  if (differenceQ > differenceR && differenceQ > differenceS) {
+    roundedQ = -roundedR - roundedS
+  } else if (differenceR > differenceS) {
+    roundedR = -roundedQ - roundedS
+  }
+
   return { q: roundedQ, r: roundedR }
 }
 
 /** SVG points string for a pointy-top hexagon. */
 export function hexCorners(center: Point, size = HEX_SIZE): string {
   const corners: string[] = []
+
   for (let corner = 0; corner < 6; corner++) {
     const angle = (Math.PI / 180) * (60 * corner - 30)
     corners.push(`${center.x + size * Math.cos(angle)},${center.y + size * Math.sin(angle)}`)
   }
+
   return corners.join(' ')
 }
 

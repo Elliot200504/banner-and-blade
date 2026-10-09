@@ -10,11 +10,15 @@ interface ModalProps {
 export function Modal({ title, onClose, children, className = '' }: ModalProps) {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+      }
     }
     window.addEventListener('keydown', handleKey)
+
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
+
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>

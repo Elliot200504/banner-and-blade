@@ -9,6 +9,7 @@ interface ResultOverlayProps {
 
 export function ResultOverlay({ state, onPlayAgain, onMainMenu }: ResultOverlayProps) {
   const winner = state.winner!
+
   return (
     <div className="overlay" role="dialog" aria-modal="true">
       <div className={`overlay__card result result--${winner}`}>
@@ -40,6 +41,7 @@ function Casualties({ state, player }: { state: GameState; player: Player }) {
   const losses = FACTIONS[state.factions[player]].creatures
     .map((type) => ({ type, lost: state.casualties[player][type] ?? 0 }))
     .filter((loss) => loss.lost > 0)
+
   return (
     <section className={`result__side result__side--${player}`}>
       <h3 className="result__side-title">{PLAYER_NAMES[player]} losses</h3>

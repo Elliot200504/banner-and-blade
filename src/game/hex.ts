@@ -29,6 +29,7 @@ export function neighbors(hex: Hex): Hex[] {
 export function hexDistance(from: Hex, to: Hex): number {
   const deltaQ = from.q - to.q
   const deltaR = from.r - to.r
+
   return (Math.abs(deltaQ) + Math.abs(deltaR) + Math.abs(deltaQ + deltaR)) / 2
 }
 
@@ -42,13 +43,18 @@ export function hexToOffset(hex: Hex): { column: number; row: number } {
 
 export function inBounds(hex: Hex): boolean {
   const { column, row } = hexToOffset(hex)
+
   return row >= 0 && row < ROWS && column >= 0 && column < COLUMNS
 }
 
 export function allHexes(): Hex[] {
   const hexes: Hex[] = []
+
   for (let row = 0; row < ROWS; row++) {
-    for (let column = 0; column < COLUMNS; column++) hexes.push(offsetToHex(column, row))
+    for (let column = 0; column < COLUMNS; column++) {
+      hexes.push(offsetToHex(column, row))
+    }
   }
+
   return hexes
 }

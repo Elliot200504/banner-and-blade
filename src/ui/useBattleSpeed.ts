@@ -10,6 +10,7 @@ const STORAGE_KEY = 'banner-and-blade:speed'
 function loadSpeed(): BattleSpeed {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
+
     return stored === 'slow' || stored === 'fast' ? stored : 'normal'
   } catch {
     return 'normal'
@@ -25,5 +26,6 @@ export function useBattleSpeed() {
       // Storage can be blocked; the setting just is not remembered then.
     }
   }, [speed])
+
   return [speed, setSpeed] as const
 }

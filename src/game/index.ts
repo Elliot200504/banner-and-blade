@@ -1,6 +1,7 @@
 export * from './hex'
 export * from './random'
 export * from './creatures'
+export * from './army'
 export * from './spells'
 export * from './heroes'
 export * from './types'

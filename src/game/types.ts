@@ -12,6 +12,8 @@ export const opponentOf = (player: Player): Player => (player === 'red' ? 'blue'
 export interface ActiveEffect {
   effect: EffectId
   roundsLeft: number
+  /** Cast by a specialist in this spell, so it works better. */
+  boosted?: boolean
 }
 
 /** A stack of identical creatures. */
@@ -22,6 +24,8 @@ export interface Unit {
   owner: Player
   position: Hex
   count: number
+  /** How many creatures the stack started the battle with. */
+  startCount: number
   /** HP of the top creature; the others are at full health. */
   topHp: number
   shots: number
@@ -40,7 +44,9 @@ export interface Unit {
   effects: ActiveEffect[]
 }
 
-export type ObstacleKind = 'rock' | 'tree' | 'deadTree' | 'tombstone' | 'stalagmite' | 'crystal'
+export type ObstacleKind =
+  | 'rock' | 'tree' | 'oak' | 'mushroom' | 'boulder' | 'totem'
+  | 'deadTree' | 'tombstone' | 'stalagmite' | 'crystal' | 'lavaRock' | 'fireVent'
 
 export interface Obstacle {
   position: Hex

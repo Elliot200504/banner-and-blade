@@ -20,6 +20,7 @@ export function Spellbook({ hero, onChoose, onClose }: SpellbookProps) {
         {hero.spells.map((spell) => {
           const definition = SPELLS[spell]
           const disabled = hero.hasCastThisRound || hero.mana < definition.cost
+
           return (
             <button key={spell} className="spell" disabled={disabled} onClick={() => onChoose(spell)}>
               <span className="spell__icon">{definition.icon}</span>

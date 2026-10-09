@@ -17,6 +17,7 @@ import { SpriteIcon } from './SpriteImage'
 
 export function HeroPanel({ state, player, active }: { state: GameState; player: Player; active: boolean }) {
   const hero = state.heroes[player]
+
   return (
     <section className={`panel hero-panel hero-panel--${player}${active ? ' hero-panel--active' : ''}`}>
       <div className="hero-panel__name">
@@ -62,6 +63,7 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
     unit.petrified && (unit.lostTurn ? 'Stone: breaks free on its next turn' : 'Petrified: loses its next turn'),
     unit.retaliationsLeft === 0 && 'No retaliation left',
   ].filter(Boolean)
+
 
   return (
     <section className={`panel unit-card unit-card--${unit.owner}`}>
@@ -129,6 +131,7 @@ export function BattleLog({ log }: { log: string[] }) {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [log])
+
   return (
     <section className="panel battle-log">
       <h2 className="panel__title">Battle log</h2>

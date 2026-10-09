@@ -18,8 +18,10 @@ export function createRandom(seed: number): Random {
     let mixed = current
     mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1)
     mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61)
+
     return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296
   }
+
   return {
     next,
     integer: (minimum, maximum) => minimum + Math.floor(next() * (maximum - minimum + 1)),

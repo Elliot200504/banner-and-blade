@@ -25,6 +25,8 @@ import {
   SPELLS,
   spellVictims,
   unitAt,
+  type Army,
+  type Difficulty,
   type Faction,
   type GameState,
   type Hex,
@@ -59,15 +61,27 @@ type Intent =
 interface BattleProps {
   factions: Record<Player, Faction>
   controllers: Record<Player, Controller>
+  difficulties: Record<Player, Difficulty>
   heroes: Record<Player, HeroId>
+  armies: Record<Player, Army>
   seed: number
   theme: Theme
   onPlayAgain: () => void
   onMainMenu: () => void
 }
 
-export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes))
+export function Battle({
+  factions,
+  controllers,
+  difficulties,
+  heroes,
+  armies,
+  seed,
+  theme,
+  onPlayAgain,
+  onMainMenu,
+}: BattleProps) {
+  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes, armies))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
@@ -95,36 +109,62 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
 
   const inRange = useMemo(() => {
     const hexes = new Set<string>()
-    if (!actor || pendingSpell) return hexes
-    const stats = CREATURES[actor.type]
-    if (stats.range === 0 || actor.shots === 0 || isEnemyAdjacent(state.units, actor)) return hexes
-    for (const hex of allHexes()) {
-      if (hexDistance(actor.position, hex) <= stats.range) hexes.add(hexKey(hex))
+
+    if (!actor || pendingSpell) {
+      return hexes
     }
+
+    const stats = CREATURES[actor.type]
+
+    if (stats.range === 0 || actor.shots === 0 || isEnemyAdjacent(state.units, actor)) {
+      return hexes
+    }
+
+    for (const hex of allHexes()) {
+      if (hexDistance(actor.position, hex) <= stats.range) {
+        hexes.add(hexKey(hex))
+      }
+    }
+
     return hexes
   }, [state, actor, pendingSpell])
 
   const intentAt = (hex: Hex, point: Point): Intent | null => {
-    if (!actor) return null
+    if (!actor) {
+      return null
+    }
+
     const occupant = unitAt(state.units, hex)
+
     if (pendingSpell) {
       return occupant && !castProblem(state, pendingSpell, occupant.id)
         ? { kind: 'cast', spell: pendingSpell, target: occupant }
         : null
     }
+
     if (occupant) {
       const mode = attackMode(state, actor, occupant)
-      if (mode === 'shoot') return { kind: 'shoot', target: occupant }
-      if (mode !== 'melee') return null
+
+      if (mode === 'shoot') {
+        return { kind: 'shoot', target: occupant }
+      }
+
+      if (mode !== 'melee') {
+        return null
+      }
+
       // Strike from the free side of the target closest to the pointer.
       const origins = attackOrigins(state, actor, occupant)
       const from = origins.reduce((best, origin) =>
         distanceBetween(hexToPixel(origin), point) < distanceBetween(hexToPixel(best), point) ? origin : best,
       )
       const path = sameHex(from, actor.position) ? [] : (reachable.get(hexKey(from)) ?? [])
+
       return { kind: 'melee', target: occupant, from, path }
     }
+
     const path = reachable.get(hexKey(hex))
+
     return path ? { kind: 'move', to: hex, path } : null
   }
 
@@ -132,9 +172,16 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
 
   const perform = useCallback(
     async (move: Move) => {
-      if (!ready) return
+      if (!ready) {
+        return
+      }
+
       const next = applyMove(state, move)
-      if (next === state) return
+
+      if (next === state) {
+        return
+      }
+
       setSelectedHex(null)
       setPendingSpell(null)
       await animator.play(next.events, state.units, SPEED_FACTORS[speed])
@@ -149,44 +196,76 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
   const performRef = useRef(perform)
   performRef.current = perform
   useEffect(() => {
-    if (!ready || !computerTurn || modalOpen) return
-    const timer = setTimeout(() => performRef.current(chooseMove(state)), COMPUTER_DELAY_MS * SPEED_FACTORS[speed])
+    if (!ready || !computerTurn || modalOpen || !actor) {
+      return
+    }
+
+    const difficulty = difficulties[actor.owner]
+    const timer = setTimeout(() => performRef.current(chooseMove(state, difficulty)), COMPUTER_DELAY_MS * SPEED_FACTORS[speed])
+
     return () => clearTimeout(timer)
-  }, [ready, computerTurn, modalOpen, state, speed])
+  }, [ready, computerTurn, modalOpen, state, speed, actor, difficulties])
 
   const performIntent = (chosen: Intent) => {
-    if (chosen.kind === 'move') perform({ type: 'move', to: chosen.to })
-    else if (chosen.kind === 'shoot') perform({ type: 'attack', targetId: chosen.target.id })
-    else if (chosen.kind === 'melee') perform({ type: 'attack', targetId: chosen.target.id, from: chosen.from })
-    else perform({ type: 'cast', spell: chosen.spell, targetId: chosen.target.id })
+    if (chosen.kind === 'move') {
+      perform({ type: 'move', to: chosen.to })
+    } else if (chosen.kind === 'shoot') {
+      perform({ type: 'attack', targetId: chosen.target.id })
+    } else if (chosen.kind === 'melee') {
+      perform({ type: 'attack', targetId: chosen.target.id, from: chosen.from })
+    } else {
+      perform({ type: 'cast', spell: chosen.spell, targetId: chosen.target.id })
+    }
   }
 
   const handleBoardClick = (hex: Hex, point: Point) => {
     const clickedIntent = canAct ? intentAt(hex, point) : null
-    if (clickedIntent) performIntent(clickedIntent)
-    else setSelectedHex(selectedHex && sameHex(selectedHex, hex) ? null : hex)
+
+    if (clickedIntent) {
+      performIntent(clickedIntent)
+    } else {
+      setSelectedHex(selectedHex && sameHex(selectedHex, hex) ? null : hex)
+    }
   }
 
   const handleBoardRightClick = (hex: Hex) => {
     const unit = unitAt(state.units, hex)
-    if (unit) setDetailsUnitId(unit.id)
+
+    if (unit) {
+      setDetailsUnitId(unit.id)
+    }
   }
 
   const openSpellbook = () => {
-    if (canAct) setSpellbookOpen(true)
+    if (canAct) {
+      setSpellbookOpen(true)
+    }
   }
 
   useEffect(() => {
-    if (modalOpen) return
+    if (modalOpen) {
+      return
+    }
+
     const handleKey = (event: KeyboardEvent) => {
-      if (!canAct) return
+      if (!canAct) {
+        return
+      }
+
       const key = event.key.toLowerCase()
-      if (key === 'd') perform({ type: 'defend' })
-      else if (key === 'w') perform({ type: 'wait' })
-      else if (key === 'c') openSpellbook()
-      else if (key === 'escape') setPendingSpell(null)
+
+      if (key === 'd') {
+        perform({ type: 'defend' })
+      } else if (key === 'w') {
+        perform({ type: 'wait' })
+      } else if (key === 'c') {
+        openSpellbook()
+      } else if (key === 'escape') {
+        setPendingSpell(null)
+      }
     }
     window.addEventListener('keydown', handleKey)
+
     return () => window.removeEventListener('keydown', handleKey)
   })
 
@@ -204,10 +283,14 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
     pendingSpell ? state.units.filter((unit) => !castProblem(state, pendingSpell, unit.id)).map((unit) => unit.id) : [],
   )
   const targetUnitIds = new Set<string>()
+
   if (intent?.kind === 'cast') {
-    for (const unit of spellVictims(state.units, intent.spell, intent.target)) targetUnitIds.add(unit.id)
+    for (const unit of spellVictims(state.units, intent.spell, intent.target)) {
+      targetUnitIds.add(unit.id)
+    }
   } else if (intent && intent.kind !== 'move') {
     targetUnitIds.add(intent.target.id)
+
     if (intent.kind === 'shoot' && actor && hasAbility(actor.type, 'deathCloud')) {
       for (const unit of state.units) {
         if (hexDistance(unit.position, intent.target.position) === 1 && !hasAbility(unit.type, 'undead')) {
@@ -215,11 +298,16 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
         }
       }
     }
+
     if (intent.kind === 'melee' && actor && hasAbility(actor.type, 'breath')) {
       const burned = breathVictim(state.units, intent.from, intent.target)
-      if (burned) targetUnitIds.add(burned.id)
+
+      if (burned) {
+        targetUnitIds.add(burned.id)
+      }
     }
   }
+
 
   const highlights: BoardHighlights = {
     activeUnitId: animator.playing ? null : (actor?.id ?? null),
@@ -241,9 +329,15 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
   const detailsUnit = state.units.find((unit) => unit.id === detailsUnitId)
 
   let cursor = 'default'
-  if (intent?.kind === 'shoot' || intent?.kind === 'cast') cursor = 'crosshair'
-  else if (intent) cursor = 'pointer'
-  else if (hoveredUnit && canAct && hoveredUnit.owner !== actor?.owner) cursor = 'not-allowed'
+
+  if (intent?.kind === 'shoot' || intent?.kind === 'cast') {
+    cursor = 'crosshair'
+  } else if (intent) {
+    cursor = 'pointer'
+  } else if (hoveredUnit && canAct && hoveredUnit.owner !== actor?.owner) {
+    cursor = 'not-allowed'
+  }
+
 
   return (
     <div className="battle">
@@ -333,9 +427,13 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
           onClose={() => setSpellbookOpen(false)}
           onChoose={(spell) => {
             setSpellbookOpen(false)
+
             // Spells on everyone need no aiming: cast right away.
-            if (SPELLS[spell].target === 'everyone') perform({ type: 'cast', spell })
-            else setPendingSpell(spell)
+            if (SPELLS[spell].target === 'everyone') {
+              perform({ type: 'cast', spell })
+            } else {
+              setPendingSpell(spell)
+            }
           }}
         />
       )}
@@ -394,6 +492,7 @@ function TurnBanner({ state, actor, computer }: { state: GameState; actor: Unit 
 function killsText(target: Unit, minimum: number, maximum: number): string {
   const fewest = afterDamage(target, minimum).kills
   const most = afterDamage(target, maximum).kills
+
   return fewest === most ? `${most}` : `${fewest}–${most}`
 }
 
@@ -405,9 +504,16 @@ function statusText(
   canAct: boolean,
   pendingSpell: SpellId | null,
 ): string {
-  if (state.winner || !actor) return ''
-  if (!canAct) return '…'
+  if (state.winner || !actor) {
+    return ''
+  }
+
+  if (!canAct) {
+    return '…'
+  }
+
   const attackerHero = state.heroes[actor.owner]
+
 
   if (pendingSpell) {
     if (intent?.kind === 'cast') {
@@ -415,15 +521,20 @@ function statusText(
       const victims = spellVictims(state.units, intent.spell, intent.target)
       const others = victims.length > 1 ? ` (and ${victims.length - 1} more stack${victims.length > 2 ? 's' : ''})` : ''
       const damageNote = damage > 0 ? ` – ${damage} damage, kills ${killsText(intent.target, damage, damage)}${others}` : ''
+
       return `Cast ${SPELLS[intent.spell].name} on ${intent.target.label}${damageNote}`
     }
+
     return `Choose a target for ${SPELLS[pendingSpell].name}. Esc to cancel.`
   }
 
+
   if (intent?.kind === 'move') {
     const flying = hasAbility(actor.type, 'flying')
+
     return `${flying ? 'Fly' : 'Move'} ${actor.label} here (${pathLength(intent.path)} hexes)`
   }
+
   if (intent?.kind === 'shoot' || intent?.kind === 'melee') {
     const targetHero = state.heroes[intent.target.owner]
     const ranged = intent.kind === 'shoot'
@@ -435,17 +546,28 @@ function statusText(
     const burned = !ranged && hasAbility(actor.type, 'breath') ? breathVictim(state.units, intent.from, intent.target) : undefined
     const breathNote = burned ? ` · fire also burns ${burned.label}` : ''
     const flyBack = !ranged && hasAbility(actor.type, 'hitAndRun') && intent.path.length > 0 ? ' · then flies back' : ''
+
     return `${verb} ${intent.target.label}: ${damage} damage, kills ${killsText(intent.target, range.minimum, range.maximum)}${shotsLeft}${breathNote}${flyBack}`
   }
+
 
   if (hoveredUnit && hoveredUnit.owner !== actor.owner) {
     const problem = shotProblem(state.units, actor, hoveredUnit)
     const distance = hexDistance(actor.position, hoveredUnit.position)
-    if (problem === 'outOfRange') return `Out of range: ${distance} hexes away, range is ${CREATURES[actor.type].range}.`
+
+    if (problem === 'outOfRange') {
+      return `Out of range: ${distance} hexes away, range is ${CREATURES[actor.type].range}.`
+    }
+
     return `${hoveredUnit.label} are out of reach.`
   }
-  if (hoveredUnit) return `${hoveredUnit.count} ${CREATURES[hoveredUnit.type].plural} – right-click for details`
+
+  if (hoveredUnit) {
+    return `${hoveredUnit.count} ${CREATURES[hoveredUnit.type].plural} – right-click for details`
+  }
+
 
   const blocked = CREATURES[actor.type].range > 0 && isEnemyAdjacent(state.units, actor) ? ' Blocked: cannot shoot!' : ''
+
   return `${actor.label} (${actor.count}): move, attack, wait or defend.${blocked}`
 }
