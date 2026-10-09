@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CREATURES, FACTIONS, PLAYER_NAMES, type GameState, type Player } from '../game'
+import { CREATURES, FACTIONS, PLAYER_NAMES, WAR_MACHINES, type GameState, type Player } from '../game'
 import { playSound } from './sound'
 import { Icon, SpriteIcon } from './SpriteImage'
 
@@ -46,7 +46,7 @@ export function ResultOverlay({ state, onPlayAgain, onMainMenu }: ResultOverlayP
 }
 
 function Casualties({ state, player }: { state: GameState; player: Player }) {
-  const losses = FACTIONS[state.factions[player]].creatures
+  const losses = [...FACTIONS[state.factions[player]].creatures, ...WAR_MACHINES]
     .map((type) => ({ type, lost: state.casualties[player][type] ?? 0 }))
     .filter((loss) => loss.lost > 0)
 

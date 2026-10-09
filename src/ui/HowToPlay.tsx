@@ -13,6 +13,10 @@ export function HowToPlay() {
       <li>C: your hero casts one spell per round without ending the turn.</li>
       <li>W: wait and act later this round. D: defend for extra defense.</li>
       <li>Each side has {ARMY_BUDGET.toLocaleString('en-US')} gold to recruit its army: up to one stack of each creature.</li>
+      <li>
+        War machines never move. A Ballista shoots every turn, a First Aid Tent heals your most wounded stack each round,
+        and an Ammo Cart keeps your shooters supplied. They can't win a battle on their own.
+      </li>
       <li>Each hero has a specialty: a creature they lead better, or a spell they cast harder.</li>
       <li>Good morale may grant an extra turn; luck may double damage.</li>
       <li>Right-click any stack to see its full stats. Destroy every enemy stack to win.</li>

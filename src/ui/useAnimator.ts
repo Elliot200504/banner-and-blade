@@ -14,6 +14,7 @@ const FLOAT_MS = 1100
 export type ProjectileKind = 'arrow' | 'holy' | 'death' | 'magic' | 'fire'
 
 const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
+  ballista: 'arrow',
   archer: 'arrow',
   monk: 'holy',
   lich: 'death',
@@ -266,6 +267,12 @@ export function useAnimator() {
             updateView((current) => ({ ...current, dying: { ...current.dying, [event.unitId]: true } }))
             playSound('death')
             await sleep(duration(DEATH_MS))
+            break
+
+          case 'heal':
+            addFloatingText(positions[event.unitId], `+${event.amount}`, 'good')
+            playSound('regenerate')
+            await sleep(duration(NOTE_MS))
             break
 
           case 'regenerate':

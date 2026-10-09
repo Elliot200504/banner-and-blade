@@ -12,10 +12,12 @@ import {
   FACTIONS,
   HEROES,
   heroesOf,
+  isWarMachine,
   mostAffordable,
   PLAYER_NAMES,
   randomArmy,
   standardArmy,
+  WAR_MACHINES,
   withStack,
   type Army,
   type CreatureType,
@@ -49,10 +51,18 @@ function creatureSummary(type: CreatureType): string {
   const stats = CREATURES[type]
   const damage = stats.minDamage === stats.maxDamage ? `${stats.minDamage}` : `${stats.minDamage}–${stats.maxDamage}`
   const shooting = stats.shots > 0 ? ` · ${stats.shots} shots, range ${stats.range}` : ''
+  const abilities = stats.abilities.map((ability) => ABILITY_DESCRIPTIONS[ability])
+
+  if (isWarMachine(type)) {
+    const fighting = stats.maxDamage > 0 ? `Attack ${stats.attack} · Damage ${damage} · ` : ''
+
+    return [`${fighting}Defense ${stats.defense} · Health ${stats.hp}`, ...abilities].join('\n')
+  }
+
   const lines = [
     `Attack ${stats.attack} · Defense ${stats.defense} · Damage ${damage}`,
     `Health ${stats.hp} · Speed ${stats.speed}${shooting}`,
-    ...stats.abilities.map((ability) => ABILITY_DESCRIPTIONS[ability]),
+    ...abilities,
   ]
 
   return lines.join('\n')
@@ -300,6 +310,29 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           )
         })}
       </ul>
+      <div className="machines" role="group" aria-label={`${PLAYER_NAMES[player]} war machines`}>
+        <span className="machines__title">War machines</span>
+        {WAR_MACHINES.map((machine) => {
+          const bought = countOf(machine) > 0
+
+          return (
+            <button
+              key={machine}
+              className={`machines__option${bought ? ' machines__option--bought' : ''}`}
+              aria-pressed={bought}
+              title={creatureSummary(machine)}
+              disabled={!bought && mostAffordable(army, machine) === 0}
+              onClick={() => setCount(machine, bought ? 0 : 1)}
+            >
+              <SpriteIcon spriteId={machine} owner={player} size={24} mirrored={player === 'blue'} />
+              <span className="machines__name">
+                {CREATURES[machine].name}
+                <span className="recruit__cost">{CREATURES[machine].cost} gold</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
