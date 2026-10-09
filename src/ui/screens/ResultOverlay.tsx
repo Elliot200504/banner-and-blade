@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { CREATURES, FACTIONS, PLAYER_NAMES, UPGRADES, WAR_MACHINES, type GameState, type Player } from '../game'
-import { playSound } from './sound'
-import { Icon, SpriteIcon } from './SpriteImage'
+import { CREATURES, FACTIONS, PLAYER_NAMES, UPGRADES, WAR_MACHINES, type GameState, type Player } from '../../game'
+import { playSound } from '../audio/sound'
+import { Icon, SpriteIcon } from '../art/SpriteImage'
 
 interface ResultOverlayProps {
   state: GameState
