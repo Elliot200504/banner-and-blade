@@ -29,13 +29,13 @@ import {
   type Faction,
   type HeroId,
   type Player,
-} from '../game'
-import { About, GitHubLink } from './About'
-import { specialtyText } from './heroText'
-import { HeroStats } from './HeroStats'
-import { HowToPlay } from './HowToPlay'
-import { Modal } from './Modal'
-import { Icon, SpriteIcon } from './SpriteImage'
+} from '../../game'
+import { About, GitHubLink } from '../modals/About'
+import { specialtyText } from '../panels/heroText'
+import { HeroStats } from '../panels/HeroStats'
+import { HowToPlay } from '../modals/HowToPlay'
+import { Modal } from '../modals/Modal'
+import { Icon, SpriteIcon } from '../art/SpriteImage'
 
 /** Who plays a side: someone at the keyboard, or the computer. */
 export type Controller = 'human' | 'computer'
