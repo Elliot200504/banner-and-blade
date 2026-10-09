@@ -1,4 +1,4 @@
-import { isSpellSpecialist, SPELL_SPECIALTY_BONUS, type Hero } from './heroes'
+import { isSpellSpecialist, spellSpecialtyBonus, type Hero } from './heroes'
 
 export type SpellId =
   | 'magicArrow'
@@ -39,7 +39,7 @@ export const SPELLS: Record<SpellId, SpellDefinition> = {
   stoneSkin: { name: 'Stone Skin', cost: 5, level: 1, target: 'ally', description: '+3 defense for power rounds.' },
   cure: { name: 'Cure', cost: 6, level: 1, target: 'ally', description: 'Heals 10 + 5 × power and removes Slow, Curse and Petrify.' },
   deathRipple: {
-    name: 'Death Ripple', cost: 10, level: 2, target: 'everyone',
+    name: 'Death Ripple', cost: 15, level: 2, target: 'everyone',
     description: 'Deals 10 + 5 × power damage to every living stack, friend or foe.',
   },
   animateDead: {
@@ -68,7 +68,7 @@ export const OPPOSITE_EFFECT: Partial<Record<EffectId, EffectId>> = {
 
 /** The specialist's bonus, if the hero specialises in this spell. */
 const specialtyFactor = (spell: SpellId, hero: Pick<Hero, 'specialty'>) =>
-  isSpellSpecialist(hero, spell) ? SPELL_SPECIALTY_BONUS : 1
+  isSpellSpecialist(hero, spell) ? spellSpecialtyBonus(spell) : 1
 
 function baseDamage(spell: SpellId, power: number): number {
   if (spell === 'magicArrow') {
