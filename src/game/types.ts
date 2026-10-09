@@ -40,7 +40,7 @@ export interface Unit {
   effects: ActiveEffect[]
 }
 
-export type ObstacleKind = 'rock' | 'tree' | 'deadTree'
+export type ObstacleKind = 'rock' | 'tree' | 'deadTree' | 'tombstone' | 'stalagmite' | 'crystal'
 
 export interface Obstacle {
   position: Hex

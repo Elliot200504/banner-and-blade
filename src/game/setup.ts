@@ -8,7 +8,12 @@ import { PLAYER_NAMES } from './types'
 
 /** Rows the six stacks of an army start on, top to bottom. */
 const START_ROWS = [0, 2, 4, 6, 8, 10]
-const OBSTACLE_KINDS: ObstacleKind[] = ['rock', 'tree', 'deadTree']
+/** Each half of the field looks like home for the army that starts there. */
+const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
+  order: ['tree', 'rock'],
+  undead: ['deadTree', 'tombstone'],
+  dungeon: ['stalagmite', 'crystal'],
+}
 const OBSTACLE_PAIRS = 4
 
 function createArmy(owner: Player, faction: Faction, hero: Hero): Unit[] {
@@ -36,8 +41,11 @@ function createArmy(owner: Player, faction: Faction, hero: Hero): Unit[] {
   })
 }
 
-/** Obstacles in the middle of the field, mirrored so neither side is favored. */
-function createObstacles(random: Random): Obstacle[] {
+/**
+ * Obstacles in the middle of the field, mirrored so neither side is favored.
+ * Red's half gets obstacles from Red's homeland, Blue's half from Blue's.
+ */
+function createObstacles(random: Random, factions: Record<Player, Faction>): Obstacle[] {
   const obstacles: Obstacle[] = []
   const taken = new Set<string>()
   let attempts = 0
@@ -45,14 +53,16 @@ function createObstacles(random: Random): Obstacle[] {
     attempts++
     const column = random.integer(3, Math.floor(COLUMNS / 2))
     const row = random.integer(0, ROWS - 1)
-    const kind = OBSTACLE_KINDS[random.integer(0, OBSTACLE_KINDS.length - 1)]
+    const variant = random.integer(0, 1)
     const first = offsetToHex(column, row)
     const mirrored = offsetToHex(COLUMNS - 1 - column, ROWS - 1 - row)
     if (taken.has(hexKey(first)) || taken.has(hexKey(mirrored))) continue
     taken.add(hexKey(first))
     taken.add(hexKey(mirrored))
-    obstacles.push({ position: first, kind })
-    if (hexKey(first) !== hexKey(mirrored)) obstacles.push({ position: mirrored, kind })
+    obstacles.push({ position: first, kind: OBSTACLES_BY_FACTION[factions.red][variant] })
+    if (hexKey(first) !== hexKey(mirrored)) {
+      obstacles.push({ position: mirrored, kind: OBSTACLES_BY_FACTION[factions.blue][variant] })
+    }
   }
   return obstacles
 }
@@ -74,7 +84,7 @@ export function createBattle(
     units,
     heroes,
     factions,
-    obstacles: createObstacles(random),
+    obstacles: createObstacles(random, factions),
     round: 1,
     queue: buildQueue(units, 1),
     winner: null,

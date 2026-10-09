@@ -93,6 +93,15 @@ describe('setup', () => {
     expect([...speeds].sort((higher, lower) => lower - higher)).toEqual(speeds)
   })
 
+  it("dresses each half of the field in its army's homeland", () => {
+    const field = createBattle({ red: 'undead', blue: 'dungeon' }, 5)
+    for (const obstacle of field.obstacles) {
+      const { column } = hexToOffset(obstacle.position)
+      if (column < 7) expect(['deadTree', 'tombstone']).toContain(obstacle.kind)
+      if (column > 7) expect(['stalagmite', 'crystal']).toContain(obstacle.kind)
+    }
+  })
+
   it('is the same for the same seed', () => {
     expect(createBattle({ red: 'order', blue: 'undead' }, 42)).toEqual(state)
   })

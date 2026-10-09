@@ -1,7 +1,8 @@
 import { memo, useRef, type MouseEvent } from 'react'
-import { allHexes, CREATURES, hexKey, inBounds, sameHex, type Hex, type Obstacle, type Unit } from '../game'
+import { allHexes, CREATURES, hexKey, inBounds, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
 import { SpriteImage } from './SpriteImage'
+import { Terrain } from './Terrain'
 import type { SpriteId } from './sprites'
 import type { Theme } from './useTheme'
 import type { FloatingText, Projectile, ProjectileKind } from './useAnimator'
@@ -39,6 +40,8 @@ export interface BoardHighlights {
 interface BoardProps {
   units: DisplayUnit[]
   obstacles: Obstacle[]
+  /** Whose homeland each half of the field is. */
+  factions: Record<Player, Faction>
   highlights: BoardHighlights
   projectile: Projectile | null
   lightning: Point | null
@@ -111,7 +114,11 @@ export function Board(props: BoardProps) {
           <stop offset="1" style={{ stopColor: 'var(--board-bottom)' }} />
         </linearGradient>
       </defs>
-      <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#field)" />
+      {props.theme === 'synthwave' ? (
+        <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#field)" />
+      ) : (
+        <Terrain factions={props.factions} obstacles={props.obstacles} />
+      )}
 
       {HEXES.map((hex) => {
         const key = hexKey(hex)

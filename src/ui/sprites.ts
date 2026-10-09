@@ -10,7 +10,7 @@ export type SpriteId =
   | 'skeleton' | 'ghoul' | 'wraith' | 'vampire' | 'lich' | 'deathKnight'
   | 'troglodyte' | 'harpy' | 'beholder' | 'medusa' | 'minotaur' | 'blackDragon'
   | 'tyris' | 'edric' | 'adela' | 'vokial' | 'septienna' | 'thant' | 'lorelei' | 'dace' | 'deemer'
-  | 'rock' | 'tree' | 'deadTree' | 'crystal'
+  | 'rock' | 'tree' | 'deadTree' | 'crystal' | 'tombstone' | 'stalagmite'
 
 /**
  * Pixel art for every unit and obstacle. The characters 'T' (team color) and
@@ -537,6 +537,48 @@ export const SPRITES: Record<SpriteId, Sprite> = {
       '......obBo......',
       '.....obbBBo.....',
       '....oobbBBoo....',
+    ],
+  },
+  tombstone: {
+    palette: { o: OUTLINE, l: '#9a9aa2', g: '#6a6a72', d: '#3a3230' },
+    pixels: [
+      '................',
+      '................',
+      '................',
+      '.....oooooo.....',
+      '....ollllllo....',
+      '...ollllllllo...',
+      '...olllolllgo...',
+      '...ollooolggo...',
+      '...olllolllgo...',
+      '...olllolllgo...',
+      '...ollllllggo...',
+      '...ollllllggo...',
+      '...olllllgggo...',
+      '..oooooooooooo..',
+      '.odddddddddddddo',
+      '..oooooooooooo..',
+    ],
+  },
+  stalagmite: {
+    palette: { o: OUTLINE, l: '#a08a74', g: '#7a6656', G: '#54443a', d: '#2e2620' },
+    pixels: [
+      '................',
+      '.......oo.......',
+      '.......olo......',
+      '......ollgo.....',
+      '......ollgo.....',
+      '.....olllggo....',
+      '.....ollgggo..o.',
+      '....ollllggo.olo',
+      '....olllgggoolgo',
+      '...olllggggoolgo',
+      '...ollllgggGolgo',
+      '..olllgggggGolGo',
+      '..ollggggggGGlGo',
+      '.ollgggggGGGGgGo',
+      '.odddddddddddddo',
+      '..oooooooooooooo',
     ],
   },
   crystal: {

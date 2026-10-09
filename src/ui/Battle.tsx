@@ -259,6 +259,7 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
             <Board
               units={displayUnits}
               obstacles={state.obstacles}
+              factions={state.factions}
               highlights={highlights}
               projectile={animator.view.projectile}
               lightning={animator.view.lightning}
