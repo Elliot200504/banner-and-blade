@@ -1,5 +1,13 @@
-import { CREATURES, hasAbility } from './creatures'
-import { BLESS_SPECIALTY_BONUS, isSpellSpecialist, SPECIALTY_ATTACK, SPECIALTY_DEFENSE, SPECIALTY_SPEED, type Hero } from './heroes'
+import { CREATURES, hasAbility, HATES } from './creatures'
+import {
+  BLESS_SPECIALTY_BONUS,
+  HASTE_SPECIALTY_SPEED,
+  isSpellSpecialist,
+  SPECIALTY_ATTACK,
+  SPECIALTY_DEFENSE,
+  SPECIALTY_SPEED,
+  type Hero,
+} from './heroes'
 import type { Random } from './random'
 import type { EffectId } from './spells'
 import type { Unit } from './types'
@@ -11,6 +19,11 @@ export const CHARGE_BONUS_PER_HEX = 0.05
 export const MELEE_PENALTY = 0.5
 export const DEATHBLOW_CHANCE = 0.2
 export const PETRIFY_CHANCE = 0.2
+export const CURSE_CHANCE = 0.2
+export const CURSE_ROUNDS = 3
+export const HATRED_BONUS = 0.5
+/** Share of the target's defense that crushing blows ignore. */
+export const CRUSHING_IGNORES = 0.4
 
 export const hasEffect = (unit: Unit, effect: EffectId): boolean =>
   unit.effects.some((active) => active.effect === effect)
@@ -28,7 +41,8 @@ export function effectiveDefense(unit: Unit, hero: Hero): number {
 
 export function effectiveSpeed(unit: Unit): number {
   let speed = CREATURES[unit.type].speed + (unit.specialty ? SPECIALTY_SPEED : 0)
-  if (hasEffect(unit, 'haste')) speed += HASTE_SPEED
+  const haste = unit.effects.find((active) => active.effect === 'haste')
+  if (haste) speed += HASTE_SPEED + (haste.boosted ? HASTE_SPECIALTY_SPEED : 0)
   if (hasEffect(unit, 'slow')) speed = Math.max(1, Math.floor(speed / 2))
   return speed
 }
@@ -60,7 +74,8 @@ export function damageMultiplier(
   options: StrikeOptions,
 ): number {
   const attack = effectiveAttack(attacker, attackerHero)
-  const defense = effectiveDefense(target, targetHero)
+  let defense = effectiveDefense(target, targetHero)
+  if (hasAbility(attacker.type, 'crushing')) defense = Math.round(defense * (1 - CRUSHING_IGNORES))
   let multiplier =
     attack >= defense ? Math.min(4, 1 + 0.05 * (attack - defense)) : Math.max(0.3, 1 - 0.025 * (defense - attack))
 
@@ -70,6 +85,7 @@ export function damageMultiplier(
   if (!options.ranged && hasAbility(attacker.type, 'charge') && !hasAbility(target.type, 'braced')) {
     multiplier *= 1 + CHARGE_BONUS_PER_HEX * options.hexesMoved
   }
+  if (HATES[attacker.type] === target.type) multiplier *= 1 + HATRED_BONUS
   if (hasEffect(attacker, 'bless') && isSpellSpecialist(attackerHero, 'bless')) multiplier *= 1 + BLESS_SPECIALTY_BONUS
   return multiplier
 }

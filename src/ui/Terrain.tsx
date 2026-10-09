@@ -4,9 +4,12 @@ import { BOARD_HEIGHT, BOARD_WIDTH, hexToPixel } from './layout'
 
 /** Ground colors: each army fights on its own homeland's half of the field. */
 const GROUND: Record<Faction, string> = {
-  order: '#4c7a33',
-  undead: '#323238',
+  castle: '#4c7a33',
+  rampart: '#2f6b35',
+  stronghold: '#8a7344',
+  necropolis: '#323238',
   dungeon: '#5a412c',
+  inferno: '#4a1c16',
 }
 
 /** Size of one "pixel" in the decorations, to match the sprites' chunky look. */
@@ -28,8 +31,41 @@ const pixels = (cells: [number, number, number, number, string][]) =>
 
 const FLOWER_COLORS = ['#f2d14b', '#ece8f4', '#d9534f', '#c77dd8']
 
+const LEAF_COLORS = ['#3f8a3a', '#5aa83f', '#2c6a2e', '#c8a032']
+
 const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
-  order: [
+  rampart: [
+    () => pixels([[-1, -2, 1, 2, '#4a9a3c'], [0, -3, 1, 3, '#62b64a'], [1, -2, 1, 2, '#4a9a3c'], [-2, -1, 1, 1, '#4a9a3c']]),
+    (pick) => {
+      const leaf = LEAF_COLORS[Math.floor(pick * LEAF_COLORS.length)]
+      return pixels([[0, 0, 2, 1, leaf], [-1, 1, 2, 1, leaf]])
+    },
+    () => pixels([[0, -1, 1, 1, '#f4f0f8'], [-1, 0, 1, 1, '#f4f0f8'], [1, 0, 1, 1, '#f4f0f8'], [0, 0, 1, 1, '#f2d14b'], [0, 1, 1, 2, '#3f8a3a']]),
+    () => <ellipse rx={8} ry={3} fill="#24572a" opacity={0.6} />,
+  ],
+  stronghold: [
+    () => pixels([[-2, -2, 1, 2, '#b89a58'], [0, -3, 1, 3, '#c8aa62'], [2, -2, 1, 2, '#a88a48']]),
+    () => (
+      <>
+        <ellipse cx={-2} cy={0} rx={2} ry={1.5} fill="#a08858" />
+        <ellipse cx={2} cy={1} rx={1.5} ry={1} fill="#6e5a36" />
+      </>
+    ),
+    () => <polyline points="-8,0 -3,2 1,-1 7,1" fill="none" stroke="#5e4a2a" strokeWidth={1.5} />,
+    () => pixels([[-3, 0, 6, 1, '#e8e0c8'], [-4, -1, 1, 1, '#e8e0c8'], [3, -1, 1, 1, '#e8e0c8']]),
+  ],
+  inferno: [
+    () => <polyline points="-9,0 -4,-2 0,1 4,-1 9,1" fill="none" stroke="#ff7a1a" strokeWidth={1.5} opacity={0.85} />,
+    () => (
+      <>
+        <circle r={4} fill="#ff5a14" opacity={0.2} />
+        {pixels([[0, -1, 1, 1, '#ffd040'], [-1, 0, 3, 1, '#ff7a1a']])}
+      </>
+    ),
+    () => <polygon points="-8,-1 -3,-4 5,-3 8,1 2,3 -6,2" fill="#2a100c" stroke="#120604" strokeWidth={1} />,
+    () => pixels([[-2, 0, 1, 1, '#8a8078'], [1, -1, 1, 1, '#6a625a'], [0, 1, 1, 1, '#8a8078']]),
+  ],
+  castle: [
     (pick) => {
       const petal = FLOWER_COLORS[Math.floor(pick * FLOWER_COLORS.length)]
       return pixels([[0, -1, 1, 1, petal], [-1, 0, 1, 1, petal], [1, 0, 1, 1, petal], [0, 1, 1, 1, petal], [0, 0, 1, 1, '#f5c542']])
@@ -37,7 +73,7 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
     () => pixels([[-1, -2, 1, 2, '#6fa04a'], [0, -3, 1, 3, '#7fb455'], [1, -2, 1, 2, '#6fa04a']]),
     () => pixels([[-2, 0, 4, 1, '#5d8f3f'], [-1, -1, 2, 1, '#5d8f3f']]),
   ],
-  undead: [
+  necropolis: [
     () => pixels([[-3, 0, 6, 1, '#d8d2c0'], [-4, -1, 1, 1, '#d8d2c0'], [-4, 1, 1, 1, '#d8d2c0'], [3, -1, 1, 1, '#d8d2c0'], [3, 1, 1, 1, '#d8d2c0']]),
     () => <polyline points="-8,-3 -2,0 2,-2 8,2" fill="none" stroke="#1c1b20" strokeWidth={1.5} />,
     () => <ellipse rx={9} ry={4} fill="#4d4b52" opacity={0.7} />,

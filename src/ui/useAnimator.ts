@@ -13,11 +13,15 @@ const FLOAT_MS = 1100
 export type ProjectileKind = 'arrow' | 'holy' | 'death' | 'magic' | 'fire'
 
 const PROJECTILE_FOR: Partial<Record<CreatureType, ProjectileKind>> = {
-  crossbowman: 'arrow',
-  priest: 'holy',
+  archer: 'arrow',
+  monk: 'holy',
   lich: 'death',
   beholder: 'magic',
   medusa: 'arrow',
+  woodElf: 'arrow',
+  orc: 'arrow',
+  cyclops: 'magic',
+  gog: 'fire',
 }
 
 export interface FloatingText {
@@ -173,7 +177,7 @@ export function useAnimator() {
             if (event.splash) {
               // Death clouds and dragon fire spread from the main target, with no projectile of their own.
             } else if (event.ranged) {
-              await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'crossbowman'] ?? 'arrow')
+              await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'archer'] ?? 'arrow')
             } else {
               const lunge = between(from, to, 0.35)
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
@@ -189,7 +193,7 @@ export function useAnimator() {
             const target = positions[event.targetId]
             if (event.spell === 'magicArrow') {
               await shoot(casterPoint(event.caster), target, 'magic')
-            } else if (event.spell === 'meteorShower') {
+            } else if (event.spell === 'meteorShower' || event.spell === 'inferno') {
               await shoot({ x: target.x - 60, y: target.y - 220 }, target, 'fire')
             } else if (event.spell === 'lightningBolt') {
               updateView((current) => ({ ...current, lightning: target }))

@@ -1,6 +1,6 @@
-import { afterDamage, effectiveSpeed, PETRIFY_CHANCE, rollDamage, totalHp } from './combat'
+import { afterDamage, CURSE_CHANCE, CURSE_ROUNDS, effectiveSpeed, PETRIFY_CHANCE, rollDamage, totalHp } from './combat'
 import { CREATURES, hasAbility } from './creatures'
-import type { Hero } from './heroes'
+import { isSpellSpecialist, type Hero } from './heroes'
 import { hexDistance, hexKey, neighbors, sameHex, type Hex } from './hex'
 import { attackMode, pathLength, reachableHexes } from './movement'
 import { createRandom, type Random } from './random'
@@ -9,11 +9,23 @@ import type { BattleEvent, Casualties, GameState, Move, Player, Unit } from './t
 import { opponentOf, PLAYER_NAMES } from './types'
 
 const MAX_LOG = 80
+/** Chance that a magic-resistant stack shrugs off a hostile spell. */
+export const MAGIC_RESISTANCE_CHANCE = 0.2
+/** Spells up to this level do nothing to spell-immune stacks. */
+export const SPELL_IMMUNITY_LEVEL = 3
 
-/** A morale point is a 1 in 24 chance of an extra turn. Steadfast stacks get one more than their hero. */
-export function moraleOf(unit: Unit, hero: Hero): number {
-  return hero.morale + (hasAbility(unit.type, 'steadfast') ? 1 : 0)
+/**
+ * A morale point is a 1 in 24 chance of an extra turn. Steadfast stacks get one more than
+ * their hero, and a living fearsome enemy (a Bone Dragon) takes one away.
+ */
+export function moraleOf(unit: Unit, hero: Hero, units: Unit[] = []): number {
+  const feared = units.some((other) => other.owner !== unit.owner && other.count > 0 && hasAbility(other.type, 'fearsome'))
+  return hero.morale + (hasAbility(unit.type, 'steadfast') ? 1 : 0) - (feared ? 1 : 0)
 }
+
+/** Whether the spell can't touch this stack at all. */
+export const isImmune = (unit: Unit, spell: SpellId): boolean =>
+  hasAbility(unit.type, 'spellImmune') && SPELLS[spell].level <= SPELL_IMMUNITY_LEVEL
 
 /** The stack a dragon's breath also hits: the one right behind the target, seen from where the dragon strikes. */
 export function breathVictim(units: Unit[], from: Hex, target: Unit): Unit | undefined {
@@ -60,14 +72,17 @@ export function castProblem(state: GameState, spell: SpellId, targetId?: string)
   const wantsEnemy = definition.target === 'enemy'
   if (wantsEnemy !== (target.owner !== actor.owner)) return wantsEnemy ? 'Target an enemy stack.' : 'Target one of your stacks.'
   if (definition.undeadOnly && !hasAbility(target.type, 'undead')) return `${definition.name} only works on the undead.`
+  if (isImmune(target, spell)) return `${target.label} are immune to ${definition.name}.`
   return null
 }
 
-/** Every stack a spell would hit: the whole living field, the target and its neighbours, or just the target. */
+/** Every stack a spell would hit: the whole living field, the target and its surroundings, or just the target. Immune stacks are left out. */
 export function spellVictims(units: Unit[], spell: SpellId, target: Unit | undefined): Unit[] {
-  if (spell === 'deathRipple') return units.filter((unit) => !hasAbility(unit.type, 'undead'))
+  const affected = units.filter((unit) => !isImmune(unit, spell))
+  if (spell === 'deathRipple') return affected.filter((unit) => !hasAbility(unit.type, 'undead'))
   if (!target) return []
-  if (spell === 'meteorShower') return units.filter((unit) => hexDistance(unit.position, target.position) <= 1)
+  if (spell === 'meteorShower') return affected.filter((unit) => hexDistance(unit.position, target.position) <= 1)
+  if (spell === 'inferno') return affected.filter((unit) => hexDistance(unit.position, target.position) <= 2)
   return [target]
 }
 
@@ -159,7 +174,25 @@ function strike(
     updateUnit(draft, targetId, { petrified: true })
     draft.events.push({ kind: 'petrify', unitId: targetId })
     draft.log.push(`${target.label} are turned to stone!`)
+  } else if (
+    hasAbility(attacker.type, 'cursing') &&
+    !options.ranged &&
+    !options.splash &&
+    !isImmune(target, 'curse') &&
+    draft.random.chance(CURSE_CHANCE)
+  ) {
+    const effects = target.effects.filter((active) => active.effect !== 'curse' && active.effect !== 'bless')
+    updateUnit(draft, targetId, { effects: [...effects, { effect: 'curse', roundsLeft: CURSE_ROUNDS }] })
+    draft.log.push(`${target.label} are cursed!`)
   }
+}
+
+/** Whether a magic-resistant stack shrugs off a hostile spell. Rolls only for enemies of the caster. */
+function resists(draft: Draft, victim: Unit, caster: Player, spell: SpellId): boolean {
+  if (victim.owner === caster || !hasAbility(victim.type, 'magicResistance')) return false
+  if (!draft.random.chance(MAGIC_RESISTANCE_CHANCE)) return false
+  draft.log.push(`${victim.label} resist ${SPELLS[spell].name}!`)
+  return true
 }
 
 /** A melee blow, plus the dragon's breath on whoever stands behind the target. */
@@ -227,6 +260,7 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   const damage = spellDamage(spell, hero)
   if (damage > 0) {
     for (const victim of spellVictims(draft.units, spell, target)) {
+      if (resists(draft, victim, caster, spell)) continue
       const result = afterDamage(victim, damage)
       updateUnit(draft, victim.id, { count: result.count, topHp: result.topHp })
       recordLosses(draft, victim, result.kills)
@@ -250,14 +284,16 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   }
 
   if (!target) return
-  if (spell === 'cure') {
-    const topHp = Math.min(CREATURES[target.type].hp, target.topHp + cureAmount(hero.spellPower))
+  if (resists(draft, target, caster, spell)) {
+    // Shrugged off: the spell still flashes, but nothing changes.
+  } else if (spell === 'cure') {
+    const topHp = Math.min(CREATURES[target.type].hp, target.topHp + cureAmount(hero))
     const effects = target.effects.filter((active) => active.effect !== 'slow' && active.effect !== 'curse')
     updateUnit(draft, target.id, { topHp, effects, petrified: false, lostTurn: false })
   } else if (spell === 'animateDead') {
     // Heals the stack and raises its fallen, up to the size it started the battle with.
     const stats = CREATURES[target.type]
-    const health = Math.min(stats.armyCount * stats.hp, totalHp(target) + animateDeadAmount(hero))
+    const health = Math.min(target.startCount * stats.hp, totalHp(target) + animateDeadAmount(hero))
     const count = Math.max(target.count, Math.ceil(health / stats.hp))
     const raised = count - target.count
     updateUnit(draft, target.id, { count, topHp: health - (count - 1) * stats.hp })
@@ -267,7 +303,8 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   } else if (isEffect(spell)) {
     const opposite = OPPOSITE_EFFECT[spell]
     const effects = target.effects.filter((active) => active.effect !== spell && active.effect !== opposite)
-    updateUnit(draft, target.id, { effects: [...effects, { effect: spell, roundsLeft: Math.max(1, hero.spellPower) }] })
+    const boosted = isSpellSpecialist(hero, spell)
+    updateUnit(draft, target.id, { effects: [...effects, { effect: spell, roundsLeft: Math.max(1, hero.spellPower), boosted }] })
   }
   const after = getUnit(draft, target.id)!
   draft.events.push({
@@ -417,7 +454,7 @@ export function applyMove(state: GameState, move: Move): GameState {
 
   const actorAfter = getUnit(draft, actor.id)
   const hero = draft.heroes[actor.owner]
-  const morale = moraleOf(actor, hero)
+  const morale = moraleOf(actor, hero, draft.units)
   const moraleApplies =
     actorAfter && !hasAbility(actor.type, 'undead') && !actorAfter.hadMoraleTurn && !actorAfter.petrified && morale > 0
   if (canTriggerMorale && moraleApplies && draft.random.chance(morale / 24)) {

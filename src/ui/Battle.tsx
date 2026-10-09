@@ -25,6 +25,8 @@ import {
   SPELLS,
   spellVictims,
   unitAt,
+  type Army,
+  type Difficulty,
   type Faction,
   type GameState,
   type Hex,
@@ -59,15 +61,27 @@ type Intent =
 interface BattleProps {
   factions: Record<Player, Faction>
   controllers: Record<Player, Controller>
+  difficulties: Record<Player, Difficulty>
   heroes: Record<Player, HeroId>
+  armies: Record<Player, Army>
   seed: number
   theme: Theme
   onPlayAgain: () => void
   onMainMenu: () => void
 }
 
-export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain, onMainMenu }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes))
+export function Battle({
+  factions,
+  controllers,
+  difficulties,
+  heroes,
+  armies,
+  seed,
+  theme,
+  onPlayAgain,
+  onMainMenu,
+}: BattleProps) {
+  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes, armies))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
@@ -149,10 +163,11 @@ export function Battle({ factions, controllers, heroes, seed, theme, onPlayAgain
   const performRef = useRef(perform)
   performRef.current = perform
   useEffect(() => {
-    if (!ready || !computerTurn || modalOpen) return
-    const timer = setTimeout(() => performRef.current(chooseMove(state)), COMPUTER_DELAY_MS * SPEED_FACTORS[speed])
+    if (!ready || !computerTurn || modalOpen || !actor) return
+    const difficulty = difficulties[actor.owner]
+    const timer = setTimeout(() => performRef.current(chooseMove(state, difficulty)), COMPUTER_DELAY_MS * SPEED_FACTORS[speed])
     return () => clearTimeout(timer)
-  }, [ready, computerTurn, modalOpen, state, speed])
+  }, [ready, computerTurn, modalOpen, state, speed, actor, difficulties])
 
   const performIntent = (chosen: Intent) => {
     if (chosen.kind === 'move') perform({ type: 'move', to: chosen.to })

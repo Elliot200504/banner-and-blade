@@ -1,6 +1,7 @@
 import {
   BLESS_SPECIALTY_BONUS,
   CREATURES,
+  HASTE_SPECIALTY_SPEED,
   SPECIALTY_ATTACK,
   SPECIALTY_DEFENSE,
   SPECIALTY_SPEED,
@@ -19,6 +20,7 @@ export function specialtyText(hero: Pick<Hero, 'specialty'>): string {
   }
   const name = SPELLS[specialty.spell].name
   if (specialty.spell === 'bless') return `${name}: blessed stacks deal ${percent(BLESS_SPECIALTY_BONUS)} damage`
-  const what = specialty.spell === 'animateDead' ? 'healing' : 'damage'
+  if (specialty.spell === 'haste') return `${name}: hasted stacks get +${HASTE_SPECIALTY_SPEED} more speed`
+  const what = specialty.spell === 'animateDead' || specialty.spell === 'cure' ? 'healing' : 'damage'
   return `${name}: ${percent(SPELL_SPECIALTY_BONUS - 1)} ${what}`
 }

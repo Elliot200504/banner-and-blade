@@ -1,4 +1,5 @@
-import { CREATURES, FACTIONS, hasAbility, type Faction } from './creatures'
+import { armyProblem, standardArmy, type Army } from './army'
+import { CREATURES, hasAbility, type Faction } from './creatures'
 import { createHero, HEROES, heroesOf, type Hero, type HeroId } from './heroes'
 import { COLUMNS, hexKey, offsetToHex, ROWS } from './hex'
 import { createRandom, type Random } from './random'
@@ -6,27 +7,32 @@ import { buildQueue } from './rules'
 import type { GameState, Obstacle, ObstacleKind, Player, Unit } from './types'
 import { PLAYER_NAMES } from './types'
 
-/** Rows the six stacks of an army start on, top to bottom. */
-const START_ROWS = [0, 2, 4, 6, 8, 10]
 /** Each half of the field looks like home for the army that starts there. */
 const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
-  order: ['tree', 'rock'],
-  undead: ['deadTree', 'tombstone'],
+  castle: ['tree', 'rock'],
+  rampart: ['oak', 'mushroom'],
+  stronghold: ['boulder', 'totem'],
+  necropolis: ['deadTree', 'tombstone'],
   dungeon: ['stalagmite', 'crystal'],
+  inferno: ['lavaRock', 'fireVent'],
 }
 const OBSTACLE_PAIRS = 4
 
-function createArmy(owner: Player, faction: Faction, hero: Hero): Unit[] {
+/** The row each of `stacks` stacks starts on, spread evenly down the edge. Six stacks get rows 0, 2, 4, 6, 8 and 10. */
+const startRow = (index: number, stacks: number) => Math.round(((index + 0.5) * ROWS) / stacks - 0.5)
+
+function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
   const column = owner === 'red' ? 0 : COLUMNS - 1
-  return FACTIONS[faction].creatures.map((type, index) => {
+  return army.map(({ type, count }, index) => {
     const stats = CREATURES[type]
     return {
       id: `${owner}-${type}`,
       label: `${PLAYER_NAMES[owner]} ${stats.plural}`,
       type,
       owner,
-      position: offsetToHex(column, START_ROWS[index]),
-      count: stats.armyCount,
+      position: offsetToHex(column, startRow(index, army.length)),
+      count,
+      startCount: count,
       topHp: stats.hp,
       shots: stats.shots,
       retaliationsLeft: hasAbility(type, 'doubleRetaliation') ? 2 : 1,
@@ -72,14 +78,24 @@ function heroFor(faction: Faction, chosen: HeroId | undefined): Hero {
   return createHero(chosen && HEROES[chosen].faction === faction ? chosen : heroesOf(faction)[0])
 }
 
+/** The recruited army, or the faction's standard army if none (or one that breaks the rules) is given. */
+function armyFor(faction: Faction, recruited: Army | undefined): Army {
+  if (!recruited || armyProblem(recruited, faction)) return standardArmy(faction)
+  return recruited.filter((stack) => stack.count > 0)
+}
+
 export function createBattle(
   factions: Record<Player, Faction>,
   seed: number,
   chosenHeroes: Partial<Record<Player, HeroId>> = {},
+  armies: Partial<Record<Player, Army>> = {},
 ): GameState {
   const random = createRandom(seed)
   const heroes = { red: heroFor(factions.red, chosenHeroes.red), blue: heroFor(factions.blue, chosenHeroes.blue) }
-  const units = [...createArmy('red', factions.red, heroes.red), ...createArmy('blue', factions.blue, heroes.blue)]
+  const units = [
+    ...createArmy('red', armyFor(factions.red, armies.red), heroes.red),
+    ...createArmy('blue', armyFor(factions.blue, armies.blue), heroes.blue),
+  ]
   return {
     units,
     heroes,
