@@ -239,7 +239,7 @@ export function StartScreen({
                 }
               }}
             >
-              <SpriteIcon spriteId={faction} owner={player} size={32} />
+              <SpriteIcon spriteId={faction} owner={player} size={24} />
               {FACTIONS[faction].name}
             </button>
           )

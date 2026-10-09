@@ -672,10 +672,34 @@ select {
 
 /* Over the battlefield backdrop: see-through panels with a thin frame, so the field and armies show through. */
 .start-screen .army-picker__side {
+  /* An open drawer may use the full height, over the bottom row of buttons, which return once it closes. */
+  grid-row: 2 / 4;
+  position: relative;
+  z-index: 1;
   background: color-mix(in srgb, var(--panel) 55%, transparent);
   backdrop-filter: blur(3px);
   border-width: 1px;
   box-shadow: var(--shadow);
+}
+
+/* Each side keeps its own column, open or closed. */
+.army-picker__side--red,
+.side-summary--red {
+  grid-column: 1;
+}
+
+.army-picker__side--blue,
+.side-summary--blue {
+  grid-column: 3;
+}
+
+.side-summary {
+  grid-row: 2;
+}
+
+/* Red's open drawer covers the bottom row of buttons; hide them so they don't show through. */
+.start-screen:has(.army-picker__side--red) .start-screen__corner {
+  visibility: hidden;
 }
 
 /* A side's drawer slides out of its screen edge, and its closed card slides back into it. */
@@ -810,6 +834,11 @@ select {
 .army-picker__factions--grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Nine towns in two rows, so the town step stays as short as it was with six. */
+.army-picker__towns {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .army-picker__towns .faction-option {
