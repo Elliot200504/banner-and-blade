@@ -452,6 +452,14 @@ describe('heroes', () => {
     expect(spellDamage('deathRipple', hero)).toBe(Math.floor((10 + 5 * hero.spellPower) * 1.5))
   })
 
+  it("a death ripple specialist's ripple also hits enemy undead, but never her own", () => {
+    const hero = { ...createHero('septienna'), mana: 50 }
+    const units = [makeUnit('lich', 'red', 0, 0), makeUnit('vampire', 'blue', 14, 10), makeUnit('cavalier', 'blue', 14, 8)]
+    const next = applyMove(battle(units, { red: hero }), { type: 'cast', spell: 'deathRipple' })
+    const hit = next.events.flatMap((event) => (event.kind === 'spell' ? [event.targetId] : []))
+    expect(hit).toEqual(['blue-vampire', 'blue-cavalier'])
+  })
+
   it('meteor shower hits the target and everything next to it', () => {
     const hero = { ...createHero('deemer'), mana: 50 }
     const target = makeUnit('cavalier', 'blue', 7, 4)
