@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { createBattle, type Army, type Faction, type HeroId, type Player } from '../game'
-import wornTable from '../assets/backgrounds/wood_table_worn.webp'
+import { createBattle, type Army, type Faction, type HeroId, type Player } from '../../game'
+import wornTable from '../../assets/backgrounds/wood_table_worn.webp'
 import { Board, type BoardHighlights, type DisplayUnit } from './Board'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexToPixel } from './layout'
-import type { Theme } from './useTheme'
+import type { Theme } from '../hooks/useTheme'
 
 const NOTHING_HIGHLIGHTED: BoardHighlights = {
   activeUnitId: null,
