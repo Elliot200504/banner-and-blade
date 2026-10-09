@@ -50,6 +50,8 @@ interface BoardProps {
   onPointerMove: (hex: Hex | null, point: Point | null) => void
   onBoardClick: (hex: Hex, point: Point) => void
   onBoardRightClick: (hex: Hex) => void
+  /** The part of the board to show, as an SVG viewBox. The whole board when left out. */
+  viewBox?: string
 }
 
 const HEXES = allHexes()
@@ -116,7 +118,7 @@ export function Board(props: BoardProps) {
     <svg
       ref={svgRef}
       className="board"
-      viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
+      viewBox={props.viewBox ?? `0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
       style={{ cursor: props.cursor }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => props.onPointerMove(null, null)}
