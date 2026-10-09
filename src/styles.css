@@ -749,6 +749,20 @@ select {
   max-width: 920px;
 }
 
+/* One card per day, newest first. */
+.changelog {
+  display: grid;
+  gap: 10px;
+}
+
+.changelog__list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+  line-height: 1.5;
+}
+
 .hero-stats {
   display: flex;
   flex-wrap: wrap;
