@@ -1,5 +1,5 @@
-import { buildQueue, type GameState, type Unit } from '../game'
-import { Icon, SpriteIcon } from './SpriteImage'
+import { buildQueue, type GameState, type Unit } from '../../game'
+import { Icon, SpriteIcon } from '../art/SpriteImage'
 
 interface TurnQueueProps {
   state: GameState
