@@ -138,7 +138,12 @@ function strike(
   if (result.count === 0) {
     draft.events.push({ kind: 'death', unitId: targetId })
     draft.log.push(`${target.label} are destroyed!`)
-  } else if (hasAbility(attacker.type, 'petrify') && !options.splash && draft.random.chance(PETRIFY_CHANCE)) {
+  } else if (
+    hasAbility(attacker.type, 'petrify') &&
+    !options.splash &&
+    !target.petrified &&
+    draft.random.chance(PETRIFY_CHANCE)
+  ) {
     updateUnit(draft, targetId, { petrified: true })
     draft.events.push({ kind: 'petrify', unitId: targetId })
     draft.log.push(`${target.label} are turned to stone!`)
@@ -234,7 +239,7 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   if (spell === 'cure') {
     const topHp = Math.min(CREATURES[target.type].hp, target.topHp + cureAmount(hero.spellPower))
     const effects = target.effects.filter((active) => active.effect !== 'slow' && active.effect !== 'curse')
-    updateUnit(draft, targetId, { topHp, effects, petrified: false })
+    updateUnit(draft, targetId, { topHp, effects, petrified: false, lostTurn: false })
     event.targetTopHp = topHp
   } else if (isEffect(spell)) {
     const opposite = OPPOSITE_EFFECT[spell]
@@ -274,14 +279,19 @@ function beginNextTurn(draft: Draft, queue: string[], round: number): { queue: s
       queue = startRound(draft, round)
     }
     const unit = getUnit(draft, queue[0])!
-    if (!unit.petrified) {
-      startTurn(draft, unit.id)
-      return { queue, round }
+    if (unit.petrified && !unit.lostTurn) {
+      updateUnit(draft, unit.id, { lostTurn: true, defending: false })
+      draft.events.push({ kind: 'stoneSkip', unitId: unit.id })
+      draft.log.push(`${unit.label} are stone and lose their turn.`)
+      queue = queue.slice(1)
+      continue
     }
-    updateUnit(draft, unit.id, { petrified: false, defending: false })
-    draft.events.push({ kind: 'stoneSkip', unitId: unit.id })
-    draft.log.push(`${unit.label} are stone and lose their turn.`)
-    queue = queue.slice(1)
+    if (unit.petrified) {
+      updateUnit(draft, unit.id, { petrified: false, lostTurn: false })
+      draft.log.push(`${unit.label} break free of the stone.`)
+    }
+    startTurn(draft, unit.id)
+    return { queue, round }
   }
 }
 

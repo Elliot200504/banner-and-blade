@@ -34,6 +34,7 @@ export interface Unit {
   hadMoraleTurn: boolean
   /** Turned to stone: loses its next turn and cannot strike back until then. */
   petrified: boolean
+  lostTurn: boolean
   effects: ActiveEffect[]
 }
 

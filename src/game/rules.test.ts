@@ -44,6 +44,7 @@ function makeUnit(type: CreatureType, owner: Player, column: number, row: number
     waited: false,
     hadMoraleTurn: false,
     petrified: false,
+    lostTurn: false,
     effects: [],
     ...changes,
   }
@@ -336,13 +337,26 @@ describe('dungeon', () => {
     expect(outcomes).toContain(false)
   })
 
-  it('a petrified stack loses its next turn, then recovers', () => {
+  it('a petrified stack loses its next turn and stays stone until the one after', () => {
     const state = battle([makeUnit('knight', 'red', 0, 0), makeUnit('ghoul', 'blue', 14, 10, { petrified: true })])
-    const next = applyMove(state, { type: 'defend' })
-    expect(next.round).toBe(2)
-    expect(activeUnit(next)?.id).toBe('red-knight')
-    expect(find(next, 'blue-ghoul')?.petrified).toBe(false)
-    expect(next.events.some((event) => event.kind === 'stoneSkip')).toBe(true)
+    const skipped = applyMove(state, { type: 'defend' })
+    expect(skipped.round).toBe(2)
+    expect(activeUnit(skipped)?.id).toBe('red-knight')
+    expect(skipped.events.some((event) => event.kind === 'stoneSkip')).toBe(true)
+    expect(find(skipped, 'blue-ghoul')?.petrified).toBe(true)
+
+    const freed = applyMove(skipped, { type: 'defend' })
+    expect(activeUnit(freed)?.id).toBe('blue-ghoul')
+    expect(find(freed, 'blue-ghoul')?.petrified).toBe(false)
+  })
+
+  it('a medusa cannot petrify a stack that is already stone', () => {
+    const outcomes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((seed) => {
+      const knights = makeUnit('knight', 'blue', 5, 0, { petrified: true, lostTurn: true })
+      const state = { ...battle([makeUnit('medusa', 'red', 0, 0), knights]), seed }
+      return applyMove(state, { type: 'attack', targetId: 'blue-knight' }).events.some((event) => event.kind === 'petrify')
+    })
+    expect(outcomes).not.toContain(true)
   })
 
   it('a petrified stack cannot strike back', () => {

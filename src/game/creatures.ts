@@ -161,7 +161,7 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
   noMeleePenalty: 'No penalty when fighting in melee.',
   undead: 'Undead: unaffected by morale and death clouds.',
   hitAndRun: 'Flies back to where it started after a melee attack.',
-  petrify: '20% chance to turn the target to stone: it loses its next turn and cannot strike back.',
+  petrify: '20% chance to turn the target to stone: it loses its next turn and cannot strike back until it breaks free.',
   steadfast: '+1 morale on top of the hero.',
   breath: 'Melee attacks also burn the stack behind the target, friend or foe.',
 }

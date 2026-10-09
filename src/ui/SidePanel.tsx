@@ -54,7 +54,7 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
   const statusEffects = [
     unit.defending && 'Defending',
     unit.waited && 'Waiting',
-    unit.petrified && 'Petrified: loses its next turn',
+    unit.petrified && (unit.lostTurn ? 'Stone: breaks free on its next turn' : 'Petrified: loses its next turn'),
     unit.retaliationsLeft === 0 && 'No retaliation left',
   ].filter(Boolean)
 
