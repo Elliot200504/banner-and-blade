@@ -436,6 +436,10 @@ select {
   visibility: hidden;
 }
 
+.difficulty-option .sprite-icon--inline {
+  margin-right: 3px;
+}
+
 .faction-option {
   font: inherit;
   font-size: calc(8px * var(--text-scale));

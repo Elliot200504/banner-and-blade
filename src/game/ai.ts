@@ -1,6 +1,6 @@
-import { effectiveSpeed, totalHp } from './combat'
-import { CREATURES, isWarMachine } from './creatures'
-import { hexDistance, type Hex } from './hex'
+import { afterDamage, damageRange, effectiveSpeed, totalHp } from './combat'
+import { CREATURES, hasAbility, isWarMachine } from './creatures'
+import { hexDistance, hexKey, neighbors, type Hex } from './hex'
 import { attackMode, attackOrigins, isEnemyAdjacent, reachableHexes } from './movement'
 import { createRandom } from './random'
 import { activeUnit, applyMove, castProblem } from './rules'
@@ -28,10 +28,14 @@ const RETREAT_SHARE = 0.15
 const RETREAT_FROM_ROUND = 3
 /** How much an active effect changes a stack's worth, at full strength. */
 const EFFECT_WEIGHT: Record<EffectId, number> = { haste: 0.15, bless: 0.2, stoneSkin: 0.15, slow: -0.2, curse: -0.2 }
+/** After the patient rounds, an Expert's fear of enemy blows fades by this share per round, so two careful armies still meet. */
+const CAUTION_FADE_PER_ROUND = 0.1
+/** An Expert only waits when the best move now gains less than this share of the stack's value over standing still. */
+const WAIT_MARGIN = 0.1
 
-export type Difficulty = 'easy' | 'normal' | 'hard'
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'expert'
 
-export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard']
+export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard', 'expert']
 
 interface Profile {
   /** How many imagined rolls each move is averaged over. */
@@ -48,12 +52,20 @@ interface Profile {
   waits: boolean
   /** Picks at random among this many of the best moves. */
   choices: number
+  /**
+   * How much the blows enemies can land before the stack acts again count against a position.
+   * This is what makes a stack keep out of reach, shield its shooters and strike first. 0 ignores them.
+   */
+  threatWeight: number
+  /** Worth of an enemy that has used up its retaliation while an ally can still hit it this round, as a share of the blow saved. */
+  baitWeight: number
 }
 
 const PROFILES: Record<Difficulty, Profile> = {
-  easy: { samples: 1, aggression: 1.2, distancePenalty: 0.02, castsSpells: false, waits: false, choices: 3 },
-  normal: { samples: 3, aggression: 1.2, distancePenalty: 0.02, castsSpells: true, waits: true, choices: 1 },
-  hard: { samples: 8, aggression: 1.5, distancePenalty: 0.03, castsSpells: true, waits: true, choices: 1 },
+  easy: { samples: 1, aggression: 1.2, distancePenalty: 0.02, castsSpells: false, waits: false, choices: 3, threatWeight: 0, baitWeight: 0 },
+  normal: { samples: 3, aggression: 1.2, distancePenalty: 0.02, castsSpells: true, waits: true, choices: 1, threatWeight: 0, baitWeight: 0 },
+  hard: { samples: 8, aggression: 1.5, distancePenalty: 0.03, castsSpells: true, waits: true, choices: 1, threatWeight: 0, baitWeight: 0 },
+  expert: { samples: 6, aggression: 1.4, distancePenalty: 0.02, castsSpells: true, waits: true, choices: 1, threatWeight: 0.5, baitWeight: 0.5 },
 }
 
 const isShooter = (unit: Unit) => CREATURES[unit.type].range > 0 && unit.shots > 0
@@ -156,12 +168,138 @@ function shouldWait(state: GameState, actor: Unit, best: Move): boolean {
 const enemyPositionsOf = (state: GameState, player: Player): Hex[] =>
   state.units.filter((unit) => unit.owner !== player).map((unit) => unit.position)
 
+/*
+ * Expert tactics, after how skilled Heroes III players fight:
+ * My own personal experience playing the game for thousands of hours 
+ * Applying the same principles to the AI, so it can play like a human would.
+ * It's not perfect, but it makes the AI more challenging and fun to play against.
+ */
+
+const canShoot = (units: Unit[], unit: Unit) => isShooter(unit) && (isWarMachine(unit.type) || !isEnemyAdjacent(units, unit))
+
+/** Whether `defender` would strike back if `attacker` hit it in melee. */
+function wouldRetaliate(state: GameState, attacker: Unit, defender: Unit): boolean {
+  if (hasAbility(attacker.type, 'noRetaliation') || defender.petrified || isWarMachine(defender.type)) {
+    return false
+  }
+
+  // A stack that has already struck back this round strikes again once a new round begins.
+  return defender.retaliationsLeft > 0 || !state.queue.includes(attacker.id)
+}
+
+/** The worth of the creatures an average blow from `attacker` would kill in `target`, and what is left of the target. */
+function averageBlow(state: GameState, attacker: Unit, target: Unit, ranged: boolean): { value: number; survivor: Unit } {
+  const range = damageRange(attacker, state.heroes[attacker.owner], target, state.heroes[target.owner], { ranged, hexesMoved: 0 })
+  const twice = ranged ? hasAbility(attacker.type, 'doubleShot') : hasAbility(attacker.type, 'doubleStrike')
+  const damage = Math.min(totalHp(target), ((range.minimum + range.maximum) / 2) * (twice ? 2 : 1))
+  const { count, topHp } = afterDamage(target, damage)
+
+  return { value: (damage / totalHp(target)) * stackValue(target), survivor: { ...target, count, topHp } }
+}
+
+/** What `attacker` gains by striking `target`: the worth it kills, less the worth the retaliation would kill. */
+function exchangeValue(state: GameState, attacker: Unit, target: Unit, ranged: boolean): number {
+  const blow = averageBlow(state, attacker, target, ranged)
+
+  if (ranged || blow.survivor.count === 0 || !wouldRetaliate(state, attacker, target)) {
+    return blow.value
+  }
+
+  return blow.value - averageBlow(state, blow.survivor, attacker, false).value
+}
+
+/** Whether `attacker` could walk or fly next to `target` and strike it, given the hexes it can reach. */
+function canReachInMelee(attacker: Unit, target: Unit, reach: Map<string, Hex[]>): boolean {
+  return hexDistance(attacker.position, target.position) === 1 || neighbors(target.position).some((hex) => reach.has(hexKey(hex)))
+}
+
+type ReachOf = (unit: Unit) => Map<string, Hex[]>
+
+/** The best exchange `enemy` could make against one of `player`'s stacks from where everyone stands now. */
+function worstBlowFrom(state: GameState, enemy: Unit, player: Player, reachOf: ReachOf): number {
+  if (enemy.petrified || CREATURES[enemy.type].maxDamage === 0) {
+    return 0
+  }
+
+  const targets = state.units.filter((unit) => unit.owner === player)
+
+  if (canShoot(state.units, enemy)) {
+    const inRange = targets.filter((target) => hexDistance(enemy.position, target.position) <= CREATURES[enemy.type].range)
+
+    return Math.max(0, ...inRange.map((target) => exchangeValue(state, enemy, target, true)))
+  }
+
+  if (isWarMachine(enemy.type)) {
+    return 0
+  }
+
+  // Walkers have to go around stacks, so a wall of our units keeps them off whatever stands behind it.
+  const reach = reachOf(enemy)
+  const inReach = targets.filter((target) => canReachInMelee(enemy, target, reach))
+
+  return Math.max(0, ...inReach.map((target) => exchangeValue(state, enemy, target, false)))
+}
+
+/** The worth of a blow saved by an enemy having already struck back, when one of `player`'s stacks still to act can hit it. */
+function baitedValue(state: GameState, enemy: Unit, player: Player, reachOf: ReachOf): number {
+  if (enemy.retaliationsLeft > 0 || hasAbility(enemy.type, 'unlimitedRetaliation') || isWarMachine(enemy.type)) {
+    return 0
+  }
+
+  const followers = state.units.filter(
+    (unit) =>
+      unit.owner === player &&
+      state.queue.includes(unit.id) &&
+      !isShooter(unit) &&
+      !hasAbility(unit.type, 'noRetaliation') &&
+      canReachInMelee(unit, enemy, reachOf(unit)),
+  )
+
+  return Math.max(0, ...followers.map((follower) => averageBlow(state, enemy, follower, false).value))
+}
+
+/** How strongly an Expert still fears enemy blows: fully at first, fading once the battle drags on. */
+const caution = (profile: Profile, round: number) =>
+  profile.threatWeight * Math.max(0, 1 - CAUTION_FADE_PER_ROUND * Math.max(0, round - PATIENT_ROUNDS))
+
+/**
+ * The Expert's read of the position for `player`: the blows every enemy could land before
+ * `player`'s stacks act again count against it, and enemies baited out of their retaliation count for it.
+ * Zero for the other difficulties.
+ */
+export function tacticalScore(state: GameState, player: Player, profile: Profile = PROFILES.normal): number {
+  if (state.winner || profile.threatWeight === 0) {
+    return 0
+  }
+
+  const reaches = new Map<string, Map<string, Hex[]>>()
+  const reachOf: ReachOf = (unit) => {
+    let reach = reaches.get(unit.id)
+
+    if (!reach) {
+      reach = reachableHexes(state, unit)
+      reaches.set(unit.id, reach)
+    }
+
+    return reach
+  }
+  let score = 0
+
+  for (const enemy of state.units.filter((unit) => unit.owner !== player)) {
+    score -= caution(profile, state.round) * worstBlowFrom(state, enemy, player, reachOf)
+    score += profile.baitWeight * baitedValue(state, enemy, player, reachOf)
+  }
+
+  return score
+}
+
 /** The average score of a move over the AI's imagined rolls, or null if the move is not allowed. */
 function scoreMove(state: GameState, move: Move, player: Player, profile: Profile): number | null {
   const enemyPositions = enemyPositionsOf(state, player)
   let total = 0
+  let tactics = 0
 
-  for (const seed of SAMPLE_SEEDS.slice(0, profile.samples)) {
+  for (const [index, seed] of SAMPLE_SEEDS.slice(0, profile.samples).entries()) {
     const before = { ...state, seed }
     const after = applyMove(before, move)
 
@@ -170,9 +308,14 @@ function scoreMove(state: GameState, move: Move, player: Player, profile: Profil
     }
 
     total += scoreState(after, player, enemyPositions, profile)
+
+    // Where the stacks end up hardly depends on the rolls, so the board is read once to save time.
+    if (index === 0) {
+      tactics = tacticalScore(after, player, profile)
+    }
   }
 
-  return total / profile.samples
+  return total / profile.samples + tactics
 }
 
 /** Every move that ends the active stack's turn: attacks, moves and defend. */
@@ -274,20 +417,24 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
     return { type: 'retreat' }
   }
 
+  const now = scoreState(state, player, enemyPositionsOf(state, player), profile) + tacticalScore(state, player, profile)
+
   if (profile.castsSpells) {
     const bestSpell = bestOf(state, spellMoves(state), player, profile)
-    const now = scoreState(state, player, enemyPositionsOf(state, player), profile)
 
     if (bestSpell && bestSpell.score > now) {
       return bestSpell.move
     }
   }
 
-  const best = bestOf(state, actionMoves(state), player, profile)?.move ?? { type: 'defend' }
+  const best = bestOf(state, actionMoves(state), player, profile) ?? { move: { type: 'defend' }, score: now }
 
-  if (profile.waits && shouldWait(state, actor, best)) {
-    return { type: 'wait' }
+  if (profile.waits && shouldWait(state, actor, best.move)) {
+    // An Expert only waits when nothing urgent is on: no stack to shield and no blow to dodge.
+    if (profile.threatWeight === 0 || best.score - now < WAIT_MARGIN * stackValue(actor)) {
+      return { type: 'wait' }
+    }
   }
 
-  return best
+  return best.move
 }
