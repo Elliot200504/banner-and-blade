@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  ABILITY_DESCRIPTIONS,
   ARMY_BUDGET,
   armyCost,
   armyProblem,
@@ -24,6 +25,7 @@ import {
   type Player,
 } from '../game'
 import { specialtyText } from './heroText'
+import { HeroStats } from './HeroStats'
 import { HowToPlay } from './HowToPlay'
 import { Modal } from './Modal'
 import { Icon, SpriteIcon } from './SpriteImage'
@@ -41,6 +43,20 @@ const DIFFICULTY_HINTS: Record<Difficulty, string> = {
 }
 
 const formatGold = (gold: number) => gold.toLocaleString('en-US')
+
+/** A creature's stats and abilities in a few lines, for the recruit list's tooltips. */
+function creatureSummary(type: CreatureType): string {
+  const stats = CREATURES[type]
+  const damage = stats.minDamage === stats.maxDamage ? `${stats.minDamage}` : `${stats.minDamage}–${stats.maxDamage}`
+  const shooting = stats.shots > 0 ? ` · ${stats.shots} shots, range ${stats.range}` : ''
+  const lines = [
+    `Attack ${stats.attack} · Defense ${stats.defense} · Damage ${damage}`,
+    `Health ${stats.hp} · Speed ${stats.speed}${shooting}`,
+    ...stats.abilities.map((ability) => ABILITY_DESCRIPTIONS[ability]),
+  ]
+
+  return lines.join('\n')
+}
 
 interface StartScreenProps {
   factions: Record<Player, Faction>
@@ -214,6 +230,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
       <p className="army-preview__specialty">
         <Icon name="star" /> {specialtyText(hero)}
       </p>
+      <HeroStats hero={hero} showKnowledge />
       <div className="recruit__gold">
         <span>
           <Icon name="gold" /> {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
@@ -246,7 +263,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
               <SpriteIcon spriteId={type} owner={player} size={32} mirrored={player === 'blue'} />
-              <span className="recruit__name">
+              <span className="recruit__name" title={creatureSummary(type)}>
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
               </span>

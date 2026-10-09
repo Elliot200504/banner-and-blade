@@ -515,6 +515,18 @@ select {
   }
 }
 
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: calc(8px * var(--text-scale));
+}
+
+.hero-stats > span {
+  cursor: help;
+  white-space: nowrap;
+}
+
 .army-preview__specialty {
   margin: 0;
   font-size: calc(8px * var(--text-scale));
@@ -835,11 +847,9 @@ select {
   gap: 4px;
 }
 
-.hero-panel__stats {
-  display: flex;
+.hero-panel .hero-stats {
   justify-content: space-between;
   gap: 4px;
-  font-size: calc(8px * var(--text-scale));
 }
 
 .mana-bar {
