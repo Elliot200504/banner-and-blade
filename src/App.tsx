@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { heroesOf, standardArmy, type Army, type Difficulty, type Faction, type HeroId, type Player } from './game'
+import { heroesOf, sizedArmy, standardArmy, type Army, type ArmySize, type Difficulty, type Faction, type HeroId, type Player } from './game'
 import { About, GitHubLink } from './ui/modals/About'
 import { Backdrop } from './ui/board/Backdrop'
 import { Battle } from './ui/screens/Battle'
@@ -20,6 +20,7 @@ export default function App() {
   const [controllers, setControllers] = useState<Record<Player, Controller>>({ red: 'human', blue: 'computer' })
   const [difficulties, setDifficulties] = useState<Record<Player, Difficulty>>({ red: 'normal', blue: 'normal' })
   const [armies, setArmies] = useState<Record<Player, Army>>({ red: standardArmy('castle'), blue: standardArmy('necropolis') })
+  const [armySizes, setArmySizes] = useState<Record<Player, ArmySize>>({ red: 'small', blue: 'small' })
   const [seed, setSeed] = useState(newSeed)
   // Kept here so that coming back from a battle does not mean clicking through the setup again.
   const [setup, setSetup] = useState<SetupProgress>(NEW_SETUP)
@@ -77,17 +78,23 @@ export default function App() {
           heroes={heroes}
           difficulties={difficulties}
           armies={armies}
+          armySizes={armySizes}
           setup={setup}
           onChangeSetup={setSetup}
           onChangeFaction={(player, faction) => {
             setFactions((current) => ({ ...current, [player]: faction }))
             setHeroes((current) => ({ ...current, [player]: heroesOf(faction)[0] }))
-            setArmies((current) => ({ ...current, [player]: standardArmy(faction) }))
+            setArmies((current) => ({ ...current, [player]: sizedArmy(faction, armySizes[player]) }))
           }}
           onChangeHero={(player, hero) => setHeroes((current) => ({ ...current, [player]: hero }))}
           onChangeController={(player, controller) => setControllers((current) => ({ ...current, [player]: controller }))}
           onChangeDifficulty={(player, difficulty) => setDifficulties((current) => ({ ...current, [player]: difficulty }))}
           onChangeArmy={(player, army) => setArmies((current) => ({ ...current, [player]: army }))}
+          onChangeArmySize={(player, size) => {
+            // A new size brings that size's standard army with it.
+            setArmySizes((current) => ({ ...current, [player]: size }))
+            setArmies((current) => ({ ...current, [player]: sizedArmy(factions[player], size) }))
+          }}
           onStart={startBattle}
           onOpenSettings={() => setSettingsOpen(true)}
         />
