@@ -15,6 +15,9 @@ export const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
   necropolis: ['deadTree', 'tombstone'],
   dungeon: ['stalagmite', 'crystal'],
   inferno: ['lavaRock', 'fireVent'],
+  tower: ['snowPine', 'iceRock'],
+  fortress: ['reeds', 'swampLog'],
+  conflux: ['runestone', 'elementalShard'],
 }
 const OBSTACLE_PAIRS = 4
 

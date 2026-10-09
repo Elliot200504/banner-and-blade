@@ -7,6 +7,7 @@ import {
   SPECIALTY_SPEED,
   SPELL_SPECIALTY_BONUS,
   SPELLS,
+  STONE_SKIN_SPECIALTY_DEFENSE,
   type Hero,
 } from '../game'
 
@@ -28,6 +29,10 @@ export function specialtyText(hero: Pick<Hero, 'specialty'>): string {
 
   if (specialty.spell === 'haste') {
     return `${name}: hasted stacks get +${HASTE_SPECIALTY_SPEED} more speed`
+  }
+
+  if (specialty.spell === 'stoneSkin') {
+    return `${name}: protected stacks get +${STONE_SKIN_SPECIALTY_DEFENSE} more defense`
   }
 
   if (specialty.spell === 'deathRipple') {
