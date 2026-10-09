@@ -652,7 +652,7 @@ select {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   padding: 10px;
   /* Sized to fit; on a very short window it still scrolls, but without a visible scrollbar. */
   scrollbar-width: none;
@@ -836,11 +836,6 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* Nine towns in two rows, so the town step stays as short as it was with six. */
-.army-picker__towns {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
 .army-picker__towns .faction-option {
   display: flex;
   align-items: center;
@@ -977,6 +972,13 @@ select {
   color: var(--highlight);
 }
 
+.army-preview__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 16px;
+}
+
 .army-preview__specialty-label {
   color: var(--text-muted);
 }
@@ -1040,7 +1042,7 @@ select {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .recruit__row {
@@ -1074,7 +1076,7 @@ select {
   flex: none;
   display: grid;
   place-items: center;
-  padding: 3px;
+  padding: 1px;
   background: rgba(0, 0, 0, 0.35);
   border: 2px solid var(--edge);
   cursor: pointer;
@@ -1101,14 +1103,16 @@ select {
 
 .recruit__step {
   width: 22px;
-  padding: 2px 0;
+  padding: 1px 0;
+  line-height: 1.2;
 }
 
 .recruit__input {
   font: inherit;
   font-size: calc(9px * var(--text-scale));
   width: 44px;
-  padding: 2px 2px;
+  padding: 1px 2px;
+  line-height: 1.2;
   text-align: center;
   border: 2px solid var(--edge);
   background: var(--status-background);
@@ -1125,7 +1129,7 @@ select {
 
 .recruit__upgrade-gap {
   flex: none;
-  width: 26px;
+  width: 22px;
 }
 
 /* Short windows: no hero class, so the army still fits. */
