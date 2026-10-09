@@ -1,5 +1,5 @@
-import type { Hero } from '../game'
-import { Icon } from './SpriteImage'
+import type { Hero } from '../../game'
+import { Icon } from '../art/SpriteImage'
 
 /** What each hero stat does, shown when hovering it. */
 export const HERO_STAT_TIPS = {
