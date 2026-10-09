@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { SPELLS, type BattleEvent, type CreatureType, type Player, type Unit } from '../game'
+import { SPELLS, type BattleEvent, type CreatureType, type Player, type Unit } from '../../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
-import { playSound, type SoundId } from './sound'
+import { playSound, type SoundId } from '../audio/sound'
 
 const STEP_MS = 140
 const FLY_MS_PER_HEX = 80
