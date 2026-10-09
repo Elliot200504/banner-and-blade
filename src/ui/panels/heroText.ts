@@ -36,7 +36,7 @@ export function specialtyText(hero: Pick<Hero, 'specialty'>): string {
   }
 
   if (specialty.spell === 'deathRipple') {
-    return `${name}: ${percent(SPELL_SPECIALTY_BONUS - 1)} damage, and it hurts enemy undead too`
+    return `${name}: ${percent(SPELL_SPECIALTY_BONUS - 1)} damage, also hits enemy undead`
   }
 
   const what = specialty.spell === 'animateDead' || specialty.spell === 'cure' ? 'healing' : 'damage'
