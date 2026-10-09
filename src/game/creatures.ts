@@ -1,6 +1,10 @@
 export type Faction = 'castle' | 'rampart' | 'stronghold' | 'necropolis' | 'dungeon' | 'inferno'
 
+/** Machines any army can buy: they never move, and fight or help from where they stand. */
+export type WarMachine = 'ballista' | 'firstAidTent' | 'ammoCart'
+
 export type CreatureType =
+  | WarMachine
   | 'pikeman' | 'archer' | 'griffin' | 'swordsman' | 'monk' | 'cavalier' | 'angel'
   | 'centaur' | 'dwarf' | 'woodElf' | 'pegasus' | 'dendroidGuard' | 'unicorn' | 'greenDragon'
   | 'goblin' | 'wolfRider' | 'orc' | 'ogre' | 'roc' | 'cyclops' | 'behemoth'
@@ -29,11 +33,15 @@ export type Ability =
   | 'magicResistance'
   | 'crushing'
   | 'cursing'
+  | 'warMachine'
+  | 'firstAid'
+  | 'ammoSupply'
 
 export interface CreatureStats {
   name: string
   plural: string
-  faction: Faction
+  /** War machines belong to no faction: any army can buy them. */
+  faction: Faction | null
   tier: number
   hp: number
   attack: number
@@ -53,6 +61,21 @@ export interface CreatureStats {
 }
 
 export const CREATURES: Record<CreatureType, CreatureStats> = {
+  ballista: {
+    name: 'Ballista', plural: 'Ballista', faction: null, tier: 0,
+    hp: 250, attack: 10, defense: 10, minDamage: 25, maxDamage: 35, speed: 1, shots: 24, range: 20,
+    abilities: ['warMachine'], armyCount: 1, cost: 1000,
+  },
+  firstAidTent: {
+    name: 'First Aid Tent', plural: 'First Aid Tent', faction: null, tier: 0,
+    hp: 75, attack: 0, defense: 0, minDamage: 0, maxDamage: 0, speed: 0, shots: 0, range: 0,
+    abilities: ['warMachine', 'firstAid'], armyCount: 1, cost: 500,
+  },
+  ammoCart: {
+    name: 'Ammo Cart', plural: 'Ammo Cart', faction: null, tier: 0,
+    hp: 100, attack: 0, defense: 5, minDamage: 0, maxDamage: 0, speed: 0, shots: 0, range: 0,
+    abilities: ['warMachine', 'ammoSupply'], armyCount: 1, cost: 400,
+  },
   pikeman: {
     name: 'Pikeman', plural: 'Pikemen', faction: 'castle', tier: 1,
     hp: 10, attack: 4, defense: 5, minDamage: 1, maxDamage: 3, speed: 4, shots: 0, range: 0,
@@ -286,6 +309,9 @@ export const ABILITY_DESCRIPTIONS: Record<Ability, string> = {
   magicResistance: '20% chance to shrug off a hostile spell.',
   crushing: "Its blows ignore 40% of the target's defense.",
   cursing: '20% chance that its melee blows curse the target for 3 rounds.',
+  warMachine: 'War machine: never moves, never strikes back, and spells and morale do not affect it.',
+  firstAid: 'At the start of each round, heals 25 to 50 health on the top creature of your most wounded stack.',
+  ammoSupply: 'While it stands, your shooters never run out of shots.',
 }
 
 /** Who each hating creature hates. */
@@ -327,3 +353,10 @@ export const FACTIONS: Record<Faction, { name: string; description: string; crea
 export const FACTION_ORDER: Faction[] = ['castle', 'rampart', 'stronghold', 'necropolis', 'dungeon', 'inferno']
 
 export const hasAbility = (type: CreatureType, ability: Ability): boolean => CREATURES[type].abilities.includes(ability)
+
+export const WAR_MACHINES: WarMachine[] = ['ballista', 'firstAidTent', 'ammoCart']
+
+export const isWarMachine = (type: CreatureType): type is WarMachine => hasAbility(type, 'warMachine')
+
+/** War machines that work on their own and never take a turn. */
+export const isPassive = (type: CreatureType): boolean => hasAbility(type, 'firstAid') || hasAbility(type, 'ammoSupply')

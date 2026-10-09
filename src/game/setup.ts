@@ -1,5 +1,5 @@
 import { armyProblem, standardArmy, type Army } from './army'
-import { CREATURES, hasAbility, type Faction } from './creatures'
+import { CREATURES, hasAbility, isWarMachine, type Faction, type WarMachine } from './creatures'
 import { createHero, HEROES, heroesOf, type Hero, type HeroId } from './heroes'
 import { COLUMNS, hexKey, offsetToHex, ROWS } from './hex'
 import { createRandom, type Random } from './random'
@@ -18,13 +18,26 @@ export const OBSTACLES_BY_FACTION: Record<Faction, ObstacleKind[]> = {
 }
 const OBSTACLE_PAIRS = 4
 
-/** The row each of `stacks` stacks starts on, spread evenly down the edge. Six stacks get rows 0, 2, 4, 6, 8 and 10. */
-const startRow = (index: number, stacks: number) => Math.round(((index + 0.5) * ROWS) / stacks - 0.5)
+/** War machines stand at the ends of the back line. */
+const MACHINE_ROWS: Record<WarMachine, number> = { ballista: 0, ammoCart: 1, firstAidTent: ROWS - 1 }
+
+/**
+ * The row each of `stacks` stacks starts on, spread evenly down the rows the war machines leave free.
+ * With no machines, six stacks get rows 0, 2, 4, 6, 8 and 10.
+ */
+function startRow(index: number, stacks: number, freeRows: number[]): number {
+  return freeRows[Math.round(((index + 0.5) * freeRows.length) / stacks - 0.5)]
+}
 
 function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
   const column = owner === 'red' ? 0 : COLUMNS - 1
+  const creatures = army.filter((stack) => !isWarMachine(stack.type))
+  const machineRows = army.flatMap((stack) => (isWarMachine(stack.type) ? [MACHINE_ROWS[stack.type]] : []))
+  const freeRows = Array.from({ length: ROWS }, (_, row) => row).filter((row) => !machineRows.includes(row))
+  const rowOf = (type: Army[number]['type']) =>
+    isWarMachine(type) ? MACHINE_ROWS[type] : startRow(creatures.findIndex((stack) => stack.type === type), creatures.length, freeRows)
 
-  return army.map(({ type, count }, index) => {
+  return army.map(({ type, count }) => {
     const stats = CREATURES[type]
 
     return {
@@ -32,7 +45,7 @@ function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
       label: `${PLAYER_NAMES[owner]} ${stats.plural}`,
       type,
       owner,
-      position: offsetToHex(column, startRow(index, army.length)),
+      position: offsetToHex(column, rowOf(type)),
       count,
       startCount: count,
       topHp: stats.hp,

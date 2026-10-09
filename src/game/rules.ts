@@ -1,5 +1,5 @@
 import { afterDamage, CURSE_CHANCE, CURSE_ROUNDS, effectiveSpeed, PETRIFY_CHANCE, rollDamage, totalHp } from './combat'
-import { CREATURES, hasAbility } from './creatures'
+import { CREATURES, hasAbility, isPassive, isWarMachine } from './creatures'
 import { isSpellSpecialist, type Hero } from './heroes'
 import { hexDistance, hexKey, neighbors, sameHex, type Hex } from './hex'
 import { attackMode, pathLength, reachableHexes } from './movement'
@@ -13,6 +13,9 @@ const MAX_LOG = 80
 export const MAGIC_RESISTANCE_CHANCE = 0.2
 /** Spells up to this level do nothing to spell-immune stacks. */
 export const SPELL_IMMUNITY_LEVEL = 3
+/** How much health a First Aid Tent restores each round. */
+export const FIRST_AID_MINIMUM = 25
+export const FIRST_AID_MAXIMUM = 50
 
 /**
  * A morale point is a 1 in 24 chance of an extra turn. Steadfast stacks get one more than
@@ -24,9 +27,16 @@ export function moraleOf(unit: Unit, hero: Hero, units: Unit[] = []): number {
   return hero.morale + (hasAbility(unit.type, 'steadfast') ? 1 : 0) - (feared ? 1 : 0)
 }
 
-/** Whether the spell can't touch this stack at all. */
+/** Whether the spell can't touch this stack at all. War machines ignore every spell. */
 export const isImmune = (unit: Unit, spell: SpellId): boolean =>
-  hasAbility(unit.type, 'spellImmune') && SPELLS[spell].level <= SPELL_IMMUNITY_LEVEL
+  isWarMachine(unit.type) || (hasAbility(unit.type, 'spellImmune') && SPELLS[spell].level <= SPELL_IMMUNITY_LEVEL)
+
+/** Whether a shot costs the unit ammunition: war machines and shooters backed by an Ammo Cart shoot for free. */
+export function usesAmmunition(units: Unit[], unit: Unit): boolean {
+  const supplied = units.some((other) => other.owner === unit.owner && other.count > 0 && hasAbility(other.type, 'ammoSupply'))
+
+  return !isWarMachine(unit.type) && !supplied
+}
 
 /** The stack a dragon's breath also hits: the one right behind the target, seen from where the dragon strikes. */
 export function breathVictim(units: Unit[], from: Hex, target: Unit): Unit | undefined {
@@ -42,8 +52,10 @@ export function activeUnit(state: GameState): Unit | undefined {
 /**
  * Turn order for a round: faster stacks first. Stacks with equal speed
  * alternate between the sides, and the side that goes first swaps each round.
+ * The First Aid Tent and Ammo Cart work on their own and never take a turn.
  */
-export function buildQueue(units: Unit[], round: number): string[] {
+export function buildQueue(allUnits: Unit[], round: number): string[] {
+  const units = allUnits.filter((unit) => !isPassive(unit.type))
   const firstPlayer: Player = round % 2 === 1 ? 'red' : 'blue'
   const speeds = [...new Set(units.map(effectiveSpeed))].sort((higher, lower) => lower - higher)
   const queue: string[] = []
@@ -305,7 +317,10 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
   }
 
   if (mode === 'shoot') {
-    updateUnit(draft, actor.id, { shots: actor.shots - 1 })
+    if (usesAmmunition(draft.units, actor)) {
+      updateUnit(draft, actor.id, { shots: actor.shots - 1 })
+    }
+
     strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
 
     if (hasAbility(actor.type, 'deathCloud')) {
@@ -342,7 +357,7 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
   meleeStrike(draft, actor.id, targetId, { retaliation: false, hexesMoved })
 
   const victim = getUnit(draft, targetId)!
-  const canRetaliate = victim.count > 0 && victim.retaliationsLeft > 0 && !victim.petrified
+  const canRetaliate = victim.count > 0 && victim.retaliationsLeft > 0 && !victim.petrified && !isWarMachine(victim.type)
 
   if (canRetaliate && !hasAbility(actor.type, 'noRetaliation')) {
     updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
@@ -442,12 +457,15 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
   })
 }
 
+/** A side is beaten once its creatures are gone: war machines can't hold the field alone. */
 function winnerOf(units: Unit[]): Player | null {
-  if (!units.some((unit) => unit.owner === 'blue')) {
+  const fighting = (player: Player) => units.some((unit) => unit.owner === player && !isWarMachine(unit.type))
+
+  if (!fighting('blue')) {
     return 'red'
   }
 
-  if (!units.some((unit) => unit.owner === 'red')) {
+  if (!fighting('red')) {
     return 'blue'
   }
 
@@ -519,8 +537,29 @@ function startRound(draft: Draft, round: number): string[] {
     blue: { ...draft.heroes.blue, hasCastThisRound: false },
   }
   draft.log.push(`— Round ${round} —`)
+  giveFirstAid(draft)
 
   return buildQueue(draft.units, round)
+}
+
+/** Each First Aid Tent tends the top creature of its side's most wounded stack. */
+function giveFirstAid(draft: Draft) {
+  const missingHp = (unit: Unit) => CREATURES[unit.type].hp - unit.topHp
+
+  for (const tent of draft.units.filter((unit) => hasAbility(unit.type, 'firstAid'))) {
+    const patients = draft.units.filter((unit) => unit.owner === tent.owner && !isWarMachine(unit.type) && missingHp(unit) > 0)
+
+    if (patients.length === 0) {
+      continue
+    }
+
+    const patient = patients.reduce((worst, unit) => (missingHp(unit) > missingHp(worst) ? unit : worst))
+    const amount = Math.min(missingHp(patient), draft.random.integer(FIRST_AID_MINIMUM, FIRST_AID_MAXIMUM))
+    const topHp = patient.topHp + amount
+    updateUnit(draft, patient.id, { topHp })
+    draft.events.push({ kind: 'heal', unitId: patient.id, healerId: tent.id, amount, topHp })
+    draft.log.push(`${tent.label} heals ${patient.label} for ${amount}.`)
+  }
 }
 
 /** Applies the active unit's move. Returns the same state object if the move is not allowed. */
@@ -617,7 +656,12 @@ export function applyMove(state: GameState, move: Move): GameState {
   const hero = draft.heroes[actor.owner]
   const morale = moraleOf(actor, hero, draft.units)
   const moraleApplies =
-    actorAfter && !hasAbility(actor.type, 'undead') && !actorAfter.hadMoraleTurn && !actorAfter.petrified && morale > 0
+    actorAfter &&
+    !hasAbility(actor.type, 'undead') &&
+    !isWarMachine(actor.type) &&
+    !actorAfter.hadMoraleTurn &&
+    !actorAfter.petrified &&
+    morale > 0
 
   if (canTriggerMorale && moraleApplies && draft.random.chance(morale / 24)) {
     updateUnit(draft, actor.id, { hadMoraleTurn: true })

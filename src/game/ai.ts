@@ -1,5 +1,5 @@
 import { effectiveSpeed, totalHp } from './combat'
-import { CREATURES } from './creatures'
+import { CREATURES, isWarMachine } from './creatures'
 import { hexDistance, type Hex } from './hex'
 import { attackMode, attackOrigins, isEnemyAdjacent, reachableHexes } from './movement'
 import { createRandom } from './random'
@@ -109,6 +109,12 @@ export function scoreState(
     }
 
     score += value
+
+    // War machines stand where they are: distance and blocking mean nothing to them.
+    if (isWarMachine(unit.type)) {
+      continue
+    }
+
     const nearest = Math.min(...enemyPositions.map((position) => hexDistance(unit.position, position)))
     const reach = isShooter(unit) ? CREATURES[unit.type].range : 1 + effectiveSpeed(unit)
     score -= profile.distancePenalty * value * Math.max(0, nearest - reach)

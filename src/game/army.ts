@@ -1,4 +1,4 @@
-import { CREATURES, FACTIONS, type CreatureType, type Faction } from './creatures'
+import { CREATURES, FACTIONS, isWarMachine, WAR_MACHINES, type CreatureType, type Faction } from './creatures'
 import type { Random } from './random'
 
 /** Gold each side may spend on recruits. Every standard army fits within it. */
@@ -12,7 +12,7 @@ export interface ArmyStack {
   count: number
 }
 
-/** The stacks a side brings to battle, top to bottom. */
+/** The stacks a side brings to battle, top to bottom, then any war machines (one of each at most). */
 export type Army = ArmyStack[]
 
 /** The fixed army each faction fought with before army building. */
@@ -26,15 +26,19 @@ export const armyCost = (army: Army): number =>
 export function armyProblem(army: Army, faction: Faction): string | null {
   const stacks = army.filter((stack) => stack.count > 0)
 
-  if (stacks.length === 0) {
-    return 'Recruit at least one stack.'
+  if (!stacks.some((stack) => !isWarMachine(stack.type))) {
+    return 'Recruit at least one stack of creatures.'
+  }
+
+  if (stacks.some((stack) => isWarMachine(stack.type) && stack.count !== 1)) {
+    return 'An army can have only one of each war machine.'
   }
 
   if (stacks.some((stack) => !Number.isInteger(stack.count))) {
     return 'Stacks must be whole creatures.'
   }
 
-  if (stacks.some((stack) => CREATURES[stack.type].faction !== faction)) {
+  if (stacks.some((stack) => !isWarMachine(stack.type) && CREATURES[stack.type].faction !== faction)) {
     return `Only ${FACTIONS[faction].name} creatures can join this army.`
   }
 
@@ -49,12 +53,12 @@ export function armyProblem(army: Army, faction: Faction): string | null {
   return null
 }
 
-/** The army with `type` set to `count` creatures, kept in the faction's order. Zero removes the stack. */
+/** The army with `type` set to `count` creatures, kept in the faction's order with war machines last. Zero removes the stack. */
 export function withStack(army: Army, faction: Faction, type: CreatureType, count: number): Army {
   const counts = new Map(army.map((stack) => [stack.type, stack.count]))
   counts.set(type, count)
 
-  return FACTIONS[faction].creatures
+  return [...FACTIONS[faction].creatures, ...WAR_MACHINES]
     .filter((creature) => (counts.get(creature) ?? 0) > 0)
     .map((creature) => ({ type: creature, count: counts.get(creature)! }))
 }
@@ -62,8 +66,9 @@ export function withStack(army: Army, faction: Faction, type: CreatureType, coun
 /** How many of `type` the army could have, spending the gold it has left. */
 export function mostAffordable(army: Army, type: CreatureType): number {
   const current = army.find((stack) => stack.type === type)?.count ?? 0
+  const affordable = current + Math.floor((ARMY_BUDGET - armyCost(army)) / CREATURES[type].cost)
 
-  return current + Math.floor((ARMY_BUDGET - armyCost(army)) / CREATURES[type].cost)
+  return isWarMachine(type) ? Math.min(1, affordable) : affordable
 }
 
 /**
