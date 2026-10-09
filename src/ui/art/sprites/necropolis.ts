@@ -1,4 +1,4 @@
-import type { UpgradedCreature } from '../../game'
+import type { UpgradedCreature } from '../../../game'
 import { OUTLINE, BONE, BONE_SHADOW, GOLD, type Sprite } from './shared'
 
 /** Necropolis: its creatures, heroes, town emblem and homeland obstacles. */
