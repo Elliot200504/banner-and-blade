@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import type { Player, SpellId } from '../game'
+import type { Player, SpellId } from '../../game'
 import { SPELL_ICONS } from './spellIcons'
 import { SPRITES, type Sprite, type SpriteId } from './sprites'
 import { UI_ICONS, type UiIconId } from './uiIcons'
