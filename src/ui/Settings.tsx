@@ -1,12 +1,9 @@
 import { useState } from 'react'
-import { ChoiceGroup } from './ChoiceGroup'
 import { HowToPlay } from './HowToPlay'
 import { Modal } from './Modal'
 import { playSound, type SoundSettings } from './sound'
 import { ThemeToggle } from './ThemeToggle'
 import type { Theme } from './useTheme'
-
-const SWITCH_LABELS = { on: 'On', off: 'Off' }
 
 interface SettingsProps {
   theme: Theme
@@ -35,19 +32,18 @@ export function Settings({ theme, onChangeTheme, sound, onChangeSound, onClose }
   return (
     <Modal title="Settings" onClose={onClose} className="settings">
       <section className="settings__section">
-        <h3 className="settings__heading">Sound</h3>
-        <AudioControl
-          label="Sound effects"
-          enabled={sound.enabled}
-          volume={sound.volume}
-          onChange={(enabled, volume) => onChangeSound({ ...sound, enabled, volume })}
-          onRelease={() => playSound('hit')}
-        />
         <AudioControl
           label="Music"
           enabled={sound.musicEnabled}
           volume={sound.musicVolume}
           onChange={(musicEnabled, musicVolume) => onChangeSound({ ...sound, musicEnabled, musicVolume })}
+        />
+        <AudioControl
+          label="SFX"
+          enabled={sound.enabled}
+          volume={sound.volume}
+          onChange={(enabled, volume) => onChangeSound({ ...sound, enabled, volume })}
+          onRelease={() => playSound('hit')}
         />
       </section>
 
@@ -79,29 +75,57 @@ function AudioControl({ label, enabled, volume, onChange, onRelease }: AudioCont
   const volumePercent = Math.round(volume * 100)
 
   return (
-    <div className="settings__row">
-      <span className="settings__label">{label}</span>
-      <ChoiceGroup
-        label={label}
-        options={['on', 'off'] as const}
-        labels={SWITCH_LABELS}
-        value={enabled ? 'on' : 'off'}
-        onChange={(choice) => onChange(choice === 'on', volume)}
-      />
-      <input
-        className="settings__volume"
-        type="range"
-        min={0}
-        max={100}
-        step={5}
-        value={volumePercent}
-        aria-label={`${label} volume`}
-        disabled={!enabled}
-        onChange={(event) => onChange(enabled, Number(event.target.value) / 100)}
-        onPointerUp={onRelease}
-        onKeyUp={onRelease}
-      />
-      <span className="settings__value">{volumePercent}%</span>
+    <div className="settings__audio">
+      <span className="settings__audio-label">{label}</span>
+      <div className="settings__row">
+        <button
+          className="button button--secondary settings__mute"
+          aria-pressed={enabled}
+          aria-label={`${label} ${enabled ? 'on' : 'off'}`}
+          title={enabled ? `Turn ${label} off` : `Turn ${label} on`}
+          onClick={() => onChange(!enabled, volume)}
+        >
+          <SpeakerIcon muted={!enabled} />
+        </button>
+        {/* Dragging the volume while muted turns the sound back on. */}
+        <input
+          className={`settings__volume${enabled ? '' : ' settings__volume--muted'}`}
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={volumePercent}
+          aria-label={`${label} volume`}
+          onChange={(event) => onChange(true, Number(event.target.value) / 100)}
+          onPointerUp={onRelease}
+          onKeyUp={onRelease}
+        />
+        <span className="settings__value">{volumePercent}%</span>
+      </div>
     </div>
+  )
+}
+
+/** A standard speaker icon: with sound waves when on, crossed out when muted. */
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+      {muted ? (
+        <path d="M23 9l-6 6M17 9l6 6" />
+      ) : (
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
+      )}
+    </svg>
   )
 }

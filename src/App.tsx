@@ -3,7 +3,7 @@ import { heroesOf, standardArmy, type Army, type Difficulty, type Faction, type 
 import { About, GitHubLink } from './ui/About'
 import { Battle } from './ui/Battle'
 import { Modal } from './ui/Modal'
-import { StartScreen, type Controller } from './ui/StartScreen'
+import { NEW_SETUP, StartScreen, type Controller, type SetupProgress } from './ui/StartScreen'
 import { playMusic } from './ui/music'
 import { Settings } from './ui/Settings'
 import { playSound } from './ui/sound'
@@ -20,6 +20,8 @@ export default function App() {
   const [difficulties, setDifficulties] = useState<Record<Player, Difficulty>>({ red: 'normal', blue: 'normal' })
   const [armies, setArmies] = useState<Record<Player, Army>>({ red: standardArmy('castle'), blue: standardArmy('necropolis') })
   const [seed, setSeed] = useState(newSeed)
+  // Kept here so that coming back from a battle does not mean clicking through the setup again.
+  const [setup, setSetup] = useState<SetupProgress>(NEW_SETUP)
   const [theme, setTheme] = useTheme()
   const [sound, setSound] = useSoundSettings()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -73,6 +75,8 @@ export default function App() {
           heroes={heroes}
           difficulties={difficulties}
           armies={armies}
+          setup={setup}
+          onChangeSetup={setSetup}
           onChangeFaction={(player, faction) => {
             setFactions((current) => ({ ...current, [player]: faction }))
             setHeroes((current) => ({ ...current, [player]: heroesOf(faction)[0] }))

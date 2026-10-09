@@ -42,6 +42,23 @@ export type Controller = 'human' | 'computer'
 
 const CONTROLLER_LABELS: Record<Controller, string> = { human: 'Human', computer: 'Computer' }
 
+/**
+ * The choices actually made for a side. Nothing shows as picked until it is, and each
+ * choice reveals the next: who plays, then the town, then the hero, then the army.
+ */
+export interface SidePicks {
+  controller: boolean
+  difficulty: boolean
+  town: boolean
+  hero: boolean
+}
+
+export type SetupProgress = Record<Player, SidePicks>
+
+const NOTHING_PICKED: SidePicks = { controller: false, difficulty: false, town: false, hero: false }
+
+export const NEW_SETUP: SetupProgress = { red: NOTHING_PICKED, blue: NOTHING_PICKED }
+
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' }
 const DIFFICULTY_HINTS: Record<Difficulty, string> = {
   easy: 'Makes loose moves and never casts spells.',
@@ -80,6 +97,8 @@ interface StartScreenProps {
   heroes: Record<Player, HeroId>
   difficulties: Record<Player, Difficulty>
   armies: Record<Player, Army>
+  setup: SetupProgress
+  onChangeSetup: (setup: SetupProgress) => void
   onChangeFaction: (player: Player, faction: Faction) => void
   onChangeController: (player: Player, controller: Controller) => void
   onChangeDifficulty: (player: Player, difficulty: Difficulty) => void
@@ -95,6 +114,8 @@ export function StartScreen({
   heroes,
   difficulties,
   armies,
+  setup,
+  onChangeSetup,
   onChangeFaction,
   onChangeController,
   onChangeDifficulty,
@@ -110,72 +131,116 @@ export function StartScreen({
 
     return problem ? [`${PLAYER_NAMES[player]}: ${problem}`] : []
   })
+  const ready = setup.red.hero && setup.blue.hero
 
-  const sidePanel = (player: Player) => (
-    <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
-      <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
-      <div className="army-picker__controls">
-        <div className="army-picker__factions" role="radiogroup" aria-label={`Who plays ${PLAYER_NAMES[player]}`}>
-          {(['human', 'computer'] as const).map((controller) => (
+  const pick = (player: Player, changes: Partial<SidePicks>) => onChangeSetup({ ...setup, [player]: { ...setup[player], ...changes } })
+
+  /** Whether the side's player is settled: a human, or a computer with its difficulty. */
+  const playerChosen = (player: Player) =>
+    setup[player].controller && (controllers[player] === 'human' || setup[player].difficulty)
+
+  const optionClass = (picked: boolean) => `faction-option${picked ? ' faction-option--active' : ''}`
+
+  const playerStep = (player: Player) => (
+    <div className="setup-step army-picker__controls">
+      {/* Big buttons until the choice is made, then a compact row so the next steps get the room. */}
+      <div
+        className={`army-picker__factions${setup[player].controller ? '' : ' controller-choice--open'}`}
+        role="radiogroup"
+        aria-label={`Who plays ${PLAYER_NAMES[player]}`}
+      >
+        {(['human', 'computer'] as const).map((controller) => {
+          const picked = setup[player].controller && controllers[player] === controller
+
+          return (
             <button
               key={controller}
               role="radio"
-              aria-checked={controllers[player] === controller}
-              className={`faction-option${controllers[player] === controller ? ' faction-option--active' : ''}`}
-              onClick={() => onChangeController(player, controller)}
+              aria-checked={picked}
+              className={optionClass(picked)}
+              onClick={() => {
+                onChangeController(player, controller)
+                pick(player, { controller: true })
+              }}
             >
               {CONTROLLER_LABELS[controller]}
             </button>
-          ))}
-        </div>
-        <div
-          className={`army-picker__factions${controllers[player] === 'computer' ? '' : ' army-picker__difficulty--hidden'}`}
-          role="radiogroup"
-          aria-label={`${PLAYER_NAMES[player]} computer difficulty`}
-          aria-hidden={controllers[player] !== 'computer'}
-        >
-          {DIFFICULTIES.map((difficulty) => (
-            <button
-              key={difficulty}
-              role="radio"
-              aria-checked={difficulties[player] === difficulty}
-              title={DIFFICULTY_HINTS[difficulty]}
-              tabIndex={controllers[player] === 'computer' ? 0 : -1}
-              className={`faction-option difficulty-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
-              onClick={() => onChangeDifficulty(player, difficulty)}
-            >
-              {difficulty === 'expert' && <Icon name="skull" size={12} />}
-              {DIFFICULTY_LABELS[difficulty]}
-            </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
-      <div
-        className="army-picker__factions army-picker__factions--grid army-picker__towns"
-        role="radiogroup"
-        aria-label={`${PLAYER_NAMES[player]} faction`}
-      >
-        {FACTION_ORDER.map((faction) => (
+      {setup[player].controller && controllers[player] === 'computer' && (
+        <div className="army-picker__factions" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} computer difficulty`}>
+          {DIFFICULTIES.map((difficulty) => {
+            const picked = setup[player].difficulty && difficulties[player] === difficulty
+
+            return (
+              <button
+                key={difficulty}
+                role="radio"
+                aria-checked={picked}
+                title={DIFFICULTY_HINTS[difficulty]}
+                className={`${optionClass(picked)} difficulty-option`}
+                onClick={() => {
+                  onChangeDifficulty(player, difficulty)
+                  pick(player, { difficulty: true })
+                }}
+              >
+                {difficulty === 'expert' && <Icon name="skull" size={12} />}
+                {DIFFICULTY_LABELS[difficulty]}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
+  const townStep = (player: Player) => (
+    <div
+      className="setup-step army-picker__factions army-picker__factions--grid army-picker__towns"
+      role="radiogroup"
+      aria-label={`${PLAYER_NAMES[player]} faction`}
+    >
+      {FACTION_ORDER.map((faction) => {
+        const picked = setup[player].town && factions[player] === faction
+
+        return (
           <button
             key={faction}
             role="radio"
-            aria-checked={factions[player] === faction}
-            className={`faction-option${factions[player] === faction ? ' faction-option--active' : ''}`}
-            onClick={() => onChangeFaction(player, faction)}
+            aria-checked={picked}
+            className={optionClass(picked)}
+            onClick={() => {
+              // A new town comes with its own heroes, so the hero has to be picked again.
+              if (!picked) {
+                onChangeFaction(player, faction)
+                pick(player, { town: true, hero: false })
+              }
+            }}
           >
             <SpriteIcon spriteId={faction} owner={player} size={32} />
             {FACTIONS[faction].name}
           </button>
-        ))}
-      </div>
-      <div className="hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
-        {heroesOf(factions[player]).map((id) => (
+        )
+      })}
+    </div>
+  )
+
+  const heroStep = (player: Player) => (
+    <div className="setup-step hero-picker" role="radiogroup" aria-label={`${PLAYER_NAMES[player]} hero`}>
+      {heroesOf(factions[player]).map((id) => {
+        const picked = setup[player].hero && heroes[player] === id
+
+        return (
           <button
             key={id}
             role="radio"
-            aria-checked={heroes[player] === id}
-            className={`hero-option${heroes[player] === id ? ' hero-option--active' : ''}`}
-            onClick={() => onChangeHero(player, id)}
+            aria-checked={picked}
+            className={`hero-option${picked ? ' hero-option--active' : ''}`}
+            onClick={() => {
+              onChangeHero(player, id)
+              pick(player, { hero: true })
+            }}
           >
             <SpriteIcon spriteId={id} owner={player} size={32} />
             <span className="hero-option__text">
@@ -183,31 +248,51 @@ export function StartScreen({
               <span className="hero-option__class">{HEROES[id].title}</span>
             </span>
           </button>
-        ))}
-      </div>
-      <ArmyBuilder
-        player={player}
-        faction={factions[player]}
-        key={factions[player]}
-        heroId={heroes[player]}
-        army={armies[player]}
-        onChange={(army) => onChangeArmy(player, army)}
-      />
+        )
+      })}
+    </div>
+  )
+
+  const sidePanel = (player: Player) => (
+    <section key={player} className={`panel army-picker__side army-picker__side--${player}`}>
+      <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
+      {playerStep(player)}
+      {playerChosen(player) && townStep(player)}
+      {playerChosen(player) && setup[player].town && heroStep(player)}
+      {playerChosen(player) && setup[player].town && setup[player].hero && (
+        <div className="setup-step">
+          <ArmyBuilder
+            player={player}
+            faction={factions[player]}
+            key={factions[player]}
+            heroId={heroes[player]}
+            army={armies[player]}
+            onChange={(army) => onChangeArmy(player, army)}
+          />
+        </div>
+      )}
     </section>
   )
 
   return (
     <main className="start-screen">
+      <header className="start-screen__header">
+        <h1 className="start-screen__title">Banner &amp; Blade</h1>
+      </header>
+
       {sidePanel('red')}
 
       <div className="start-screen__center">
-        <h1 className="start-screen__title">Banner &amp; Blade</h1>
-        <p className="start-screen__subtitle">Hex battles against the computer or a friend on the same screen</p>
-        <button className="button button--large" onClick={onStart} disabled={problems.length > 0} autoFocus>
+        <button
+          className="button button--large battle-button"
+          onClick={onStart}
+          disabled={problems.length > 0 || !ready}
+          autoFocus
+        >
           To battle!
         </button>
         {problems.length > 0 && <p className="start-screen__problem">{problems.join(' ')}</p>}
-        <button className="button button--secondary" onClick={() => setRulesOpen(true)}>
+        <button className="button button--secondary start-screen__rules" onClick={() => setRulesOpen(true)}>
           How to play
         </button>
       </div>
@@ -277,9 +362,8 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
 
   return (
     <div className="army-preview">
-      <p className="army-preview__description">{FACTIONS[faction].description}</p>
       <p className="army-preview__specialty">
-        <Icon name="star" /> {specialtyText(hero)}
+        <span className="army-preview__specialty-label">Hero bonus:</span> {specialtyText(hero)}
       </p>
       <HeroStats hero={hero} showKnowledge />
       <div className="recruit__gold">

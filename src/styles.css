@@ -207,6 +207,11 @@ select {
   padding: 0 16px 12px;
 }
 
+/* The start screen uses the full width, so the two sides sit at the edges of the screen. */
+.app:has(> .start-screen) {
+  max-width: none;
+}
+
 /* The screen fills the height left under the header. A modal opened on top must not take that over. */
 .app > .start-screen,
 .app > .battle {
@@ -344,32 +349,122 @@ select {
 .start-screen {
   padding-top: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) minmax(0, 1fr);
+  /* The army panels hug the screen edges and the battle button gets the room between them. */
+  grid-template-columns: minmax(0, 640px) minmax(260px, 1fr) minmax(0, 640px);
   /* The army panels are only as tall as their contents, and scroll when the window is too short for them. */
-  grid-template-rows: minmax(0, max-content) 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px 16px;
 }
 
+/* Spans everything under the title, so the battle button stays in the middle of the screen as the panels grow. */
 .start-screen__center {
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   text-align: center;
 }
 
-.start-screen__title {
-  font-size: calc(22px * var(--text-scale));
-  color: var(--title);
-  text-shadow: var(--title-shadow);
-  line-height: 1.3;
+.start-screen__header {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-.start-screen__subtitle {
+/* The name between two gold rules that fade out toward the edges, like a HoMM3 banner. */
+.start-screen__title {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 760px);
   margin: 0;
-  color: var(--text-muted);
-  font-size: calc(8px * var(--text-scale));
+  font-size: calc(30px * var(--text-scale));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--title);
+  text-shadow: var(--title-shadow);
+  line-height: 1.2;
+}
+
+.start-screen__title::before,
+.start-screen__title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--panel-border));
+}
+
+.start-screen__title::after {
+  background: linear-gradient(90deg, var(--panel-border), transparent);
+}
+
+/* The main call to action: framed like a panel, with a slow shine running across it. */
+.battle-button {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 440px);
+  padding: 20px 16px;
+  font-family: var(--font-title);
+  font-size: calc(20px * var(--text-scale));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 2px var(--frame-dark),
+    inset 0 0 0 3px var(--frame-line),
+    inset 0 1px 0 var(--bevel-light);
+  transition: box-shadow 0.2s, filter 0.2s;
+}
+
+.battle-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 240, 200, 0.18) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: battle-button-shine 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.battle-button:hover:not(:disabled),
+.battle-button:focus-visible {
+  box-shadow:
+    var(--shadow),
+    0 0 18px var(--title),
+    inset 0 0 0 2px var(--frame-dark),
+    inset 0 0 0 3px var(--frame-line),
+    inset 0 1px 0 var(--bevel-light);
+}
+
+.battle-button:disabled::after {
+  animation: none;
+}
+
+@keyframes battle-button-shine {
+  0%,
+  55% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-button::after {
+    animation: none;
+  }
+}
+
+.start-screen__rules {
+  width: min(100%, 220px);
 }
 
 .about__lead {
@@ -457,7 +552,7 @@ select {
 
 .start-screen__corner {
   grid-column: 1;
-  align-self: end;
+  grid-row: 3;
   display: flex;
   gap: 8px;
 }
@@ -488,17 +583,34 @@ select {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .start-screen__header {
+    order: -2;
+  }
+
+  .start-screen__title {
+    font-size: calc(20px * var(--text-scale));
+  }
+
+  .start-screen__center,
+  .start-screen__corner {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
   .start-screen__center {
     order: -1;
   }
 }
 
+/* At the top, as tall as their contents; once full they fill the height and scroll. */
 .army-picker__side {
+  align-self: start;
+  max-height: 100%;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .army-picker__side--red {
@@ -515,16 +627,13 @@ select {
 
 .army-picker__controls {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
 .army-picker__factions {
   display: flex;
-  gap: 6px;
-}
-
-.army-picker__controls .army-picker__factions {
-  flex: 1;
+  gap: 8px;
 }
 
 .army-picker__factions--grid {
@@ -537,11 +646,36 @@ select {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 3px 4px;
+  padding: 6px 8px;
 }
 
-.army-picker__difficulty--hidden {
-  visibility: hidden;
+.controller-choice--open .faction-option {
+  padding: 26px 12px;
+  font-family: var(--font-title);
+  font-size: calc(13px * var(--text-scale));
+  letter-spacing: 0.06em;
+}
+
+.controller-choice--open .faction-option:hover {
+  border-color: var(--title);
+}
+
+/* Each step of a side's setup slides in when the choice before it reveals it. */
+.setup-step {
+  animation: setup-reveal 0.25s ease-out;
+}
+
+@keyframes setup-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-step {
+    animation: none;
+  }
 }
 
 .difficulty-option .sprite-icon--inline {
@@ -550,9 +684,9 @@ select {
 
 .faction-option {
   font: inherit;
-  font-size: calc(8px * var(--text-scale));
+  font-size: calc(10px * var(--text-scale));
   flex: 1;
-  padding: 6px 4px;
+  padding: 10px 8px;
   border: 2px solid var(--panel-border);
   text-shadow: 0 1px 0 #000;
   background: var(--button-secondary);
@@ -567,7 +701,7 @@ select {
 
 .hero-picker {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .hero-option {
@@ -576,8 +710,8 @@ select {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 2px solid var(--panel-border);
   text-shadow: 0 1px 0 #000;
   background: var(--button-secondary);
@@ -598,11 +732,11 @@ select {
 }
 
 .hero-option__name {
-  font-size: calc(8px * var(--text-scale));
+  font-size: calc(10px * var(--text-scale));
 }
 
 .hero-option__class {
-  font-size: calc(8px * var(--text-scale));
+  font-size: calc(9px * var(--text-scale));
   opacity: 0.8;
 }
 
@@ -635,14 +769,12 @@ select {
   color: var(--highlight);
 }
 
-.army-preview__specialist {
-  outline: 2px solid var(--highlight);
+.army-preview__specialty-label {
+  color: var(--text-muted);
 }
 
-.army-preview__description {
-  margin: 0;
-  font-size: calc(8px * var(--text-scale));
-  color: var(--text-muted);
+.army-preview__specialist {
+  outline: 2px solid var(--highlight);
 }
 
 /* ---------- Army builder ---------- */
@@ -836,7 +968,6 @@ select {
     gap: 6px;
   }
 
-  .army-preview__description,
   .hero-option__class {
     display: none;
   }
@@ -1641,14 +1772,33 @@ select {
   margin-top: 6px;
 }
 
-.settings__label {
-  min-width: 6.5em;
-}
-
 .settings__volume {
   flex: 1;
   min-width: 0;
   accent-color: var(--panel-border);
+}
+
+.settings__audio + .settings__audio {
+  margin-top: 8px;
+}
+
+.settings__audio-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: calc(7px * var(--text-scale));
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings__mute {
+  display: flex;
+  padding: 4px 6px;
+  line-height: 0;
+}
+
+.settings__volume--muted {
+  opacity: 0.45;
 }
 
 .settings__value {

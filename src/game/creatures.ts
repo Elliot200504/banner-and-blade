@@ -607,35 +607,29 @@ export const isUpgraded = (type: CreatureType): type is UpgradedCreature => type
 /** The creature a stack is a version of: itself, or the creature it is an upgrade of. */
 export const baseOf = (type: CreatureType): CreatureType => (isUpgraded(type) ? BASE_OF[type] : type)
 
-export const FACTIONS: Record<Faction, { name: string; description: string; creatures: BaseCreature[] }> = {
+export const FACTIONS: Record<Faction, { name: string; creatures: BaseCreature[] }> = {
   castle: {
     name: 'Castle',
-    description: 'Disciplined soldiers, holy monks, charging cavaliers and angels.',
     creatures: ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'angel'],
   },
   rampart: {
     name: 'Rampart',
-    description: 'Sharp-eyed elves, sturdy dwarves, living trees and green dragons.',
     creatures: ['centaur', 'dwarf', 'woodElf', 'pegasus', 'dendroidGuard', 'unicorn', 'greenDragon'],
   },
   stronghold: {
     name: 'Stronghold',
-    description: 'Goblin hordes, orc axe-throwers, cyclopes and crushing behemoths.',
     creatures: ['goblin', 'wolfRider', 'orc', 'ogre', 'roc', 'cyclops', 'behemoth'],
   },
   necropolis: {
     name: 'Necropolis',
-    description: 'Endless bones, regenerating wights, death magic and bone dragons.',
     creatures: ['skeleton', 'walkingDead', 'wight', 'vampire', 'lich', 'blackKnight', 'boneDragon'],
   },
   dungeon: {
     name: 'Dungeon',
-    description: 'Hit-and-run harpies, petrifying medusas, manticores and dragon fire.',
     creatures: ['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'manticore', 'redDragon'],
   },
   inferno: {
     name: 'Inferno',
-    description: 'Swarming imps, fireball-throwing gogs, efreeti and devils.',
     creatures: ['imp', 'gog', 'hellHound', 'demon', 'pitFiend', 'efreet', 'devil'],
   },
 }
