@@ -1,5 +1,5 @@
 import { ChoiceGroup } from './ChoiceGroup'
-import { THEMES, type Theme } from './useTheme'
+import { THEMES, type Theme } from '../hooks/useTheme'
 
 const THEME_LABELS: Record<Theme, string> = {
   default: 'Default',
