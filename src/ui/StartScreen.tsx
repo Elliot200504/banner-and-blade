@@ -30,6 +30,7 @@ import {
   type HeroId,
   type Player,
 } from '../game'
+import { About, GitHubLink } from './About'
 import { specialtyText } from './heroText'
 import { HeroStats } from './HeroStats'
 import { HowToPlay } from './HowToPlay'
@@ -103,6 +104,7 @@ export function StartScreen({
   onOpenSettings,
 }: StartScreenProps) {
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
     const problem = armyProblem(armies[player], factions[player])
 
@@ -208,9 +210,6 @@ export function StartScreen({
         <button className="button button--secondary" onClick={() => setRulesOpen(true)}>
           How to play
         </button>
-        <button className="button button--secondary" onClick={onOpenSettings}>
-          Settings
-        </button>
       </div>
 
       {sidePanel('blue')}
@@ -220,6 +219,22 @@ export function StartScreen({
           <HowToPlay />
         </Modal>
       )}
+
+      {aboutOpen && (
+        <Modal title="About" onClose={() => setAboutOpen(false)} className="about">
+          <About />
+        </Modal>
+      )}
+
+      <nav className="start-screen__corner" aria-label="More">
+        <button className="button button--secondary" onClick={onOpenSettings}>
+          Settings
+        </button>
+        <button className="button button--secondary" onClick={() => setAboutOpen(true)}>
+          About
+        </button>
+        <GitHubLink />
+      </nav>
     </main>
   )
 }

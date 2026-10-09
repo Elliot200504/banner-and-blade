@@ -207,7 +207,9 @@ select {
   padding: 0 16px 12px;
 }
 
-.app > :last-child {
+/* The screen fills the height left under the header. A modal opened on top must not take that over. */
+.app > .start-screen,
+.app > .battle {
   flex: 1;
   min-height: 0;
 }
@@ -343,7 +345,9 @@ select {
   padding-top: 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) minmax(0, 1fr);
-  gap: 16px;
+  /* The army panels are only as tall as their contents, and scroll when the window is too short for them. */
+  grid-template-rows: minmax(0, max-content) 1fr;
+  gap: 12px 16px;
 }
 
 .start-screen__center {
@@ -368,11 +372,115 @@ select {
   font-size: calc(8px * var(--text-scale));
 }
 
-.rules__list {
+.about__lead {
+  margin: 0 0 12px;
+  font-family: var(--font-title);
+  color: var(--title);
+  text-shadow: var(--title-shadow);
+}
+
+.how-to-play {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.battle-demo {
   margin: 0;
-  padding-left: 18px;
+  border: 2px solid var(--board-frame);
+  box-shadow: inset 0 0 0 2px var(--board-frame-inner);
+  background: var(--board-bottom);
+  line-height: 0;
+}
+
+.battle-demo__board {
+  margin: 0 auto;
+}
+
+.battle-demo__caption {
+  padding: 6px 10px;
+  line-height: 1.4;
+  text-align: center;
+  font-family: var(--font-title);
+  color: var(--title);
+  text-shadow: var(--title-shadow);
+  background: rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid var(--frame-line);
+}
+
+.info-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--frame-line);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.info-card__heading {
+  margin: 0 0 2px;
+}
+
+.info-card__text {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.about__link {
+  color: var(--title);
+}
+
+.about__link:hover,
+.about__link:focus-visible {
+  filter: brightness(1.2);
+}
+
+.info-card__text--aside {
+  margin-top: auto;
+  padding-top: 4px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 700px) {
+  .info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+.start-screen__corner {
+  grid-column: 1;
+  align-self: end;
+  display: flex;
   gap: 8px;
+}
+
+.start-screen__corner .button {
+  padding: 6px 10px;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .start-screen {
+    grid-template-rows: none;
+  }
+
+  .start-screen__corner {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 900px) {
@@ -504,19 +612,9 @@ select {
   gap: 6px;
 }
 
-.overlay__card.rules {
+.overlay__card.rules,
+.overlay__card.about {
   max-width: 920px;
-}
-
-.rules__list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
-}
-
-@media (max-width: 700px) {
-  .rules__list {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .hero-stats {

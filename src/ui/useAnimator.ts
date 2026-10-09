@@ -104,7 +104,8 @@ const between = (from: Point, to: Point, progress: number): Point => ({
 /** Where a hero's spell comes from: the caster's edge of the board. */
 const casterPoint = (caster: Player): Point => ({ x: caster === 'red' ? 0 : BOARD_WIDTH, y: BOARD_HEIGHT / 2 })
 
-export function useAnimator() {
+/** With `silent`, moves play out without sound, as in the How to play demo. */
+export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
   const [view, setView] = useState<AnimationView>(EMPTY_VIEW)
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
   const [playing, setPlaying] = useState(false)
@@ -142,6 +143,11 @@ export function useAnimator() {
   const play = useCallback(
     async (events: BattleEvent[], unitsBefore: Unit[], speed: number) => {
       setPlaying(true)
+      const sound = (soundId: SoundId) => {
+        if (!silent) {
+          playSound(soundId)
+        }
+      }
       const duration = (milliseconds: number) => milliseconds * speed
       const positions: Record<string, Point> = Object.fromEntries(
         unitsBefore.map((unit) => [unit.id, hexToPixel(unit.position)]),
@@ -157,7 +163,7 @@ export function useAnimator() {
           stacks: { ...current.stacks, [targetId]: { count, topHp } },
           hit: { ...current.hit, [targetId]: true },
         }))
-        playSound('hit')
+        sound('hit')
         addFloatingText(positions[targetId], `-${damage}`, 'damage')
 
         if (kills > 0) {
@@ -170,7 +176,7 @@ export function useAnimator() {
 
       const shoot = async (from: Point, to: Point, kind: ProjectileKind) => {
         const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
-        playSound(PROJECTILE_SOUND[kind])
+        sound(PROJECTILE_SOUND[kind])
         await tween(duration(Math.max(200, distanceBetween(from, to) * 0.8)), (progress) =>
           setProjectile({ position: between(from, to, progress), angle, kind }),
         )
@@ -188,7 +194,7 @@ export function useAnimator() {
               const from = positions[event.unitId]
               const to = hexToPixel(event.path[event.path.length - 1])
               const hexes = Math.max(1, distanceBetween(from, to) / 45)
-              playSound('fly')
+              sound('fly')
               await tween(duration(FLY_MS_PER_HEX * hexes + 120), (progress) => {
                 const point = between(from, to, progress)
                 setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 18 })
@@ -199,7 +205,7 @@ export function useAnimator() {
               for (const step of event.path.slice(1)) {
                 const from = positions[event.unitId]
                 const to = hexToPixel(step)
-                playSound('step')
+                sound('step')
                 await tween(duration(STEP_MS), (progress) => {
                   const point = between(from, to, progress)
                   setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 3 })
@@ -221,13 +227,13 @@ export function useAnimator() {
               await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'archer'] ?? 'arrow')
             } else {
               const lunge = between(from, to, 0.35)
-              playSound('swing')
+              sound('swing')
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(lunge, from, progress)))
             }
 
             if (event.lucky) {
-              playSound('lucky')
+              sound('lucky')
               addFloatingText(from, 'Lucky!', 'good', -24)
             }
 
@@ -248,7 +254,7 @@ export function useAnimator() {
               await shoot({ x: target.x - 60, y: target.y - 220 }, target, 'fire')
             } else if (event.spell === 'lightningBolt') {
               updateView((current) => ({ ...current, lightning: target }))
-              playSound('lightning')
+              sound('lightning')
               await sleep(duration(260))
               updateView((current) => ({ ...current, lightning: null }))
             }
@@ -258,7 +264,7 @@ export function useAnimator() {
             } else {
               const helpful = SPELLS[event.spell].target === 'ally'
               const color = helpful ? 'var(--glow-good)' : 'var(--glow-bad)'
-              playSound(helpful ? 'blessing' : 'curse')
+              sound(helpful ? 'blessing' : 'curse')
               updateView((current) => ({
                 ...current,
                 glow: { ...current.glow, [event.targetId]: color },
@@ -274,49 +280,49 @@ export function useAnimator() {
 
           case 'death':
             updateView((current) => ({ ...current, dying: { ...current.dying, [event.unitId]: true } }))
-            playSound('death')
+            sound('death')
             await sleep(duration(DEATH_MS))
             break
 
           case 'heal':
             addFloatingText(positions[event.unitId], `+${event.amount}`, 'good')
-            playSound('regenerate')
+            sound('regenerate')
             await sleep(duration(NOTE_MS))
             break
 
           case 'regenerate':
             addFloatingText(positions[event.unitId], 'Regenerate', 'good')
-            playSound('regenerate')
+            sound('regenerate')
             await sleep(duration(NOTE_MS))
             break
 
           case 'petrify':
             addFloatingText(positions[event.unitId], 'Petrified!', 'magic', -24)
-            playSound('petrify')
+            sound('petrify')
             await sleep(duration(NOTE_MS))
             break
 
           case 'stoneSkip':
             addFloatingText(positions[event.unitId], 'Stone', 'info')
-            playSound('petrify')
+            sound('petrify')
             await sleep(duration(NOTE_MS * 1.5))
             break
 
           case 'defend':
             addFloatingText(positions[event.unitId], 'Defend', 'info')
-            playSound('defend')
+            sound('defend')
             await sleep(duration(NOTE_MS))
             break
 
           case 'wait':
             addFloatingText(positions[event.unitId], 'Wait', 'info')
-            playSound('wait')
+            sound('wait')
             await sleep(duration(NOTE_MS))
             break
 
           case 'morale':
             addFloatingText(positions[event.unitId], 'Morale!', 'good')
-            playSound('morale')
+            sound('morale')
             await sleep(duration(NOTE_MS * 1.5))
             break
 
@@ -325,7 +331,7 @@ export function useAnimator() {
         }
       }
     },
-    [updateView, addFloatingText],
+    [updateView, addFloatingText, silent],
   )
 
   const finish = useCallback(() => {
