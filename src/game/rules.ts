@@ -246,6 +246,10 @@ function strike(
     draft.log.push(`Deathblow! ${attacker.label} deal double damage.`)
   }
 
+  if (hasAbility(attacker.type, 'lifeDrain') && !options.ranged && !options.splash) {
+    drainLife(draft, attackerId, target, Math.min(roll.damage, totalHp(target)))
+  }
+
   const splashVerb = hasAbility(attacker.type, 'breath') ? 'Dragon fire burns' : 'The death cloud hits'
   const verb = options.splash ? splashVerb : options.retaliation ? 'strike back at' : options.ranged ? 'shoot' : 'attack'
   const subject = options.splash ? '' : `${describe(attacker)} `
@@ -274,6 +278,34 @@ function strike(
     updateUnit(draft, targetId, { effects: [...effects, { effect: 'curse', roundsLeft: CURSE_ROUNDS }] })
     draft.log.push(`${target.label} are cursed!`)
   }
+}
+
+/**
+ * A Vampire Lord's blow heals it by the damage dealt, raising its fallen up to the size it started with.
+ * The undead and war machines have no life to drain.
+ */
+function drainLife(draft: Draft, drinkerId: string, victim: Unit, damage: number) {
+  const drinker = getUnit(draft, drinkerId)!
+
+  if (damage <= 0 || drinker.count === 0 || hasAbility(victim.type, 'undead') || isWarMachine(victim.type)) {
+    return
+  }
+
+  const stats = CREATURES[drinker.type]
+  const health = Math.min(drinker.startCount * stats.hp, totalHp(drinker) + damage)
+  const count = Math.ceil(health / stats.hp)
+  const topHp = health - (count - 1) * stats.hp
+  const healed = health - totalHp(drinker)
+
+  if (healed <= 0) {
+    return
+  }
+
+  updateUnit(draft, drinkerId, { count, topHp })
+  const losses = draft.casualties[drinker.owner]
+  losses[drinker.type] = Math.max(0, (losses[drinker.type] ?? 0) - (count - drinker.count))
+  draft.events.push({ kind: 'heal', unitId: drinkerId, healerId: drinkerId, amount: healed, topHp })
+  draft.log.push(`${drinker.label} drain ${healed} health.`)
 }
 
 /** Whether a magic-resistant stack shrugs off a hostile spell. Rolls only for enemies of the caster. */
@@ -321,14 +353,19 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
       updateUnit(draft, actor.id, { shots: actor.shots - 1 })
     }
 
-    strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
+    // Marksmen and Grand Elves loose a second arrow if the target still stands.
+    const volleys = hasAbility(actor.type, 'doubleShot') ? 2 : 1
 
-    if (hasAbility(actor.type, 'deathCloud')) {
-      for (const neighbor of neighbors(target.position)) {
-        const caught = draft.units.find((unit) => sameHex(unit.position, neighbor) && unit.count > 0)
+    for (let volley = 0; volley < volleys && getUnit(draft, targetId)!.count > 0; volley++) {
+      strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
 
-        if (caught && !hasAbility(caught.type, 'undead')) {
-          strike(draft, actor.id, caught.id, { ranged: true, retaliation: false, splash: true, hexesMoved: 0 })
+      if (hasAbility(actor.type, 'deathCloud')) {
+        for (const neighbor of neighbors(target.position)) {
+          const caught = draft.units.find((unit) => sameHex(unit.position, neighbor) && unit.count > 0)
+
+          if (caught && !hasAbility(caught.type, 'undead')) {
+            strike(draft, actor.id, caught.id, { ranged: true, retaliation: false, splash: true, hexesMoved: 0 })
+          }
         }
       }
     }
@@ -360,8 +397,16 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
   const canRetaliate = victim.count > 0 && victim.retaliationsLeft > 0 && !victim.petrified && !isWarMachine(victim.type)
 
   if (canRetaliate && !hasAbility(actor.type, 'noRetaliation')) {
-    updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
+    if (!hasAbility(victim.type, 'unlimitedRetaliation')) {
+      updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
+    }
+
     meleeStrike(draft, targetId, actor.id, { retaliation: true, hexesMoved: 0 })
+  }
+
+  // Crusaders and Wolf Raiders strike again once the target has struck back.
+  if (hasAbility(actor.type, 'doubleStrike') && getUnit(draft, actor.id)!.count > 0 && getUnit(draft, targetId)!.count > 0) {
+    meleeStrike(draft, actor.id, targetId, { retaliation: false, hexesMoved: 0 })
   }
 
   const survivor = getUnit(draft, actor.id)!

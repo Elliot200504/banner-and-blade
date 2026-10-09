@@ -1,5 +1,5 @@
 import { armyProblem, standardArmy, type Army } from './army'
-import { CREATURES, hasAbility, isWarMachine, type Faction, type WarMachine } from './creatures'
+import { baseOf, CREATURES, hasAbility, isWarMachine, type Faction, type WarMachine } from './creatures'
 import { createHero, HEROES, heroesOf, type Hero, type HeroId } from './heroes'
 import { COLUMNS, hexKey, offsetToHex, ROWS } from './hex'
 import { createRandom, type Random } from './random'
@@ -56,7 +56,8 @@ function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
       hadMoraleTurn: false,
       petrified: false,
       lostTurn: false,
-      specialty: hero.specialty.kind === 'creature' && hero.specialty.creature === type,
+      // A specialist leads the upgraded creature as well.
+      specialty: hero.specialty.kind === 'creature' && hero.specialty.creature === baseOf(type),
       effects: [],
     }
   })
