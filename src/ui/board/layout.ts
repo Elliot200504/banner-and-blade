@@ -1,4 +1,4 @@
-import { COLUMNS, ROWS, type Hex } from '../game'
+import { COLUMNS, ROWS, type Hex } from '../../game'
 
 export interface Point {
   x: number
