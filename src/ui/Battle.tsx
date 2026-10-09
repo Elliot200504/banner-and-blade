@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   activeUnit,
   afterDamage,
@@ -37,11 +37,12 @@ import {
   type Unit,
 } from '../game'
 import { Board, type BoardHighlights, type DisplayUnit } from './Board'
-import { distanceBetween, hexToPixel, type Point } from './layout'
+import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
 import { Modal } from './Modal'
 import { ResultOverlay } from './ResultOverlay'
 import { BattleLog, HeroPanel, UnitCard } from './SidePanel'
 import { Spellbook } from './Spellbook'
+import { Icon } from './SpriteImage'
 import type { Controller } from './StartScreen'
 import { TurnQueue } from './TurnQueue'
 import { useAnimator } from './useAnimator'
@@ -308,7 +309,6 @@ export function Battle({
     }
   }
 
-
   const highlights: BoardHighlights = {
     activeUnitId: animator.playing ? null : (actor?.id ?? null),
     reachable: canAct && !pendingSpell ? new Set(reachable.keys()) : new Set(),
@@ -338,7 +338,6 @@ export function Battle({
     cursor = 'not-allowed'
   }
 
-
   return (
     <div className="battle">
       <div className="battle__heroes">
@@ -347,79 +346,74 @@ export function Battle({
         <HeroPanel state={state} player="blue" active={actor?.owner === 'blue'} />
       </div>
 
-      <div className="battle__body">
-        <div className="battle__main">
-          <div className="board-frame">
-            <Board
-              units={displayUnits}
-              obstacles={state.obstacles}
-              factions={state.factions}
-              highlights={highlights}
-              projectile={animator.view.projectile}
-              lightning={animator.view.lightning}
-              floatingTexts={animator.floatingTexts}
-              cursor={cursor}
-              theme={theme}
-              onPointerMove={(hex, point) => {
-                setHoveredHex(hex)
-                setPointer(point)
-              }}
-              onBoardClick={handleBoardClick}
-              onBoardRightClick={handleBoardRightClick}
-            />
-          </div>
-
-          <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
-            {computerTurn && actor && !state.winner
-              ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
-              : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
-          </div>
-
-          <div className="action-bar">
-            <button className="button button--secondary" disabled={!canAct} onClick={() => setRetreatOpen(true)}>
-              🏳️ Retreat
-            </button>
-            <button
-              className="button"
-              disabled={!canAct || !hero || hero.hasCastThisRound}
-              onClick={openSpellbook}
-              title="Spellbook (C)"
-            >
-              📖 Cast (C)
-            </button>
-            <button
-              className="button"
-              disabled={!canAct || !actor || actor.waited}
-              onClick={() => perform({ type: 'wait' })}
-              title="Act later this round (W)"
-            >
-              ⏳ Wait (W)
-            </button>
-            <button className="button" disabled={!canAct} onClick={() => perform({ type: 'defend' })} title="Defend (D)">
-              🛡️ Defend (D)
-            </button>
-            <label className="speed-select">
-              Speed
-              <select value={speed} onChange={(event) => setSpeed(event.target.value as BattleSpeed)}>
-                <option value="slow">Slow</option>
-                <option value="normal">Normal</option>
-                <option value="fast">Fast</option>
-              </select>
-            </label>
-          </div>
-
-          <TurnQueue state={state} onHover={setSpotlightUnitId} />
+      <div className="battle__stage">
+        <div className="board-frame" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
+          <Board
+            units={displayUnits}
+            obstacles={state.obstacles}
+            factions={state.factions}
+            highlights={highlights}
+            projectile={animator.view.projectile}
+            lightning={animator.view.lightning}
+            floatingTexts={animator.floatingTexts}
+            cursor={cursor}
+            theme={theme}
+            onPointerMove={(hex, point) => {
+              setHoveredHex(hex)
+              setPointer(point)
+            }}
+            onBoardClick={handleBoardClick}
+            onBoardRightClick={handleBoardRightClick}
+          />
         </div>
-
-        <aside className="battle__side">
-          {inspectedUnit && <UnitCard unit={inspectedUnit} state={state} />}
-          <BattleLog log={state.log} />
-          <p className="battle__hint">Right-click a stack for details.</p>
-          <button className="button button--secondary" onClick={onMainMenu}>
-            Main menu
-          </button>
-        </aside>
       </div>
+
+      <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
+        {computerTurn && actor && !state.winner
+          ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
+          : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
+      </div>
+
+      <div className="action-bar">
+        <button className="button button--secondary" disabled={!canAct} onClick={() => setRetreatOpen(true)}>
+          <Icon name="retreat" /> Retreat
+        </button>
+        <button
+          className="button"
+          disabled={!canAct || !hero || hero.hasCastThisRound}
+          onClick={openSpellbook}
+          title="Spellbook (C)"
+        >
+          <Icon name="spellbook" /> Cast (C)
+        </button>
+        <button
+          className="button"
+          disabled={!canAct || !actor || actor.waited}
+          onClick={() => perform({ type: 'wait' })}
+          title="Act later this round (W)"
+        >
+          <Icon name="wait" /> Wait (W)
+        </button>
+        <button className="button" disabled={!canAct} onClick={() => perform({ type: 'defend' })} title="Defend (D)">
+          <Icon name="defense" /> Defend (D)
+        </button>
+        <label className="speed-select">
+          Speed
+          <select value={speed} onChange={(event) => setSpeed(event.target.value as BattleSpeed)}>
+            <option value="slow">Slow</option>
+            <option value="normal">Normal</option>
+            <option value="fast">Fast</option>
+          </select>
+        </label>
+      </div>
+
+      <aside className="battle__side">
+        {inspectedUnit && <UnitCard unit={inspectedUnit} state={state} />}
+        <BattleLog log={state.log} />
+        <p className="battle__hint">Right-click a stack for details.</p>
+      </aside>
+
+      <TurnQueue state={state} onHover={setSpotlightUnitId} />
 
       {spellbookOpen && hero && (
         <Spellbook
@@ -514,7 +508,6 @@ function statusText(
 
   const attackerHero = state.heroes[actor.owner]
 
-
   if (pendingSpell) {
     if (intent?.kind === 'cast') {
       const damage = spellDamage(intent.spell, attackerHero)
@@ -527,7 +520,6 @@ function statusText(
 
     return `Choose a target for ${SPELLS[pendingSpell].name}. Esc to cancel.`
   }
-
 
   if (intent?.kind === 'move') {
     const flying = hasAbility(actor.type, 'flying')
@@ -550,7 +542,6 @@ function statusText(
     return `${verb} ${intent.target.label}: ${damage} damage, kills ${killsText(intent.target, range.minimum, range.maximum)}${shotsLeft}${breathNote}${flyBack}`
   }
 
-
   if (hoveredUnit && hoveredUnit.owner !== actor.owner) {
     const problem = shotProblem(state.units, actor, hoveredUnit)
     const distance = hexDistance(actor.position, hoveredUnit.position)
@@ -565,7 +556,6 @@ function statusText(
   if (hoveredUnit) {
     return `${hoveredUnit.count} ${CREATURES[hoveredUnit.type].plural} – right-click for details`
   }
-
 
   const blocked = CREATURES[actor.type].range > 0 && isEnemyAdjacent(state.units, actor) ? ' Blocked: cannot shoot!' : ''
 

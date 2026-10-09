@@ -156,7 +156,6 @@ export function useAnimator() {
         setProjectile(null)
       }
 
-
       for (const event of events) {
         if (!mounted.current) {
           return
@@ -292,7 +291,6 @@ export function useAnimator() {
     setView(EMPTY_VIEW)
     setPlaying(false)
   }, [])
-
 
   return { view, floatingTexts, playing, play, finish }
 }

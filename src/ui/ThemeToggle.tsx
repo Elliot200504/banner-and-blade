@@ -1,22 +1,23 @@
-import type { Theme } from './useTheme'
+import { THEMES, type Theme } from './useTheme'
 
-const THEMES: { value: Theme; label: string }[] = [
-  { value: 'medieval', label: '🏰 Medieval' },
-  { value: 'synthwave', label: '🌆 Synthwave' },
-]
+const THEME_LABELS: Record<Theme, string> = {
+  default: 'Default',
+  medieval: 'Medieval',
+  synthwave: 'Synthwave',
+}
 
 export function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
   return (
     <div className="theme-toggle" role="radiogroup" aria-label="Theme">
       {THEMES.map((option) => (
         <button
-          key={option.value}
+          key={option}
           role="radio"
-          aria-checked={theme === option.value}
-          className={`theme-toggle__option${theme === option.value ? ' theme-toggle__option--active' : ''}`}
-          onClick={() => onChange(option.value)}
+          aria-checked={theme === option}
+          className={`theme-toggle__option${theme === option ? ' theme-toggle__option--active' : ''}`}
+          onClick={() => onChange(option)}
         >
-          {option.label}
+          {THEME_LABELS[option]}
         </button>
       ))}
     </div>

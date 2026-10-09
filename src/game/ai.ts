@@ -233,7 +233,6 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
   const player = actor.owner
   const profile = PROFILES[difficulty]
 
-
   if (profile.castsSpells) {
     const bestSpell = bestOf(state, spellMoves(state), player, profile)
     const now = scoreState(state, player, enemyPositionsOf(state, player), profile)
@@ -242,7 +241,6 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
       return bestSpell.move
     }
   }
-
 
   return bestOf(state, actionMoves(state), player, profile)?.move ?? { type: 'defend' }
 }

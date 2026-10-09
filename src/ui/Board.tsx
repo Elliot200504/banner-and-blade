@@ -1,9 +1,8 @@
 import { memo, useRef, type MouseEvent } from 'react'
-import { allHexes, CREATURES, hexKey, inBounds, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../game'
+import { allHexes, CREATURES, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
-import { SpriteImage } from './SpriteImage'
+import { IconImage, SpriteImage } from './SpriteImage'
 import { Terrain } from './Terrain'
-import type { SpriteId } from './sprites'
 import type { Theme } from './useTheme'
 import type { FloatingText, Projectile, ProjectileKind } from './useAnimator'
 
@@ -113,7 +112,6 @@ export function Board(props: BoardProps) {
   const activeHex = props.units.find((displayUnit) => displayUnit.unit.id === highlights.activeUnitId)?.unit.position
   const sortedUnits = [...props.units].sort((first, second) => first.point.y - second.point.y)
 
-
   return (
     <svg
       ref={svgRef}
@@ -125,17 +123,7 @@ export function Board(props: BoardProps) {
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <defs>
-        <linearGradient id="field" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--board-top)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--board-bottom)' }} />
-        </linearGradient>
-      </defs>
-      {props.theme === 'synthwave' ? (
-        <rect width={BOARD_WIDTH} height={BOARD_HEIGHT} fill="url(#field)" />
-      ) : (
-        <Terrain factions={props.factions} obstacles={props.obstacles} />
-      )}
+      <Terrain factions={props.factions} obstacles={props.obstacles} neon={props.theme === 'synthwave'} />
 
       {HEXES.map((hex) => {
         const key = hexKey(hex)
@@ -174,12 +162,16 @@ export function Board(props: BoardProps) {
 
       {props.obstacles.map((obstacle) => {
         const center = hexToPixel(obstacle.position)
-        const spriteId: SpriteId = props.theme === 'synthwave' ? 'crystal' : obstacle.kind
+        // In Synthwave, each homeland's obstacles become holograms in that homeland's neon.
+        const homeland = OBSTACLES_BY_FACTION[props.factions.red].includes(obstacle.kind) ? props.factions.red : props.factions.blue
+        const hologram = props.theme === 'synthwave' ? `url(#neon-${homeland})` : undefined
 
         return (
           <g key={hexKey(obstacle.position)} transform={`translate(${center.x} ${center.y + 16})`}>
             <ellipse cx={0} cy={-2} rx={18} ry={5} fill="rgba(0,0,0,0.35)" />
-            <SpriteImage spriteId={spriteId} size={OBSTACLE_SPRITE_SIZE} />
+            <g filter={hologram}>
+              <SpriteImage spriteId={obstacle.kind} size={OBSTACLE_SPRITE_SIZE} />
+            </g>
           </g>
         )
       })}
@@ -279,7 +271,6 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
     className += ' unit--petrified'
   }
 
-
   return (
     <g className={className} transform={`translate(${point.x} ${point.y})`}>
       {active && <ellipse className="unit__active-ring" cx={0} cy={12} rx={20} ry={7} />}
@@ -291,9 +282,9 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
         <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
       </g>
       {unit.defending && (
-        <text className="unit__badge" x={unit.owner === 'red' ? -16 : 16} y={-22} textAnchor="middle" dominantBaseline="central">
-          🛡️
-        </text>
+        <g transform={`translate(${unit.owner === 'red' ? -16 : 16} -14)`}>
+          <IconImage name="defense" size={16} />
+        </g>
       )}
       <g transform={`translate(${unit.owner === 'red' ? 6 : -30} 8)`}>
         <rect

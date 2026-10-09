@@ -19,7 +19,6 @@ export function Modal({ title, onClose, children, className = '' }: ModalProps) 
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
       <div className={`overlay__card modal ${className}`} onClick={(event) => event.stopPropagation()}>

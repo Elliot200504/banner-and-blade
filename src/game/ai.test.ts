@@ -63,7 +63,6 @@ describe('computer player', () => {
     })
   }
 
-
   it('on Easy never casts spells', () => {
     let state = createBattle({ red: 'dungeon', blue: 'castle' }, 9, { red: 'deemer', blue: 'adela' })
 
@@ -79,7 +78,6 @@ describe('computer player', () => {
     const last = makeUnit('skeleton', 'blue', 3, 0, { count: 1 })
     expect(chooseMove(battle([cavaliers, last]), 'easy')).toMatchObject({ type: 'attack', targetId: last.id })
   })
-
 
   for (const difficulty of ['easy', 'hard'] as const) {
     it(`plays a full battle to the end on ${difficulty}`, { timeout: 60_000 }, () => {

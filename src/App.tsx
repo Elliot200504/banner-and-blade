@@ -22,13 +22,17 @@ export default function App() {
     setScreen('battle')
   }
 
-
   return (
-    <>
-      <header className="app-header">
-        {screen === 'battle' && <span className="app-header__title">Banner &amp; Blade</span>}
-        <ThemeToggle theme={theme} onChange={setTheme} />
-      </header>
+    <div className="app">
+      {screen === 'battle' && (
+        <header className="app-header">
+          <span className="app-header__title">Banner &amp; Blade</span>
+          <button className="button button--secondary" onClick={() => setScreen('start')}>
+            Main menu
+          </button>
+          <ThemeToggle theme={theme} onChange={setTheme} />
+        </header>
+      )}
       {screen === 'start' ? (
         <StartScreen
           factions={factions}
@@ -46,6 +50,7 @@ export default function App() {
           onChangeDifficulty={(player, difficulty) => setDifficulties((current) => ({ ...current, [player]: difficulty }))}
           onChangeArmy={(player, army) => setArmies((current) => ({ ...current, [player]: army }))}
           onStart={startBattle}
+          themeToggle={<ThemeToggle theme={theme} onChange={setTheme} />}
         />
       ) : (
         <Battle
@@ -61,6 +66,6 @@ export default function App() {
           onMainMenu={() => setScreen('start')}
         />
       )}
-    </>
+    </div>
   )
 }

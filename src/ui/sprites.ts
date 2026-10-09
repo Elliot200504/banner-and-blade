@@ -1,4 +1,4 @@
-import type { CreatureType, HeroId, ObstacleKind } from '../game'
+import type { CreatureType, Faction, HeroId, ObstacleKind } from '../game'
 
 export interface Sprite {
   /** Maps a pixel character to a CSS color. '.' is always transparent and is not listed. */
@@ -7,11 +7,11 @@ export interface Sprite {
   pixels: string[]
 }
 
-/** Every creature, hero and obstacle has a sprite of the same name. */
-export type SpriteId = CreatureType | HeroId | ObstacleKind
+/** Every creature, hero, obstacle and town has a sprite of the same name. */
+export type SpriteId = CreatureType | HeroId | ObstacleKind | Faction
 
 /**
- * Pixel art for every unit and obstacle. The characters 'T' (team color) and
+ * Pixel art for every unit, obstacle and town. The characters 'T' (team color) and
  * 't' (darker team shade) are never listed in a palette: the renderer
  * substitutes the owning player's colors for them. All creatures face right.
  */
@@ -1614,6 +1614,133 @@ export const SPRITES: Record<SpriteId, Sprite> = {
       '.ohTTTTTTTTTTTho',
       '.ohTTTTTyyTTTTho',
       '.ooooooooooooooo',
+    ],
+  },
+  // ---------- Town emblems (one per faction) ----------
+  castle: {
+    palette: { o: OUTLINE, g: '#c4c0b4', G: '#8a867c', w: '#2a2440', d: WOOD },
+    pixels: [
+      '.......oTT......',
+      '.......oTTT.....',
+      '.......o........',
+      '.....o.o.o......',
+      '.....ooooo......',
+      '.....oGgGo......',
+      'o.o.oogwgoo.o.o.',
+      'oooooogggoooooo.',
+      'ogggooGgGoogggo.',
+      'oGwGoogggooGwGo.',
+      'ogggoogggoogggo.',
+      'ogggoogdgoogggo.',
+      'oGggoodddooggGo.',
+      'ogggoodddoogggo.',
+      'oGgGoodddooGgGo.',
+      'ooooooooooooooo.',
+    ],
+  },
+  rampart: {
+    palette: { o: OUTLINE, w: '#ece6d4', W: '#b4ac98', L: '#3f8a3a', l: '#74c864', d: '#3a2a1a', b: WOOD },
+    pixels: [
+      '.......oT.......',
+      '.......oTT......',
+      '.......o........',
+      '......owo.......',
+      '...oo.owWo.oo...',
+      '..oLlooWWooLlo..',
+      '.oLlLLowWoLLlLo.',
+      '.oLLLLowWoLLLLo.',
+      '..oLLLowWoLLLo..',
+      '...oooowWoooo...',
+      '.....owwWWo.....',
+      '.....owwWWo.....',
+      '.....owddWo.....',
+      '....owwddWWo....',
+      '...obbbddbbbo...',
+      '..ooooooooooooo.',
+    ],
+  },
+  stronghold: {
+    palette: { o: OUTLINE, h: BONE, y: '#d0a858', Y: '#8a6a2a', w: WOOD, W: '#5a3a1e', d: '#2a1a10' },
+    pixels: [
+      '.o............o.',
+      '.oh..........ho.',
+      '..oh...oo...ho..',
+      '...oho.oo.ohoo..',
+      '....ohoyyohoo...',
+      '....oyyYyyyo....',
+      '...oyyYyyYyyo...',
+      '..oyYyyyyyyYyo..',
+      '.oyyyyYyyYyyyyo.',
+      '.oooooooooooooo.',
+      '.owWwWoddoWwWwo.',
+      '.owWwWoddoWwWwo.',
+      '.owWwWoddoWwWwo.',
+      'oowWwWoddoWwWwoo',
+      'o.o.o.oddo.o.o.o',
+      'oooooooooooooooo',
+    ],
+  },
+  necropolis: {
+    palette: { o: OUTLINE, p: '#6a6478', P: '#3e3850', g: '#7cff8a', b: BONE },
+    pixels: [
+      '.......o........',
+      '.......o........',
+      '......opo.......',
+      '......opo.......',
+      '.....oppPo......',
+      '.o...opgPo...o..',
+      'opo..oppPo..opo.',
+      'opo..oppPo..opo.',
+      'opPooopgPoooopPo',
+      'ogPoopppPPoopgPo',
+      'opPoopppPPoopPPo',
+      'opPooooooooopPPo',
+      'opPoobbbbbboopPo',
+      'opPoobobbobPopPo',
+      'opPoobbbbbbPopPo',
+      'oooooooooooooooo',
+    ],
+  },
+  dungeon: {
+    palette: { o: OUTLINE, r: '#7a6a5e', R: '#4e423a', k: '#0a0608', e: '#ff3a2a', c: '#c890ff', C: '#7a38c8' },
+    pixels: [
+      '................',
+      '......oooo......',
+      '....oorrRroo....',
+      '...orrrRrrrro...',
+      '.oorrRrrrrRrroo.',
+      'ocorrrrrrrrrroco',
+      'occorRroooRrocCo',
+      'oCcorrokkkoRocCo',
+      'oCCorokkkkkorCCo',
+      '.oCoroekkkeoroCo',
+      '.ooRrokkkkkorRoo',
+      '.orrrokkkkkorrro',
+      'oRrrrokkkkkorRro',
+      'orrRrokkkkkorrRo',
+      'orrrrokkkkkorrro',
+      'oooooooooooooooo',
+    ],
+  },
+  inferno: {
+    palette: { o: OUTLINE, s: '#3a2020', S: '#5e3030', f: '#ff6a00', F: '#ffd040', l: '#c02010' },
+    pixels: [
+      '..o....o....o...',
+      '..o...oFo...o...',
+      '.oso..oso..oso..',
+      '.oso.ossso.oso..',
+      '.oSo.osSso.oSo..',
+      '.ofo.osfso.ofo..',
+      'ossSoossSooossSo',
+      'osssoossssooSsso',
+      'osfsoosffsoosfso',
+      'osssooosssooosso',
+      'osSSssSoooSsSSso',
+      'ossssssofossssso',
+      'oSsssssofFossSso',
+      'ossSsssoFfoSssso',
+      'olllllllllllllll',
+      'oooooooooooooooo',
     ],
   },
 }

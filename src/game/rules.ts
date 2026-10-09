@@ -215,7 +215,6 @@ function strike(
     targetTopHp: result.topHp,
   })
 
-
   if (roll.lucky) {
     draft.log.push(`Lucky strike! ${attacker.label} deal double damage.`)
   }
@@ -294,7 +293,6 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
     return false
   }
 
-
   if (mode === 'shoot') {
     updateUnit(draft, actor.id, { shots: actor.shots - 1 })
     strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
@@ -311,7 +309,6 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
 
     return true
   }
-
 
   const origin = from ?? actor.position
 
@@ -340,7 +337,6 @@ function performAttack(draft: Draft, state: GameState, actor: Unit, targetId: st
     updateUnit(draft, targetId, { retaliationsLeft: victim.retaliationsLeft - 1 })
     meleeStrike(draft, targetId, actor.id, { retaliation: true, hexesMoved: 0 })
   }
-
 
   const survivor = getUnit(draft, actor.id)!
 
@@ -391,7 +387,6 @@ function castSpell(draft: Draft, caster: Player, spell: SpellId, targetId: strin
 
     return
   }
-
 
   if (!target) {
     return
@@ -525,7 +520,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     return state
   }
 
-
   const draft: Draft = {
     units: state.units,
     heroes: state.heroes,
@@ -540,7 +534,6 @@ export function applyMove(state: GameState, move: Move): GameState {
   let endsTurn = true
   /** Only real actions can trigger good morale. */
   let canTriggerMorale = false
-
 
   switch (move.type) {
     case 'move':
@@ -591,7 +584,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     }
   }
 
-
   draft.units = draft.units.filter((unit) => unit.count > 0)
   queue = queue.filter((id) => draft.units.some((unit) => unit.id === id))
   const winner = winnerOf(draft.units)
@@ -602,7 +594,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     return finish(state, draft, { queue, round, winner, retreated: null })
   }
 
-
   if (move.type === 'wait') {
     return finish(state, draft, { ...beginNextTurn(draft, queue, round), winner: null, retreated: null })
   }
@@ -610,7 +601,6 @@ export function applyMove(state: GameState, move: Move): GameState {
   if (!endsTurn) {
     return finish(state, draft, { queue, round, winner: null, retreated: null })
   }
-
 
   const actorAfter = getUnit(draft, actor.id)
   const hero = draft.heroes[actor.owner]
@@ -625,7 +615,6 @@ export function applyMove(state: GameState, move: Move): GameState {
 
     return finish(state, draft, { queue, round, winner: null, retreated: null })
   }
-
 
   queue = queue.filter((id) => id !== actor.id)
 

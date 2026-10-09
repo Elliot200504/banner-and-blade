@@ -25,7 +25,6 @@ export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
   const speed = effectiveSpeed(unit)
   const paths = new Map<string, Hex[]>()
 
-
   if (hasAbility(unit.type, 'flying')) {
     for (const hex of allHexes()) {
       const distance = hexDistance(unit.position, hex)
@@ -37,7 +36,6 @@ export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
 
     return paths
   }
-
 
   const visited = new Set([hexKey(unit.position)])
   let frontier: Hex[][] = [[unit.position]]
