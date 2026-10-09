@@ -1,6 +1,6 @@
-import { isSpellSpecialist, SPELLS, type Hero, type SpellId } from '../game'
+import { isSpellSpecialist, SPELLS, type Hero, type SpellId } from '../../game'
 import { Modal } from './Modal'
-import { Icon, SpellIcon } from './SpriteImage'
+import { Icon, SpellIcon } from '../art/SpriteImage'
 
 interface SpellbookProps {
   hero: Hero
