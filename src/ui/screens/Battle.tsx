@@ -35,19 +35,19 @@ import {
   type Player,
   type SpellId,
   type Unit,
-} from '../game'
-import { Board, type BoardHighlights, type DisplayUnit } from './Board'
-import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
-import { Modal } from './Modal'
+} from '../../game'
+import { Board, type BoardHighlights, type DisplayUnit } from '../board/Board'
+import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from '../board/layout'
+import { Modal } from '../modals/Modal'
 import { ResultOverlay } from './ResultOverlay'
-import { BattleLog, HeroPanel, UnitCard } from './SidePanel'
-import { Spellbook } from './Spellbook'
-import { Icon } from './SpriteImage'
+import { BattleLog, HeroPanel, UnitCard } from '../panels/SidePanel'
+import { Spellbook } from '../modals/Spellbook'
+import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
-import { TurnQueue } from './TurnQueue'
-import { useAnimator } from './useAnimator'
-import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from './useBattleSpeed'
-import type { Theme } from './useTheme'
+import { TurnQueue } from '../panels/TurnQueue'
+import { useAnimator } from '../board/useAnimator'
+import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from '../hooks/useBattleSpeed'
+import type { Theme } from '../hooks/useTheme'
 
 /** A short pause before each computer move, so you can follow what it does. */
 const COMPUTER_DELAY_MS = 450
