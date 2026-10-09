@@ -1,9 +1,9 @@
 import { memo, useRef, type MouseEvent } from 'react'
-import { allHexes, CREATURES, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../game'
+import { allHexes, CREATURES, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
-import { IconImage, SpriteImage } from './SpriteImage'
+import { IconImage, SpriteImage } from '../art/SpriteImage'
 import { Terrain } from './Terrain'
-import type { Theme } from './useTheme'
+import type { Theme } from '../hooks/useTheme'
 import type { FloatingText, Projectile, ProjectileKind } from './useAnimator'
 
 const UNIT_SPRITE_SIZE = 44
