@@ -13,6 +13,7 @@ export type UiIconId =
   | 'gold'
   | 'star'
   | 'upgrade'
+  | 'skull'
 
 const GOLD_PALETTE = { o: '#2a1a00', y: '#ffd040', Y: '#c89a20', w: '#fff4c0' }
 
@@ -266,6 +267,27 @@ export const UI_ICONS: Record<UiIconId, Sprite> = {
       '..oyyYo..oYyYo..',
       '.oyYoo....ooYYo.',
       '.ooo........ooo.',
+      '................',
+      '................',
+    ],
+  },
+  skull: {
+    palette: { o: '#1a0000', r: '#e02020', R: '#901010', w: '#ffe8e0' },
+    pixels: [
+      '................',
+      '....oooooooo....',
+      '..oorrrrrrrroo..',
+      '.orrrrrrrrrrrro.',
+      '.orrrrrrrrrrRRo.',
+      '.orrooorrooorRo.',
+      '.orrooorrooorRo.',
+      '.orrooorrooorRo.',
+      '..orrrrooorrRo..',
+      '...orrrrrrrRo...',
+      '....orrRRrRo....',
+      '....owowwowo....',
+      '....orRrRrRo....',
+      '.....oooooo.....',
       '................',
       '................',
     ],

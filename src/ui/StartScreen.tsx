@@ -41,11 +41,12 @@ export type Controller = 'human' | 'computer'
 
 const CONTROLLER_LABELS: Record<Controller, string> = { human: 'Human', computer: 'Computer' }
 
-const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }
+const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' }
 const DIFFICULTY_HINTS: Record<Difficulty, string> = {
   easy: 'Makes loose moves and never casts spells.',
   normal: 'Weighs every move carefully.',
   hard: 'Thinks harder about the dice and presses the attack.',
+  expert: 'Fights like a veteran: strikes first, kites out of reach, shields its shooters and baits out retaliation.',
 }
 
 const formatGold = (gold: number) => gold.toLocaleString('en-US')
@@ -138,9 +139,10 @@ export function StartScreen({
               aria-checked={difficulties[player] === difficulty}
               title={DIFFICULTY_HINTS[difficulty]}
               tabIndex={controllers[player] === 'computer' ? 0 : -1}
-              className={`faction-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
+              className={`faction-option difficulty-option${difficulties[player] === difficulty ? ' faction-option--active' : ''}`}
               onClick={() => onChangeDifficulty(player, difficulty)}
             >
+              {difficulty === 'expert' && <Icon name="skull" size={12} />}
               {DIFFICULTY_LABELS[difficulty]}
             </button>
           ))}

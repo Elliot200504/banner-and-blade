@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyMove, chooseMove, createBattle, createHero, CREATURES, offsetToHex, type Difficulty, type Faction, type GameState, type Unit } from './index'
+import { applyMove, chooseMove, createBattle, createHero, CREATURES, hexDistance, offsetToHex, type Difficulty, type Faction, type GameState, type Unit } from './index'
 
 function makeUnit(type: Unit['type'], owner: Unit['owner'], column: number, row: number, changes: Partial<Unit> = {}): Unit {
   const stats = CREATURES[type]
@@ -94,7 +94,36 @@ describe('computer player', () => {
     expect(chooseMove(battle([cavaliers, last]), 'easy')).toMatchObject({ type: 'attack', targetId: last.id })
   })
 
-  for (const difficulty of ['easy', 'hard'] as const) {
+  it('on Expert keeps out of reach of a faster enemy, so the enemy has to come to it', () => {
+    const swordsmen = makeUnit('swordsman', 'red', 0, 5, { count: 20, waited: true })
+    const cavaliers = makeUnit('cavalier', 'blue', 12, 5, { count: 10 })
+    const state = battle([swordsmen, cavaliers])
+    // Cavaliers ride 7 hexes and strike the 8th.
+    const reach = 8
+    const distanceAfter = (difficulty: Difficulty) => {
+      const after = applyMove(state, chooseMove(state, difficulty))
+
+      return hexDistance(after.units.find((unit) => unit.id === swordsmen.id)!.position, cavaliers.position)
+    }
+
+    expect(distanceAfter('hard')).toBeLessThanOrEqual(reach)
+    expect(distanceAfter('expert')).toBeGreaterThan(reach)
+  })
+
+  it('on Expert pulls a shooter out of reach once its last escort is gone', () => {
+    const archers = makeUnit('archer', 'red', 7, 5, { count: 30, waited: true })
+    const swordsmen = makeUnit('swordsman', 'blue', 13, 5, { count: 20 })
+    const state = battle([archers, swordsmen])
+    const move = chooseMove(state, 'expert')
+    const after = applyMove(state, move)
+    const movedArchers = after.units.find((unit) => unit.id === archers.id)!
+
+    // Shooting now would leave the archers to be cut down; they fall back to shoot next round instead.
+    expect(move.type).toBe('move')
+    expect(hexDistance(movedArchers.position, swordsmen.position)).toBeGreaterThan(6)
+  })
+
+  for (const difficulty of ['easy', 'hard', 'expert'] as const) {
     it(`plays a full battle to the end on ${difficulty}`, { timeout: 60_000 }, () => {
       const { state } = playOut(createBattle({ red: 'necropolis', blue: 'dungeon' }, 77), difficulty)
       expect(state.winner).not.toBeNull()
