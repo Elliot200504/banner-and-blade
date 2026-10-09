@@ -1,4 +1,4 @@
-import type { SpellId } from '../game'
+import type { SpellId } from '../../game'
 import type { Sprite } from './sprites'
 
 /** Pixel-art spellbook icons, in the same 16 × 16 format as the unit sprites. */
