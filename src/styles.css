@@ -672,10 +672,8 @@ select {
 
 /* Over the battlefield backdrop: see-through panels with a thin frame, so the field and armies show through. */
 .start-screen .army-picker__side {
-  /* An open drawer may use the full height, over the bottom row of buttons, which return once it closes. */
-  grid-row: 2 / 4;
-  position: relative;
-  z-index: 1;
+  /* Both drawers stop above the bottom row, so Settings, About and GitHub always stay visible. */
+  grid-row: 2;
   background: color-mix(in srgb, var(--panel) 55%, transparent);
   backdrop-filter: blur(3px);
   border-width: 1px;
@@ -697,10 +695,6 @@ select {
   grid-row: 2;
 }
 
-/* Red's open drawer covers the bottom row of buttons; hide them so they don't show through. */
-.start-screen:has(.army-picker__side--red) .start-screen__corner {
-  visibility: hidden;
-}
 
 /* A side's drawer slides out of its screen edge, and its closed card slides back into it. */
 .start-screen .army-picker__side--red,
