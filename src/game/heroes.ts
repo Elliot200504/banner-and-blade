@@ -109,5 +109,6 @@ export const isSpellSpecialist = (hero: Pick<Hero, 'specialty'>, id: SpellId): b
 export function createHero(id: HeroId): Hero {
   const { faction: _faction, extraSpells, ...template } = HEROES[id]
   const maxMana = template.knowledge * 10
+
   return { ...template, id, mana: maxMana, maxMana, hasCastThisRound: false, spells: [...SPELL_ORDER, ...extraSpells] }
 }

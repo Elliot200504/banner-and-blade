@@ -23,8 +23,10 @@ const startRow = (index: number, stacks: number) => Math.round(((index + 0.5) * 
 
 function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
   const column = owner === 'red' ? 0 : COLUMNS - 1
+
   return army.map(({ type, count }, index) => {
     const stats = CREATURES[type]
+
     return {
       id: `${owner}-${type}`,
       label: `${PLAYER_NAMES[owner]} ${stats.plural}`,
@@ -55,6 +57,7 @@ function createObstacles(random: Random, factions: Record<Player, Faction>): Obs
   const obstacles: Obstacle[] = []
   const taken = new Set<string>()
   let attempts = 0
+
   while (obstacles.length < OBSTACLE_PAIRS * 2 && attempts < 100) {
     attempts++
     const column = random.integer(3, Math.floor(COLUMNS / 2))
@@ -62,14 +65,20 @@ function createObstacles(random: Random, factions: Record<Player, Faction>): Obs
     const variant = random.integer(0, 1)
     const first = offsetToHex(column, row)
     const mirrored = offsetToHex(COLUMNS - 1 - column, ROWS - 1 - row)
-    if (taken.has(hexKey(first)) || taken.has(hexKey(mirrored))) continue
+
+    if (taken.has(hexKey(first)) || taken.has(hexKey(mirrored))) {
+      continue
+    }
+
     taken.add(hexKey(first))
     taken.add(hexKey(mirrored))
     obstacles.push({ position: first, kind: OBSTACLES_BY_FACTION[factions.red][variant] })
+
     if (hexKey(first) !== hexKey(mirrored)) {
       obstacles.push({ position: mirrored, kind: OBSTACLES_BY_FACTION[factions.blue][variant] })
     }
   }
+
   return obstacles
 }
 
@@ -80,7 +89,10 @@ function heroFor(faction: Faction, chosen: HeroId | undefined): Hero {
 
 /** The recruited army, or the faction's standard army if none (or one that breaks the rules) is given. */
 function armyFor(faction: Faction, recruited: Army | undefined): Army {
-  if (!recruited || armyProblem(recruited, faction)) return standardArmy(faction)
+  if (!recruited || armyProblem(recruited, faction)) {
+    return standardArmy(faction)
+  }
+
   return recruited.filter((stack) => stack.count > 0)
 }
 
@@ -96,6 +108,7 @@ export function createBattle(
     ...createArmy('red', armyFor(factions.red, armies.red), heroes.red),
     ...createArmy('blue', armyFor(factions.blue, armies.blue), heroes.blue),
   ]
+
   return {
     units,
     heroes,

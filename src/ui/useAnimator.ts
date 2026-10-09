@@ -66,8 +66,12 @@ function tween(milliseconds: number, onFrame: (progress: number) => void): Promi
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / milliseconds)
       onFrame(progress)
-      if (progress < 1) requestAnimationFrame(tick)
-      else resolve()
+
+      if (progress < 1) {
+        requestAnimationFrame(tick)
+      } else {
+        resolve()
+      }
     }
     requestAnimationFrame(tick)
   })
@@ -90,20 +94,25 @@ export function useAnimator() {
 
   useEffect(() => {
     mounted.current = true
+
     return () => {
       mounted.current = false
     }
   }, [])
 
   const updateView = useCallback((change: (current: AnimationView) => AnimationView) => {
-    if (mounted.current) setView(change)
+    if (mounted.current) {
+      setView(change)
+    }
   }, [])
 
   const addFloatingText = useCallback((position: Point, text: string, tone: FloatingText['tone'], offsetY = 0) => {
     const id = nextFloatId.current++
     setFloatingTexts((current) => [...current, { id, position: { x: position.x, y: position.y + offsetY }, text, tone }])
     setTimeout(() => {
-      if (mounted.current) setFloatingTexts((current) => current.filter((floating) => floating.id !== id))
+      if (mounted.current) {
+        setFloatingTexts((current) => current.filter((floating) => floating.id !== id))
+      }
     }, FLOAT_MS)
   }, [])
 
@@ -130,7 +139,11 @@ export function useAnimator() {
           hit: { ...current.hit, [targetId]: true },
         }))
         addFloatingText(positions[targetId], `-${damage}`, 'damage')
-        if (kills > 0) addFloatingText(positions[targetId], `${kills}†`, 'kills', 16)
+
+        if (kills > 0) {
+          addFloatingText(positions[targetId], `${kills}†`, 'kills', 16)
+        }
+
         await sleep(duration(HIT_MS))
         updateView((current) => ({ ...current, hit: { ...current.hit, [targetId]: false } }))
       }
@@ -143,8 +156,12 @@ export function useAnimator() {
         setProjectile(null)
       }
 
+
       for (const event of events) {
-        if (!mounted.current) return
+        if (!mounted.current) {
+          return
+        }
+
         switch (event.kind) {
           case 'move': {
             if (event.flying) {
@@ -168,12 +185,14 @@ export function useAnimator() {
                 positions[event.unitId] = to
               }
             }
+
             break
           }
 
           case 'attack': {
             const from = positions[event.attackerId]
             const to = positions[event.targetId]
+
             if (event.splash) {
               // Death clouds and dragon fire spread from the main target, with no projectile of their own.
             } else if (event.ranged) {
@@ -183,14 +202,22 @@ export function useAnimator() {
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(lunge, from, progress)))
             }
-            if (event.lucky) addFloatingText(from, 'Lucky!', 'good', -24)
-            if (event.deathblow) addFloatingText(from, 'Deathblow!', 'good', -24)
+
+            if (event.lucky) {
+              addFloatingText(from, 'Lucky!', 'good', -24)
+            }
+
+            if (event.deathblow) {
+              addFloatingText(from, 'Deathblow!', 'good', -24)
+            }
+
             await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)
             break
           }
 
           case 'spell': {
             const target = positions[event.targetId]
+
             if (event.spell === 'magicArrow') {
               await shoot(casterPoint(event.caster), target, 'magic')
             } else if (event.spell === 'meteorShower' || event.spell === 'inferno') {
@@ -200,6 +227,7 @@ export function useAnimator() {
               await sleep(duration(260))
               updateView((current) => ({ ...current, lightning: null }))
             }
+
             if (event.damage > 0) {
               await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)
             } else {
@@ -213,6 +241,7 @@ export function useAnimator() {
               await sleep(duration(NOTE_MS * 1.5))
               updateView((current) => ({ ...current, glow: { ...current.glow, [event.targetId]: '' } }))
             }
+
             break
           }
 
@@ -263,6 +292,7 @@ export function useAnimator() {
     setView(EMPTY_VIEW)
     setPlaying(false)
   }, [])
+
 
   return { view, floatingTexts, playing, play, finish }
 }

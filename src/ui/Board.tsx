@@ -62,18 +62,28 @@ export function Board(props: BoardProps) {
   const toBoardPoint = (event: MouseEvent): Point | null => {
     const svg = svgRef.current
     const matrix = svg?.getScreenCTM()
-    if (!svg || !matrix) return null
+
+    if (!svg || !matrix) {
+      return null
+    }
+
     const screenPoint = svg.createSVGPoint()
     screenPoint.x = event.clientX
     screenPoint.y = event.clientY
     const boardPoint = screenPoint.matrixTransform(matrix.inverse())
+
     return { x: boardPoint.x, y: boardPoint.y }
   }
 
   const hexUnderPointer = (event: MouseEvent): { hex: Hex; point: Point } | null => {
     const point = toBoardPoint(event)
-    if (!point) return null
+
+    if (!point) {
+      return null
+    }
+
     const hex = pixelToHex(point)
+
     return inBounds(hex) ? { hex, point } : null
   }
 
@@ -84,18 +94,25 @@ export function Board(props: BoardProps) {
 
   const handleClick = (event: MouseEvent) => {
     const hit = hexUnderPointer(event)
-    if (hit) props.onBoardClick(hit.hex, hit.point)
+
+    if (hit) {
+      props.onBoardClick(hit.hex, hit.point)
+    }
   }
 
   const handleContextMenu = (event: MouseEvent) => {
     event.preventDefault()
     const hit = hexUnderPointer(event)
-    if (hit) props.onBoardRightClick(hit.hex)
+
+    if (hit) {
+      props.onBoardRightClick(hit.hex)
+    }
   }
 
   const pathKeys = new Set(highlights.pathPreview.map(hexKey))
   const activeHex = props.units.find((displayUnit) => displayUnit.unit.id === highlights.activeUnitId)?.unit.position
   const sortedUnits = [...props.units].sort((first, second) => first.point.y - second.point.y)
+
 
   return (
     <svg
@@ -123,19 +140,42 @@ export function Board(props: BoardProps) {
       {HEXES.map((hex) => {
         const key = hexKey(hex)
         let className = 'hex'
-        if (highlights.inRange.has(key)) className += ' hex--in-range'
-        if (highlights.reachable.has(key)) className += ' hex--reachable'
-        if (pathKeys.has(key)) className += ' hex--path'
-        if (activeHex && sameHex(activeHex, hex)) className += ' hex--active'
-        if (highlights.attackOrigin && sameHex(highlights.attackOrigin, hex)) className += ' hex--origin'
-        if (highlights.selectedHex && sameHex(highlights.selectedHex, hex)) className += ' hex--selected'
-        if (highlights.hoveredHex && sameHex(highlights.hoveredHex, hex)) className += ' hex--hovered'
+
+        if (highlights.inRange.has(key)) {
+          className += ' hex--in-range'
+        }
+
+        if (highlights.reachable.has(key)) {
+          className += ' hex--reachable'
+        }
+
+        if (pathKeys.has(key)) {
+          className += ' hex--path'
+        }
+
+        if (activeHex && sameHex(activeHex, hex)) {
+          className += ' hex--active'
+        }
+
+        if (highlights.attackOrigin && sameHex(highlights.attackOrigin, hex)) {
+          className += ' hex--origin'
+        }
+
+        if (highlights.selectedHex && sameHex(highlights.selectedHex, hex)) {
+          className += ' hex--selected'
+        }
+
+        if (highlights.hoveredHex && sameHex(highlights.hoveredHex, hex)) {
+          className += ' hex--hovered'
+        }
+
         return <polygon key={key} className={className} points={hexCorners(hexToPixel(hex), HEX_SIZE - 1)} />
       })}
 
       {props.obstacles.map((obstacle) => {
         const center = hexToPixel(obstacle.position)
         const spriteId: SpriteId = props.theme === 'synthwave' ? 'crystal' : obstacle.kind
+
         return (
           <g key={hexKey(obstacle.position)} transform={`translate(${center.x} ${center.y + 16})`}>
             <ellipse cx={0} cy={-2} rx={18} ry={5} fill="rgba(0,0,0,0.35)" />
@@ -185,6 +225,7 @@ const PROJECTILE_COLORS: Record<ProjectileKind, string> = {
 
 function ProjectileShape({ projectile }: { projectile: Projectile }) {
   const { position, angle, kind } = projectile
+
   return (
     <g transform={`translate(${position.x} ${position.y - 18}) rotate(${angle})`}>
       {kind === 'arrow' ? (
@@ -221,10 +262,23 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
   const hasDebuff = unit.effects.some((active) => ['slow', 'curse'].includes(active.effect))
 
   let className = `unit unit--${unit.owner}`
-  if (hit) className += ' unit--hit'
-  if (dying) className += ' unit--dying'
-  if (spotlight) className += ' unit--spotlight'
-  if (unit.petrified) className += ' unit--petrified'
+
+  if (hit) {
+    className += ' unit--hit'
+  }
+
+  if (dying) {
+    className += ' unit--dying'
+  }
+
+  if (spotlight) {
+    className += ' unit--spotlight'
+  }
+
+  if (unit.petrified) {
+    className += ' unit--petrified'
+  }
+
 
   return (
     <g className={className} transform={`translate(${point.x} ${point.y})`}>

@@ -33,6 +33,7 @@ function plainHero(changes: Partial<Hero> = {}): Hero {
 
 function makeUnit(type: CreatureType, owner: Player, column: number, row: number, changes: Partial<Unit> = {}): Unit {
   const stats = CREATURES[type]
+
   return {
     id: `${owner}-${type}`,
     label: `${owner} ${stats.plural}`,
@@ -75,6 +76,7 @@ describe('setup', () => {
   it('gives each side seven stacks on its own edge', () => {
     expect(state.units.filter((unit) => unit.owner === 'red')).toHaveLength(7)
     expect(state.units.filter((unit) => unit.owner === 'blue')).toHaveLength(7)
+
     for (const unit of state.units) {
       expect(hexToOffset(unit.position).column).toBe(unit.owner === 'red' ? 0 : COLUMNS - 1)
     }
@@ -82,6 +84,7 @@ describe('setup', () => {
 
   it('places obstacles away from the armies', () => {
     expect(state.obstacles.length).toBeGreaterThan(0)
+
     for (const obstacle of state.obstacles) {
       const { column } = hexToOffset(obstacle.position)
       expect(column).toBeGreaterThanOrEqual(3)
@@ -96,10 +99,17 @@ describe('setup', () => {
 
   it("dresses each half of the field in its army's homeland", () => {
     const field = createBattle({ red: 'necropolis', blue: 'dungeon' }, 5)
+
     for (const obstacle of field.obstacles) {
       const { column } = hexToOffset(obstacle.position)
-      if (column < 7) expect(['deadTree', 'tombstone']).toContain(obstacle.kind)
-      if (column > 7) expect(['stalagmite', 'crystal']).toContain(obstacle.kind)
+
+      if (column < 7) {
+        expect(['deadTree', 'tombstone']).toContain(obstacle.kind)
+      }
+
+      if (column > 7) {
+        expect(['stalagmite', 'crystal']).toContain(obstacle.kind)
+      }
     }
   })
 
@@ -295,7 +305,7 @@ describe('spells', () => {
     const state = battle([makeUnit('swordsman', 'red', 0, 0), makeUnit('walkingDead', 'blue', 14, 10)], { red: hero })
     const next = applyMove(state, { type: 'cast', spell: 'magicArrow', targetId: 'blue-walkingDead' })
     const walkingDead = find(next, 'blue-walkingDead')!
-    expect(CREATURES.walkingDead.hp * CREATURES.walkingDead.armyCount - ((walkingDead.count - 1) * 20 + walkingDead.topHp)).toBe(30)
+    expect(CREATURES.walkingDead.hp * CREATURES.walkingDead.armyCount - ((walkingDead.count - 1) * CREATURES.walkingDead.hp + walkingDead.topHp)).toBe(30)
     expect(activeUnit(next)?.id).toBe('red-swordsman')
     expect(next.heroes.red.mana).toBe(hero.mana - 5)
   })
@@ -319,10 +329,10 @@ describe('spells', () => {
 })
 
 describe('dungeon', () => {
-  it('fields six dungeon stacks', () => {
+  it('fields seven dungeon stacks', () => {
     const state = createBattle({ red: 'dungeon', blue: 'castle' }, 7)
     const types = state.units.filter((unit) => unit.owner === 'red').map((unit) => unit.type)
-    expect(types).toEqual(['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'redDragon'])
+    expect(types).toEqual(['troglodyte', 'harpy', 'beholder', 'medusa', 'minotaur', 'manticore', 'redDragon'])
     expect(state.heroes.red.name).toBe('Lorelei')
   })
 
@@ -345,6 +355,7 @@ describe('dungeon', () => {
   it('medusas sometimes turn their target to stone', () => {
     const outcomes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((seed) => {
       const state = { ...battle([makeUnit('medusa', 'red', 0, 0), makeUnit('cavalier', 'blue', 5, 0)]), seed }
+
       return applyMove(state, { type: 'attack', targetId: 'blue-cavalier' }).events.some((event) => event.kind === 'petrify')
     })
     expect(outcomes).toContain(true)
@@ -368,6 +379,7 @@ describe('dungeon', () => {
     const outcomes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((seed) => {
       const cavaliers = makeUnit('cavalier', 'blue', 5, 0, { petrified: true, lostTurn: true })
       const state = { ...battle([makeUnit('medusa', 'red', 0, 0), cavaliers]), seed }
+
       return applyMove(state, { type: 'attack', targetId: 'blue-cavalier' }).events.some((event) => event.kind === 'petrify')
     })
     expect(outcomes).not.toContain(true)

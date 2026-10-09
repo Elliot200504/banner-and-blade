@@ -22,14 +22,23 @@ function pixelRuns(sprite: Sprite): PixelRun[] {
   const runs: PixelRun[] = []
   sprite.pixels.forEach((line, row) => {
     let column = 0
+
     while (column < line.length) {
       const character = line[column]
       let length = 1
-      while (line[column + length] === character) length++
-      if (character !== '.') runs.push({ row, column, length, character })
+
+      while (line[column + length] === character) {
+        length++
+      }
+
+      if (character !== '.') {
+        runs.push({ row, column, length, character })
+      }
+
       column += length
     }
   })
+
   return runs
 }
 
@@ -37,10 +46,12 @@ const RUNS_BY_SPRITE = new Map<SpriteId, PixelRun[]>()
 
 function runsFor(spriteId: SpriteId): PixelRun[] {
   let runs = RUNS_BY_SPRITE.get(spriteId)
+
   if (!runs) {
     runs = pixelRuns(SPRITES[spriteId])
     RUNS_BY_SPRITE.set(spriteId, runs)
   }
+
   return runs
 }
 
@@ -61,6 +72,7 @@ export const SpriteImage = memo(function SpriteImage({ spriteId, owner, size, mi
   const team = owner ? TEAM_COLORS[owner] : { main: '#888', dark: '#444' }
   const colorFor = (character: string) =>
     character === 'T' ? team.main : character === 't' ? team.dark : sprite.palette[character]
+
 
   return (
     <g

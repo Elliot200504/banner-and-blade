@@ -21,6 +21,7 @@ const MIDDLE_COLUMN = Math.floor(COLUMNS / 2)
 function noise(q: number, r: number, slot: number): number {
   let value = Math.imul(q * 374761393 + r * 668265263 + slot * 2147483647, 1274126177)
   value = Math.imul(value ^ (value >>> 13), 1103515245)
+
   return ((value ^ (value >>> 16)) >>> 0) / 4294967296
 }
 
@@ -38,6 +39,7 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
     () => pixels([[-1, -2, 1, 2, '#4a9a3c'], [0, -3, 1, 3, '#62b64a'], [1, -2, 1, 2, '#4a9a3c'], [-2, -1, 1, 1, '#4a9a3c']]),
     (pick) => {
       const leaf = LEAF_COLORS[Math.floor(pick * LEAF_COLORS.length)]
+
       return pixels([[0, 0, 2, 1, leaf], [-1, 1, 2, 1, leaf]])
     },
     () => pixels([[0, -1, 1, 1, '#f4f0f8'], [-1, 0, 1, 1, '#f4f0f8'], [1, 0, 1, 1, '#f4f0f8'], [0, 0, 1, 1, '#f2d14b'], [0, 1, 1, 2, '#3f8a3a']]),
@@ -68,6 +70,7 @@ const DECORATIONS: Record<Faction, ((pick: number) => ReactNode)[]> = {
   castle: [
     (pick) => {
       const petal = FLOWER_COLORS[Math.floor(pick * FLOWER_COLORS.length)]
+
       return pixels([[0, -1, 1, 1, petal], [-1, 0, 1, 1, petal], [1, 0, 1, 1, petal], [0, 1, 1, 1, petal], [0, 0, 1, 1, '#f5c542']])
     },
     () => pixels([[-1, -2, 1, 2, '#6fa04a'], [0, -3, 1, 3, '#7fb455'], [1, -2, 1, 2, '#6fa04a']]),
@@ -107,13 +110,22 @@ interface TerrainProps {
 export const Terrain = memo(function Terrain({ factions, obstacles }: TerrainProps) {
   const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
   const details: ReactNode[] = []
+
   for (const hex of allHexes()) {
     const { column } = hexToOffset(hex)
-    if (column === MIDDLE_COLUMN || blocked.has(hexKey(hex))) continue
+
+    if (column === MIDDLE_COLUMN || blocked.has(hexKey(hex))) {
+      continue
+    }
+
     const choices = DECORATIONS[column < MIDDLE_COLUMN ? factions.red : factions.blue]
     const center = hexToPixel(hex)
+
     for (let slot = 0; slot < 2; slot++) {
-      if (noise(hex.q, hex.r, slot * 3) > 0.45) continue
+      if (noise(hex.q, hex.r, slot * 3) > 0.45) {
+        continue
+      }
+
       const decorate = choices[Math.floor(noise(hex.q, hex.r, slot * 3 + 1) * choices.length)]
       const x = center.x + (noise(hex.q, hex.r, slot * 3 + 2) - 0.5) * 26
       const y = center.y + (slot === 0 ? -8 : 8)
@@ -124,6 +136,7 @@ export const Terrain = memo(function Terrain({ factions, obstacles }: TerrainPro
       )
     }
   }
+
 
   return (
     <g className="terrain" aria-hidden="true">

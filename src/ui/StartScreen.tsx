@@ -68,8 +68,10 @@ export function StartScreen({
 }: StartScreenProps) {
   const problems = (['red', 'blue'] as const).flatMap((player) => {
     const problem = armyProblem(armies[player], factions[player])
+
     return problem ? [`${PLAYER_NAMES[player]}: ${problem}`] : []
   })
+
   return (
     <main className="start-screen">
       <div className="start-screen__crest">⚔️</div>
@@ -199,6 +201,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
     onChange(withStack(army, faction, type, allowed))
   }
 
+
   return (
     <div className="army-preview">
       <p className="army-preview__description">{FACTIONS[faction].description}</p>
@@ -231,6 +234,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           const count = countOf(type)
           const most = mostAffordable(army, type)
           const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === type
+
           return (
             <li
               key={type}

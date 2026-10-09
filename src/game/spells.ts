@@ -72,11 +72,26 @@ const specialtyFactor = (spell: SpellId, hero: Pick<Hero, 'specialty'>) =>
   isSpellSpecialist(hero, spell) ? SPELL_SPECIALTY_BONUS : 1
 
 function baseDamage(spell: SpellId, power: number): number {
-  if (spell === 'magicArrow') return 10 + 10 * power
-  if (spell === 'lightningBolt') return 10 + 25 * power
-  if (spell === 'deathRipple') return 10 + 5 * power
-  if (spell === 'meteorShower') return 10 + 15 * power
-  if (spell === 'inferno') return 20 + 10 * power
+  if (spell === 'magicArrow') {
+    return 10 + 10 * power
+  }
+
+  if (spell === 'lightningBolt') {
+    return 10 + 25 * power
+  }
+
+  if (spell === 'deathRipple') {
+    return 10 + 5 * power
+  }
+
+  if (spell === 'meteorShower') {
+    return 10 + 15 * power
+  }
+
+  if (spell === 'inferno') {
+    return 20 + 10 * power
+  }
+
   return 0
 }
 

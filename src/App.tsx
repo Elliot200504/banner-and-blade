@@ -22,6 +22,7 @@ export default function App() {
     setScreen('battle')
   }
 
+
   return (
     <>
       <header className="app-header">

@@ -61,18 +61,23 @@ function play(job: Job): Result {
   const heroes = { [job.heroSide]: job.hero, [opponentSide]: job.opponent } as Record<Player, HeroId>
   const difficulties = { [job.heroSide]: job.difficulty, [opponentSide]: job.against } as Record<Player, Difficulty>
   let state = createBattle(factions, job.seed, heroes)
+
   for (let moves = 0; !state.winner && moves < MAX_MOVES; moves++) {
     const player = activeUnit(state)!.owner
     state = applyMove(state, chooseMove(state, difficulties[player]))
   }
+
   const winner = state.winner === null ? null : state.winner === job.heroSide ? 'hero' : 'opponent'
+
   return { job, winner, rounds: state.round }
 }
 
 /** Plays each job as it arrives on stdin, one JSON line each, and answers with one line per result. */
 async function runWorker() {
   for await (const line of createInterface({ input: process.stdin })) {
-    if (line.trim()) process.stdout.write(JSON.stringify(play(JSON.parse(line) as Job)) + '\n')
+    if (line.trim()) {
+      process.stdout.write(JSON.stringify(play(JSON.parse(line) as Job)) + '\n')
+    }
   }
 }
 
@@ -80,18 +85,27 @@ async function runWorker() {
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`)
+
   return index === -1 ? undefined : process.argv[index + 1]
 }
 
 function difficultyOption(name: string): Difficulty {
   const value = option(name) ?? 'normal'
-  if (!DIFFICULTIES.includes(value as Difficulty)) throw new Error(`--${name} must be one of ${DIFFICULTIES.join(', ')}`)
+
+  if (!DIFFICULTIES.includes(value as Difficulty)) {
+    throw new Error(`--${name} must be one of ${DIFFICULTIES.join(', ')}`)
+  }
+
   return value as Difficulty
 }
 
 function numberOption(name: string, fallback: number): number {
   const value = Number(option(name) ?? fallback)
-  if (!Number.isInteger(value) || value < 1) throw new Error(`--${name} must be a whole number above 0`)
+
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`--${name} must be a whole number above 0`)
+  }
+
   return value
 }
 
@@ -104,14 +118,21 @@ function createJobs(games: number, difficulty: Difficulty, against: Difficulty, 
   const ordered = difficulty !== against
   HERO_ORDER.forEach((hero, row) => {
     HERO_ORDER.forEach((opponent, column) => {
-      if (column < row && !ordered) return
-      if (column === row && !mirrors) return
+      if (column < row && !ordered) {
+        return
+      }
+
+      if (column === row && !mirrors) {
+        return
+      }
+
       for (let game = 0; game < games; game++) {
         const heroSide: Player = game % 2 === 0 ? 'red' : 'blue'
         jobs.push({ hero, opponent, heroSide, difficulty, against, seed: (baseSeed + jobs.length * 2654435761) >>> 0 })
       }
     })
   })
+
   return jobs
 }
 
@@ -124,7 +145,11 @@ function runInWorkers(jobs: Job[], workerCount: number): Promise<Result[]> {
 
   const report = () => {
     const now = Date.now()
-    if (now - lastReport < 1000 && results.length < jobs.length) return
+
+    if (now - lastReport < 1000 && results.length < jobs.length) {
+      return
+    }
+
     lastReport = now
     const elapsed = (now - started) / 1000
     const remaining = results.length ? (elapsed / results.length) * (jobs.length - results.length) : 0
@@ -140,8 +165,11 @@ function runInWorkers(jobs: Job[], workerCount: number): Promise<Result[]> {
         stdio: ['pipe', 'pipe', 'inherit'],
       })
       const sendNext = () => {
-        if (nextJob < jobs.length) child.stdin.write(JSON.stringify(jobs[nextJob++]) + '\n')
-        else child.stdin.end()
+        if (nextJob < jobs.length) {
+          child.stdin.write(JSON.stringify(jobs[nextJob++]) + '\n')
+        } else {
+          child.stdin.end()
+        }
       }
       let buffer = ''
       child.stdout.setEncoding('utf8')
@@ -149,8 +177,12 @@ function runInWorkers(jobs: Job[], workerCount: number): Promise<Result[]> {
         buffer += chunk
         const lines = buffer.split('\n')
         buffer = lines.pop()!
+
         for (const line of lines) {
-          if (!line.trim()) continue
+          if (!line.trim()) {
+            continue
+          }
+
           results.push(JSON.parse(line) as Result)
           report()
           sendNext()
@@ -162,8 +194,10 @@ function runInWorkers(jobs: Job[], workerCount: number): Promise<Result[]> {
     })
   })
 
+
   return Promise.all(workers).then(() => {
     process.stderr.write('\n\n')
+
     return results
   })
 }
@@ -175,9 +209,13 @@ class Tally {
   losses = 0
   draws = 0
   add(winner: Result['winner'], forHero: boolean) {
-    if (winner === null) this.draws++
-    else if ((winner === 'hero') === forHero) this.wins++
-    else this.losses++
+    if (winner === null) {
+      this.draws++
+    } else if ((winner === 'hero') === forHero) {
+      this.wins++
+    } else {
+      this.losses++
+    }
   }
   get games() {
     return this.wins + this.losses + this.draws
@@ -198,8 +236,14 @@ const padLeft = (text: string, width: number) => text.padStart(width)
 
 /** ▲ or ▼ when a rate is clearly above or below 50%, beyond what luck explains. */
 function verdict(tally: Tally): string {
-  if (tally.rate - tally.margin > 0.5) return '▲ strong'
-  if (tally.rate + tally.margin < 0.5) return '▼ weak'
+  if (tally.rate - tally.margin > 0.5) {
+    return '▲ strong'
+  }
+
+  if (tally.rate + tally.margin < 0.5) {
+    return '▼ weak'
+  }
+
   return ''
 }
 
@@ -213,26 +257,44 @@ function printReport(results: Result[], difficulty: Difficulty, against: Difficu
   const difficultyTally = new Tally()
   const pairTally = (row: string, column: string) => {
     const key = `${row}|${column}`
-    if (!pairTallies.has(key)) pairTallies.set(key, new Tally())
+
+    if (!pairTallies.has(key)) {
+      pairTallies.set(key, new Tally())
+    }
+
     return pairTallies.get(key)!
   }
   const factionTally = (row: Faction, column: Faction) => {
     const key = `${row}|${column}`
-    if (!factionTallies.has(key)) factionTallies.set(key, new Tally())
+
+    if (!factionTallies.has(key)) {
+      factionTallies.set(key, new Tally())
+    }
+
     return factionTallies.get(key)!
   }
+
 
   for (const result of results) {
     const { hero, opponent, heroSide } = result.job
     const heroFaction = HEROES[hero].faction
     const opponentFaction = HEROES[opponent].faction
     rounds += result.rounds
-    if (result.winner === null) sides.draws++
-    else sides[result.winner === 'hero' ? heroSide : opponentOf(heroSide)]++
+
+    if (result.winner === null) {
+      sides.draws++
+    } else {
+      sides[result.winner === 'hero' ? heroSide : opponentOf(heroSide)]++
+    }
+
     difficultyTally.add(result.winner, true)
 
     pairTally(hero, opponent).add(result.winner, true)
-    if (heroFaction !== opponentFaction) factionTally(heroFaction, opponentFaction).add(result.winner, true)
+
+    if (heroFaction !== opponentFaction) {
+      factionTally(heroFaction, opponentFaction).add(result.winner, true)
+    }
+
     if (sameDifficulty) {
       // The same game seen from the other side.
       if (hero !== opponent) {
@@ -240,24 +302,31 @@ function printReport(results: Result[], difficulty: Difficulty, against: Difficu
         heroTallies.get(hero)!.add(result.winner, true)
         heroTallies.get(opponent)!.add(result.winner, false)
       }
-      if (heroFaction !== opponentFaction) factionTally(opponentFaction, heroFaction).add(result.winner, false)
+
+      if (heroFaction !== opponentFaction) {
+        factionTally(opponentFaction, heroFaction).add(result.winner, false)
+      }
     } else {
       heroTallies.get(hero)!.add(result.winner, true)
     }
   }
+
 
   const factions = Object.keys(FACTIONS) as Faction[]
   const label = (level: Difficulty) => level[0].toUpperCase() + level.slice(1)
   console.log(`Banner & Blade balance report: ${results.length} games, ${label(difficulty)} vs ${label(against)}`)
   console.log(`Red won ${percent(sides.red / results.length)}, Blue ${percent(sides.blue / results.length)}, ` +
     `${sides.draws} draws. Battles last ${(rounds / results.length).toFixed(1)} rounds on average.`)
+
   if (!sameDifficulty) {
     console.log(`${label(difficulty)} won ${percent(difficultyTally.rate)} ± ${percent(difficultyTally.margin)} against ${label(against)}.`)
   }
+
   console.log()
 
   console.log(sameDifficulty ? 'Heroes (against every other hero):' : `Heroes playing ${label(difficulty)}:`)
   const heroRows = [...heroTallies.entries()].sort((first, second) => second[1].rate - first[1].rate)
+
   for (const [hero, tally] of heroRows) {
     const template = HEROES[hero]
     console.log(
@@ -265,25 +334,31 @@ function printReport(results: Result[], difficulty: Difficulty, against: Difficu
         `${padLeft(String(tally.games), 6)} games  ${verdict(tally)}`,
     )
   }
+
   console.log()
 
   console.log('Factions (row against column, mirror matches left out):')
   console.log(`  ${pad('', 10)}${factions.map((faction) => padLeft(FACTIONS[faction].name, 9)).join('')}`)
+
   for (const row of factions) {
     const cells = factions.map((column) => padLeft(row === column ? '·' : percent(factionTally(row, column).rate), 9))
     console.log(`  ${pad(FACTIONS[row].name, 10)}${cells.join('')}`)
   }
+
   console.log()
 
   console.log('Hero against hero (row win rate):')
   console.log(`  ${pad('', 10)}${HERO_ORDER.map((hero) => padLeft(HEROES[hero].name.slice(0, 6), 7)).join('')}`)
+
   for (const row of HERO_ORDER) {
     const cells = HERO_ORDER.map((column) => {
       const tally = pairTallies.get(`${row}|${column}`)
+
       return padLeft(tally ? percent(tally.rate) : '·', 7)
     })
     console.log(`  ${pad(HEROES[row].name, 10)}${cells.join('')}`)
   }
+
   console.log()
   console.log(`± is a 95% confidence interval. Draws (no winner after ${MAX_MOVES} moves) count as half a win.`)
 }
@@ -300,5 +375,9 @@ async function main() {
   printReport(await runInWorkers(jobs, workerCount), difficulty, against)
 }
 
-if (process.env.BALANCE_WORKER) await runWorker()
-else await main()
+
+if (process.env.BALANCE_WORKER) {
+  await runWorker()
+} else {
+  await main()
+}
