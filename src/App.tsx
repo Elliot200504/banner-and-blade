@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { heroesOf, standardArmy, type Army, type Difficulty, type Faction, type HeroId, type Player } from './game'
 import { About, GitHubLink } from './ui/About'
+import { Backdrop } from './ui/Backdrop'
 import { Battle } from './ui/Battle'
 import { Modal } from './ui/Modal'
 import { NEW_SETUP, StartScreen, type Controller, type SetupProgress } from './ui/StartScreen'
@@ -53,6 +54,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <Backdrop screen={screen} theme={theme} factions={factions} heroes={heroes} armies={armies} />
       {screen === 'battle' && (
         <header className="app-header">
           <span className="app-header__title">Banner &amp; Blade</span>
