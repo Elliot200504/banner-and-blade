@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { ARMY_BUDGET } from '../game'
-import { BattleDemo } from './BattleDemo'
+import { ARMY_BUDGET } from '../../game'
+import { BattleDemo } from '../board/BattleDemo'
 
 function RulesCard({ title, children }: { title: string; children: ReactNode }) {
   return (
