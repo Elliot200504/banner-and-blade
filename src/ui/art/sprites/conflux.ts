@@ -1,4 +1,4 @@
-import type { UpgradedCreature } from '../../game'
+import type { UpgradedCreature } from '../../../game'
 import { OUTLINE, SKIN, GOLD, type Sprite } from './shared'
 
 /** Conflux: its creatures, heroes, town emblem and homeland obstacles. */
