@@ -389,7 +389,7 @@ export function Battle({
           onClick={openSpellbook}
           title="Spellbook (C)"
         >
-          <Icon name="spellbook" /> Cast (C)
+          <Icon name="spellbook" /> Spellbook (C)
         </button>
         <button
           className="button"
