@@ -564,6 +564,30 @@ select {
   margin: 0 0 2px;
 }
 
+/* The topic whose demo is playing on the board. */
+.info-card--playing {
+  border-color: var(--title);
+}
+
+/* Highlighted like a link, at the end of the topic's heading. */
+.info-card__demo {
+  margin-left: 10px;
+  padding: 0;
+  font: inherit;
+  color: var(--title);
+  text-decoration: underline;
+  text-transform: none;
+  letter-spacing: normal;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.info-card__demo:hover,
+.info-card__demo:focus-visible {
+  filter: brightness(1.25);
+}
+
 .info-card__text {
   margin: 0;
   line-height: 1.55;
