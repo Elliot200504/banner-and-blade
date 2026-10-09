@@ -1,5 +1,5 @@
 import { effectiveSpeed } from './combat'
-import { CREATURES, hasAbility } from './creatures'
+import { CREATURES, hasAbility, isWarMachine } from './creatures'
 import { allHexes, hexDistance, hexKey, inBounds, neighbors, sameHex, type Hex } from './hex'
 import type { GameState, Unit } from './types'
 
@@ -24,6 +24,10 @@ function isBlocked(board: Board, hex: Hex): boolean {
 export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
   const speed = effectiveSpeed(unit)
   const paths = new Map<string, Hex[]>()
+
+  if (isWarMachine(unit.type)) {
+    return paths
+  }
 
   if (hasAbility(unit.type, 'flying')) {
     for (const hex of allHexes()) {
@@ -110,7 +114,8 @@ export function shotProblem(units: Unit[], unit: Unit, target: Unit): ShotProble
     return 'noShots'
   }
 
-  if (isEnemyAdjacent(units, unit)) {
+  // A war machine shoots even with an enemy right next to it.
+  if (isEnemyAdjacent(units, unit) && !isWarMachine(unit.type)) {
     return 'blocked'
   }
 
@@ -131,6 +136,10 @@ export function attackMode(board: Board, unit: Unit, target: Unit): AttackMode |
 
   if (shotProblem(board.units, unit, target) === null) {
     return 'shoot'
+  }
+
+  if (isWarMachine(unit.type)) {
+    return null
   }
 
   return attackOrigins(board, unit, target).length > 0 ? 'melee' : null

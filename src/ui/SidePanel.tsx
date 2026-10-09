@@ -6,8 +6,10 @@ import {
   effectiveDefense,
   effectiveSpeed,
   FACTIONS,
+  isWarMachine,
   PLAYER_NAMES,
   SPELLS,
+  usesAmmunition,
   type GameState,
   type Player,
   type Unit,
@@ -56,6 +58,7 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
   const defense = effectiveDefense(unit, hero)
   const speed = effectiveSpeed(unit)
   const withBonus = (value: number, base: number) => (value === base ? `${value}` : `${base} (${value})`)
+  const machine = isWarMachine(unit.type)
   const statusEffects = [
     unit.defending && 'Defending',
     unit.waited && 'Waiting',
@@ -82,22 +85,28 @@ export function UnitCard({ unit, state }: { unit: Unit; state: GameState }) {
         <dd>{withBonus(attack, stats.attack)}</dd>
         <dt>Defense</dt>
         <dd>{withBonus(defense, stats.defense)}</dd>
-        <dt>Damage</dt>
-        <dd>
-          {stats.minDamage}–{stats.maxDamage}
-        </dd>
+        {stats.maxDamage > 0 && (
+          <>
+            <dt>Damage</dt>
+            <dd>
+              {stats.minDamage}–{stats.maxDamage}
+            </dd>
+          </>
+        )}
         <dt>Health</dt>
         <dd>
           {unit.topHp}/{stats.hp}
         </dd>
-        <dt>Speed</dt>
-        <dd>{withBonus(speed, stats.speed)}</dd>
+        {!machine && (
+          <>
+            <dt>Speed</dt>
+            <dd>{withBonus(speed, stats.speed)}</dd>
+          </>
+        )}
         {stats.range > 0 && (
           <>
             <dt>Shots</dt>
-            <dd>
-              {unit.shots}/{stats.shots}
-            </dd>
+            <dd>{usesAmmunition(state.units, unit) ? `${unit.shots}/${stats.shots}` : 'Unlimited'}</dd>
             <dt>Range</dt>
             <dd>{stats.range} hexes</dd>
           </>

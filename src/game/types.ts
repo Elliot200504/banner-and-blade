@@ -85,6 +85,8 @@ export type BattleEvent =
   | { kind: 'wait'; unitId: string }
   | { kind: 'morale'; unitId: string }
   | { kind: 'regenerate'; unitId: string; topHp: number }
+  /** A First Aid Tent tends a stack's top creature. */
+  | { kind: 'heal'; unitId: string; healerId: string; amount: number; topHp: number }
   | { kind: 'petrify'; unitId: string }
   /** A petrified stack's turn comes up and is skipped. */
   | { kind: 'stoneSkip'; unitId: string }

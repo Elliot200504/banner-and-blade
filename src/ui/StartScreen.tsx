@@ -3,6 +3,7 @@ import {
   ABILITY_DESCRIPTIONS,
   ARMY_BUDGET,
   armyCost,
+  baseOf,
   armyProblem,
   createHero,
   createRandom,
@@ -12,11 +13,16 @@ import {
   FACTIONS,
   HEROES,
   heroesOf,
+  isWarMachine,
   mostAffordable,
   PLAYER_NAMES,
   randomArmy,
   standardArmy,
+  UPGRADES,
+  WAR_MACHINES,
   withStack,
+  withUpgrade,
+  type BaseCreature,
   type Army,
   type CreatureType,
   type Difficulty,
@@ -49,10 +55,18 @@ function creatureSummary(type: CreatureType): string {
   const stats = CREATURES[type]
   const damage = stats.minDamage === stats.maxDamage ? `${stats.minDamage}` : `${stats.minDamage}–${stats.maxDamage}`
   const shooting = stats.shots > 0 ? ` · ${stats.shots} shots, range ${stats.range}` : ''
+  const abilities = stats.abilities.map((ability) => ABILITY_DESCRIPTIONS[ability])
+
+  if (isWarMachine(type)) {
+    const fighting = stats.maxDamage > 0 ? `Attack ${stats.attack} · Damage ${damage} · ` : ''
+
+    return [`${fighting}Defense ${stats.defense} · Health ${stats.hp}`, ...abilities].join('\n')
+  }
+
   const lines = [
     `Attack ${stats.attack} · Defense ${stats.defense} · Damage ${damage}`,
     `Health ${stats.hp} · Speed ${stats.speed}${shooting}`,
-    ...stats.abilities.map((ability) => ABILITY_DESCRIPTIONS[ability]),
+    ...abilities,
   ]
 
   return lines.join('\n')
@@ -170,6 +184,7 @@ export function StartScreen({
       <ArmyBuilder
         player={player}
         faction={factions[player]}
+        key={factions[player]}
         heroId={heroes[player]}
         army={armies[player]}
         onChange={(army) => onChangeArmy(player, army)}
@@ -218,6 +233,25 @@ interface ArmyBuilderProps {
 function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderProps) {
   const hero = createHero(heroId)
   const goldLeft = ARMY_BUDGET - armyCost(army)
+  /** Creatures marked for upgrading while the army has none of them yet. */
+  const [pendingUpgrades, setPendingUpgrades] = useState<Set<BaseCreature>>(new Set())
+  /** The version of a creature this row recruits: the one in the army, or the one chosen for when it joins. */
+  const rowType = (base: BaseCreature) =>
+    army.find((stack) => baseOf(stack.type) === base)?.type ?? (pendingUpgrades.has(base) ? UPGRADES[base] : base)
+  const toggleUpgrade = (base: BaseCreature, upgraded: boolean) => {
+    onChange(withUpgrade(army, faction, base, upgraded))
+    setPendingUpgrades((current) => {
+      const next = new Set(current)
+
+      if (upgraded) {
+        next.add(base)
+      } else {
+        next.delete(base)
+      }
+
+      return next
+    })
+  }
   const countOf = (type: CreatureType) => army.find((stack) => stack.type === type)?.count ?? 0
   const setCount = (type: CreatureType, count: number) => {
     const allowed = Math.max(0, Math.min(Math.floor(count) || 0, mostAffordable(army, type)))
@@ -251,15 +285,21 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
         </span>
       </div>
       <ul className="recruit">
-        {FACTIONS[faction].creatures.map((type) => {
+        {FACTIONS[faction].creatures.map((base) => {
+          const type = rowType(base)
+          const upgraded = type !== base
+          const other = upgraded ? base : UPGRADES[base]
           const stats = CREATURES[type]
           const count = countOf(type)
           const most = mostAffordable(army, type)
-          const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === type
+          const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === base
+          const upgradeTip = upgraded
+            ? `Back to ${CREATURES[base].plural} (${CREATURES[base].cost} gold each)`
+            : `Upgrade to ${CREATURES[other].plural} (${CREATURES[other].cost} gold each)\n${creatureSummary(other)}`
 
           return (
             <li
-              key={type}
+              key={base}
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
               <SpriteIcon spriteId={type} owner={player} size={32} mirrored={player === 'blue'} />
@@ -267,6 +307,15 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
               </span>
+              <button
+                className={`recruit__upgrade${upgraded ? ' recruit__upgrade--active' : ''}`}
+                aria-pressed={upgraded}
+                aria-label={`Upgrade ${CREATURES[base].plural} to ${CREATURES[UPGRADES[base]].plural}`}
+                title={upgradeTip}
+                onClick={() => toggleUpgrade(base, !upgraded)}
+              >
+                <Icon name="upgrade" />
+              </button>
               <span className="recruit__count">
                 <button
                   className="recruit__step"
@@ -300,6 +349,29 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           )
         })}
       </ul>
+      <div className="machines" role="group" aria-label={`${PLAYER_NAMES[player]} war machines`}>
+        <span className="machines__title">War machines</span>
+        {WAR_MACHINES.map((machine) => {
+          const bought = countOf(machine) > 0
+
+          return (
+            <button
+              key={machine}
+              className={`machines__option${bought ? ' machines__option--bought' : ''}`}
+              aria-pressed={bought}
+              title={creatureSummary(machine)}
+              disabled={!bought && mostAffordable(army, machine) === 0}
+              onClick={() => setCount(machine, bought ? 0 : 1)}
+            >
+              <SpriteIcon spriteId={machine} owner={player} size={24} mirrored={player === 'blue'} />
+              <span className="machines__name">
+                {CREATURES[machine].name}
+                <span className="recruit__cost">{CREATURES[machine].cost} gold</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
