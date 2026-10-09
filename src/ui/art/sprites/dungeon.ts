@@ -1,4 +1,4 @@
-import type { UpgradedCreature } from '../../game'
+import type { UpgradedCreature } from '../../../game'
 import { OUTLINE, SKIN, STEEL, WOOD, BONE, GOLD, type Sprite } from './shared'
 
 /** Dungeon: its creatures, heroes, town emblem and homeland obstacles. */
