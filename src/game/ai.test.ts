@@ -45,9 +45,24 @@ describe('computer player', () => {
     expect(chooseMove(battle([archers, walkingDead]))).toEqual({ type: 'attack', targetId: walkingDead.id })
   })
 
-  it('walks toward the enemy when nothing is in reach', () => {
+  it('waits for the enemy to come closer when nothing is in reach', () => {
     const state = battle([makeUnit('swordsman', 'red', 0, 5), makeUnit('walkingDead', 'blue', 14, 5)])
+    expect(chooseMove(state)).toEqual({ type: 'wait' })
+    expect(chooseMove(state, 'easy')).not.toEqual({ type: 'wait' })
+  })
+
+  it('walks toward the enemy once it has waited', () => {
+    const state = battle([makeUnit('swordsman', 'red', 0, 5, { waited: true }), makeUnit('walkingDead', 'blue', 14, 5)])
     expect(chooseMove(state)).toMatchObject({ type: 'move' })
+  })
+
+  it('retreats when the battle is hopeless', () => {
+    const lonely = makeUnit('pikeman', 'red', 0, 5, { count: 1 })
+    const dragons = makeUnit('boneDragon', 'blue', 14, 5, { count: 5 })
+    const state = { ...battle([lonely, dragons]), round: 3 }
+    expect(chooseMove(state)).toEqual({ type: 'retreat' })
+    // Too early to give up.
+    expect(chooseMove({ ...state, round: 1 })).not.toEqual({ type: 'retreat' })
   })
 
   const matchups: [Faction, Faction][] = [
