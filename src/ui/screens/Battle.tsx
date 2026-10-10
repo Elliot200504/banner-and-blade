@@ -46,6 +46,7 @@ import { Spellbook } from '../modals/Spellbook'
 import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
 import { TurnQueue } from '../panels/TurnQueue'
+import { RoundCall } from '../board/RoundCall'
 import { useAnimator } from '../board/useAnimator'
 import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from '../hooks/useBattleSpeed'
 import type { Theme } from '../hooks/useTheme'
@@ -374,6 +375,7 @@ export function Battle({
             onBoardRightClick={handleBoardRightClick}
           />
           <TurnQueue state={state} faded={pointerOnBottomRow} onHover={setSpotlightUnitId} />
+          {state.round > 1 && !state.winner && <RoundCall key={state.round} round={state.round} />}
         </div>
       </div>
 
