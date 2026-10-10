@@ -1182,6 +1182,13 @@ select {
   color: var(--text-muted);
 }
 
+/* A side picked at random keeps its army secret. */
+.side-summary__secret {
+  font-size: calc(22px * var(--text-scale));
+  line-height: 1;
+  color: var(--text-muted);
+}
+
 /* The army at a glance: each stack as a small sprite with its count. */
 .side-summary__army {
   display: flex;
@@ -2099,6 +2106,16 @@ select {
 
 .unit .unit__count-box--debuffed {
   fill: #6b21a8;
+}
+
+.unit__secret {
+  font-family: var(--font);
+  font-size: 26px;
+  font-weight: bold;
+  fill: #fff;
+  stroke: #1a1410;
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 .unit__count {

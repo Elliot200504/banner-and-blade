@@ -21,6 +21,8 @@ export interface DisplayUnit {
   glow: string
   /** Striking or shooting right now. */
   pose?: Pose | null
+  /** Drawn as a question mark, for a side picked at random that is still a secret. */
+  secret?: boolean
 }
 
 export interface BoardHighlights {
@@ -278,7 +280,7 @@ interface UnitTokenProps {
 }
 
 const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spellTarget, spotlight }: UnitTokenProps) {
-  const { unit, point, count, topHp, hit, dying, glow, pose } = displayUnit
+  const { unit, point, count, topHp, hit, dying, glow, pose, secret } = displayUnit
   const maxHp = CREATURES[unit.type].hp
   const hpFraction = topHp / maxHp
   const hpColor = hpFraction > 0.6 ? '#22c55e' : hpFraction > 0.3 ? '#eab308' : '#ef4444'
@@ -322,13 +324,19 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
       {spellTarget && <ellipse className="unit__spell-ring" cx={0} cy={12} rx={20} ry={7} />}
       {glow && <circle cx={0} cy={-8} r={24} style={{ fill: glow }} className="unit__glow" />}
       <ellipse cx={0} cy={13} rx={15} ry={4} fill="rgba(0,0,0,0.4)" />
-      <g className="unit__sprite" transform="translate(0 14)">
-        <g className="unit__pose">
-          <g className="unit__idle" style={{ animationDelay: idleDelay }}>
-            <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
+      {secret ? (
+        <text className="unit__secret" x={0} y={-6} textAnchor="middle" dominantBaseline="central">
+          ?
+        </text>
+      ) : (
+        <g className="unit__sprite" transform="translate(0 14)">
+          <g className="unit__pose">
+            <g className="unit__idle" style={{ animationDelay: idleDelay }}>
+              <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
+            </g>
           </g>
         </g>
-      </g>
+      )}
       {unit.defending && (
         <g transform={`translate(${unit.owner === 'red' ? -16 : 16} -14)`}>
           <IconImage name="defense" size={16} />
@@ -341,7 +349,7 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
           height={11}
         />
         <text className="unit__count" x={12} y={6} textAnchor="middle" dominantBaseline="central">
-          {count}
+          {secret ? '?' : count}
         </text>
       </g>
       <rect className="unit__hp-background" x={-barWidth / 2 - 1} y={20} width={barWidth + 2} height={4} />

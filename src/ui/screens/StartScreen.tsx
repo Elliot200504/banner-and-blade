@@ -58,11 +58,13 @@ export interface SidePicks {
   difficulty: boolean
   town: boolean
   hero: boolean
+  /** The town, hero and army were rolled at random, and stay secret until the battle. */
+  random: boolean
 }
 
 export type SetupProgress = Record<Player, SidePicks>
 
-const NOTHING_PICKED: SidePicks = { controller: false, difficulty: false, town: false, hero: false }
+const NOTHING_PICKED: SidePicks = { controller: false, difficulty: false, town: false, hero: false, random: false }
 
 export const NEW_SETUP: SetupProgress = { red: NOTHING_PICKED, blue: NOTHING_PICKED }
 
@@ -240,18 +242,23 @@ export function StartScreen({
     <div className="setup-step">
       <h3 className="drawer-label">Random</h3>
       <div className="army-picker__factions" role="group" aria-label={`Random ${PLAYER_NAMES[player]} team`}>
-        {ARMY_SIZES.map((size) => (
-          <button
-            key={size}
-            className={optionClass(false)}
-            onClick={() => {
-              onRandomSide(player, size)
-              pick(player, { town: true, hero: true })
-            }}
-          >
-            {ARMY_SIZE_LABELS[size]}
-          </button>
-        ))}
+        {ARMY_SIZES.map((size) => {
+          const picked = setup[player].random && armySizes[player] === size
+
+          return (
+            <button
+              key={size}
+              aria-pressed={picked}
+              className={optionClass(picked)}
+              onClick={() => {
+                onRandomSide(player, size)
+                pick(player, { town: true, hero: true, random: true })
+              }}
+            >
+              {ARMY_SIZE_LABELS[size]}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -265,7 +272,7 @@ export function StartScreen({
         aria-label={`${PLAYER_NAMES[player]} faction`}
       >
         {FACTION_ORDER.map((faction) => {
-          const picked = setup[player].town && factions[player] === faction
+          const picked = setup[player].town && !setup[player].random && factions[player] === faction
 
           return (
             <button
@@ -277,7 +284,7 @@ export function StartScreen({
                 // A new town comes with its own heroes, so the hero has to be picked again.
                 if (!picked) {
                   onChangeFaction(player, faction)
-                  pick(player, { town: true, hero: false })
+                  pick(player, { town: true, hero: false, random: false })
                 }
               }}
             >
@@ -333,11 +340,13 @@ export function StartScreen({
       )
     }
 
-    if (picks.town) {
+    if (picks.random) {
+      lines.push('Random')
+    } else if (picks.town) {
       lines.push(picks.hero ? `${FACTIONS[factions[player]].name} · ${HEROES[heroes[player]].name}` : FACTIONS[factions[player]].name)
     }
 
-    const army = picks.hero ? armies[player].filter((stack) => stack.count > 0) : []
+    const army = picks.hero && !picks.random ? armies[player].filter((stack) => stack.count > 0) : []
     // A friend online makes their own picks; their card fills in as they choose.
     const remote = controllers[player] === 'remote'
 
@@ -355,6 +364,7 @@ export function StartScreen({
           </span>
         ))}
         {!picks.hero && <span className="side-summary__cue">{remote ? 'Choosing…' : 'Assign team'}</span>}
+        {picks.random && <span className="side-summary__secret">?</span>}
         {army.length > 0 && (
           <span className="side-summary__army">
             {army.map((stack) => (
@@ -378,8 +388,8 @@ export function StartScreen({
       {!online && playerStep(player)}
       {playerChosen(player) && randomStep(player)}
       {playerChosen(player) && townStep(player)}
-      {playerChosen(player) && setup[player].town && heroStep(player)}
-      {playerChosen(player) && setup[player].town && setup[player].hero && (
+      {playerChosen(player) && setup[player].town && !setup[player].random && heroStep(player)}
+      {playerChosen(player) && setup[player].town && setup[player].hero && !setup[player].random && (
         <div className="setup-step">
           <ArmyBuilder
             player={player}
