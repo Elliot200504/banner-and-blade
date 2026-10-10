@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from '
 import { createBattle, type Army, type Faction, type HeroId, type Player } from '../../game'
 import wornTable from '../../assets/backgrounds/wood_table_worn.webp'
 import { Board, type BoardHighlights, type DisplayUnit } from './Board'
-import { BOARD_HEIGHT, BOARD_WIDTH, hexToPixel } from './layout'
+import { BOARD_HEIGHT, BOARD_WIDTH, standPoint } from './layout'
 import type { Theme } from '../hooks/useTheme'
 import type { Screen } from '../screens/screen'
 
@@ -108,7 +108,7 @@ export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies, s
 
   const units: DisplayUnit[] = battle.units.map((unit) => ({
     unit,
-    point: hexToPixel(unit.position),
+    point: standPoint(unit),
     count: unit.count,
     topHp: unit.topHp,
     hit: false,
