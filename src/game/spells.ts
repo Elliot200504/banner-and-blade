@@ -43,7 +43,7 @@ export const SPELLS: Record<SpellId, SpellDefinition> = {
     description: 'Deals 10 + 5 × power damage to every living stack, friend or foe.',
   },
   animateDead: {
-    name: 'Animate Dead', cost: 10, level: 3, target: 'ally', undeadOnly: true,
+    name: 'Animate Dead', cost: 6, level: 3, target: 'ally', undeadOnly: true,
     description: 'Restores 30 + 20 × power health to an undead stack, raising its fallen.',
   },
   meteorShower: {
