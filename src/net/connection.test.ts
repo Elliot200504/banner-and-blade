@@ -19,14 +19,14 @@ describe('local connection pair', () => {
   it('keeps messages sent before the other end listens, in order', () => {
     const [host, guest] = createLocalPair()
     host.send({ type: 'hello', version: 2 })
-    host.send({ type: 'field', fieldSeed: 7 })
+    host.send({ type: 'start', seed: 7 })
     const received: Message[] = []
 
     guest.onMessage((message) => received.push(message))
 
     expect(received).toEqual([
       { type: 'hello', version: 2 },
-      { type: 'field', fieldSeed: 7 },
+      { type: 'start', seed: 7 },
     ])
   })
 
