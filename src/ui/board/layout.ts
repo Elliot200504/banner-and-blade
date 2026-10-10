@@ -1,4 +1,4 @@
-import { COLUMNS, ROWS, type Hex } from '../../game'
+import { COLUMNS, ROWS, type Hex, type Player } from '../../game'
 
 export interface Point {
   x: number
@@ -8,11 +8,24 @@ export interface Point {
 export const HEX_SIZE = 26
 const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE
 const MARGIN = 12
-const OFFSET_X = MARGIN + HEX_WIDTH / 2
+/** Open ground left and right of the hexes, where the heroes watch the battle on horseback. */
+const SIDE_BAND = 48
+const OFFSET_X = SIDE_BAND + MARGIN + HEX_WIDTH / 2
 const OFFSET_Y = MARGIN + HEX_SIZE
 
-export const BOARD_WIDTH = HEX_WIDTH * (COLUMNS + 0.5) + MARGIN * 2
-export const BOARD_HEIGHT = HEX_SIZE * 1.5 * (ROWS - 1) + HEX_SIZE * 2 + MARGIN * 2
+export const BOARD_WIDTH = HEX_WIDTH * (COLUMNS + 0.5) + MARGIN * 2 + SIDE_BAND * 2
+/** Open ground below the last row of hexes, where the turn order stands without covering the field. */
+export const QUEUE_BAND = 50
+export const BOARD_HEIGHT = HEX_SIZE * 1.5 * (ROWS - 1) + HEX_SIZE * 2 + MARGIN * 2 + QUEUE_BAND
+
+/** How wide a hero on horseback is drawn, in board units: two units to each of the sprite's 32 pixels. */
+export const HERO_SIZE = 64
+
+/** Where each hero stands: the bottom center of their horse, near the top of their side's band, right up to the hexes. */
+export const HERO_POINTS: Record<Player, Point> = {
+  red: { x: (SIDE_BAND + MARGIN) / 2, y: OFFSET_Y + HEX_SIZE * 3.5 },
+  blue: { x: BOARD_WIDTH - (SIDE_BAND + MARGIN) / 2, y: OFFSET_Y + HEX_SIZE * 3.5 },
+}
 
 export function hexToPixel(hex: Hex): Point {
   return {
