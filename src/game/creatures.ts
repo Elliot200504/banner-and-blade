@@ -205,37 +205,37 @@ export const CREATURES: Record<CreatureType, CreatureStats> = {
   skeleton: {
     name: 'Skeleton', plural: 'Skeletons', faction: 'necropolis', tier: 1,
     hp: 6, attack: 5, defense: 4, minDamage: 1, maxDamage: 3, speed: 4, shots: 0, range: 0,
-    abilities: ['undead'], armyCount: 12, cost: 60,
+    abilities: ['undead'], armyCount: 18, cost: 45,
   },
   walkingDead: {
     name: 'Walking Dead', plural: 'Walking Dead', faction: 'necropolis', tier: 2,
     hp: 15, attack: 5, defense: 5, minDamage: 2, maxDamage: 3, speed: 3, shots: 0, range: 0,
-    abilities: ['undead'], armyCount: 8, cost: 100,
+    abilities: ['undead'], armyCount: 11, cost: 85,
   },
   wight: {
     name: 'Wight', plural: 'Wights', faction: 'necropolis', tier: 3,
     hp: 18, attack: 7, defense: 7, minDamage: 3, maxDamage: 5, speed: 5, shots: 0, range: 0,
-    abilities: ['undead', 'flying', 'regenerate'], armyCount: 7, cost: 200,
+    abilities: ['undead', 'flying', 'regenerate'], armyCount: 9, cost: 170,
   },
   vampire: {
     name: 'Vampire', plural: 'Vampires', faction: 'necropolis', tier: 4,
     hp: 30, attack: 10, defense: 9, minDamage: 5, maxDamage: 8, speed: 6, shots: 0, range: 0,
-    abilities: ['undead', 'flying', 'noRetaliation'], armyCount: 4, cost: 360,
+    abilities: ['undead', 'flying', 'noRetaliation'], armyCount: 5, cost: 320,
   },
   lich: {
     name: 'Lich', plural: 'Liches', faction: 'necropolis', tier: 5,
     hp: 30, attack: 13, defense: 10, minDamage: 11, maxDamage: 13, speed: 6, shots: 12, range: 7,
-    abilities: ['undead', 'deathCloud'], armyCount: 3, cost: 550,
+    abilities: ['undead', 'deathCloud'], armyCount: 4, cost: 480,
   },
   blackKnight: {
     name: 'Black Knight', plural: 'Black Knights', faction: 'necropolis', tier: 6,
     hp: 120, attack: 16, defense: 16, minDamage: 15, maxDamage: 30, speed: 7, shots: 0, range: 0,
-    abilities: ['undead', 'cursing'], armyCount: 2, cost: 1200,
+    abilities: ['undead', 'cursing'], armyCount: 2, cost: 1050,
   },
   boneDragon: {
     name: 'Bone Dragon', plural: 'Bone Dragons', faction: 'necropolis', tier: 7,
     hp: 150, attack: 17, defense: 15, minDamage: 25, maxDamage: 50, speed: 9, shots: 0, range: 0,
-    abilities: ['undead', 'flying', 'fearsome'], armyCount: 1, cost: 1800,
+    abilities: ['undead', 'flying', 'fearsome'], armyCount: 1, cost: 1600,
   },
   troglodyte: {
     name: 'Troglodyte', plural: 'Troglodytes', faction: 'dungeon', tier: 1,
