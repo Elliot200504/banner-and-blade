@@ -1,15 +1,15 @@
 import { memo } from 'react'
-import type { Player, SpellId } from '../../game'
+import { HEROES, type HeroId, type Player, type SpellId } from '../../game'
 import { SPELL_ICONS } from './spellIcons'
-import { SPRITES, type Sprite, type SpriteId } from './sprites'
+import { RIDER_SPRITES, SPRITES, type RiderId, type Sprite, type SpriteId } from './sprites'
 import { UI_ICONS, type UiIconId } from './uiIcons'
 
 const SPRITE_SIZE = 16
 
 /** Team colors come from the theme, so the reserved characters map to CSS variables. */
-const TEAM_COLORS: Record<Player, { main: string; dark: string }> = {
-  red: { main: 'var(--red)', dark: 'var(--red-dark)' },
-  blue: { main: 'var(--blue)', dark: 'var(--blue-dark)' },
+const TEAM_COLORS: Record<Player, { main: string; dark: string; light: string }> = {
+  red: { main: 'var(--red)', dark: 'var(--red-dark)', light: 'var(--red-light)' },
+  blue: { main: 'var(--blue)', dark: 'var(--blue-dark)', light: 'var(--blue-light)' },
 }
 
 interface PixelRun {
@@ -72,6 +72,52 @@ export const SpriteImage = memo(function SpriteImage({ spriteId, owner, size, mi
   return <PixelArt sprite={SPRITES[spriteId]} owner={owner} size={size} mirrored={mirrored} />
 })
 
+/** Which rider each hero class shows on the battlefield. */
+const RIDER_BY_CLASS: Record<string, RiderId> = {
+  Knight: 'knight',
+  Cleric: 'cleric',
+  Ranger: 'ranger',
+  Druid: 'druid',
+  Barbarian: 'barbarian',
+  'Battle Mage': 'battleMage',
+  'Death Knight': 'deathKnight',
+  Necromancer: 'necromancer',
+  Overlord: 'overlord',
+  Warlock: 'warlock',
+  Demoniac: 'demoniac',
+  Heretic: 'heretic',
+  Alchemist: 'alchemist',
+  Wizard: 'wizard',
+  Beastmaster: 'beastmaster',
+  Witch: 'witch',
+  Planeswalker: 'planeswalker',
+  Elementalist: 'elementalist',
+}
+
+interface MountedHeroProps {
+  heroId: HeroId
+  owner: Player
+  /** The width in board units. */
+  size: number
+  mirrored?: boolean
+}
+
+/** A hero of their class on horseback, holding the team flag as it blows in the wind. Bottom center at (0, 0). */
+export const MountedHero = memo(function MountedHero({ heroId, owner, size, mirrored = false }: MountedHeroProps) {
+  const rider = RIDER_SPRITES[RIDER_BY_CLASS[HEROES[heroId].title] ?? 'knight']
+
+  // Every frame is drawn, and CSS shows one at a time.
+  return (
+    <g className="mounted-hero">
+      {rider.frames.map((pixels, frame) => (
+        <g key={frame} className={`mounted-hero__frame mounted-hero__frame--${frame}`}>
+          <PixelArt sprite={{ palette: rider.palette, pixels }} owner={owner} size={size} mirrored={mirrored} />
+        </g>
+      ))}
+    </g>
+  )
+})
+
 interface PixelArtProps {
   sprite: Sprite
   owner?: Player
@@ -79,15 +125,18 @@ interface PixelArtProps {
   mirrored?: boolean
 }
 
+/** Draws a sprite of any size, `size` board units wide, with its bottom center at (0, 0). */
 function PixelArt({ sprite, owner, size, mirrored = false }: PixelArtProps) {
-  const pixelSize = size / SPRITE_SIZE
-  const team = owner ? TEAM_COLORS[owner] : { main: '#888', dark: '#444' }
+  const columns = sprite.pixels[0]?.length ?? SPRITE_SIZE
+  const rows = sprite.pixels.length
+  const pixelSize = size / columns
+  const team = owner ? TEAM_COLORS[owner] : { main: '#888', dark: '#444', light: '#bbb' }
   const colorFor = (character: string) =>
-    character === 'T' ? team.main : character === 't' ? team.dark : sprite.palette[character]
+    character === 'T' ? team.main : character === 't' ? team.dark : character === 'U' ? team.light : sprite.palette[character]
 
   return (
     <g
-      transform={`scale(${mirrored ? -pixelSize : pixelSize} ${pixelSize}) translate(${-SPRITE_SIZE / 2} ${-SPRITE_SIZE})`}
+      transform={`scale(${mirrored ? -pixelSize : pixelSize} ${pixelSize}) translate(${-columns / 2} ${-rows})`}
       shapeRendering="crispEdges"
     >
       {runsFor(sprite).map((run) => (

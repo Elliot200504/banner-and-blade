@@ -137,6 +137,7 @@ export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies, s
             units={units}
             obstacles={ground.obstacles}
             factions={shownFactions}
+            heroes={{ red: hiddenRed ? undefined : heroes.red, blue: hiddenBlue ? undefined : heroes.blue }}
             highlights={NOTHING_HIGHLIGHTED}
             projectile={null}
             lightning={null}

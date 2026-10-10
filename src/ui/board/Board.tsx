@@ -1,10 +1,11 @@
 import { memo, useRef, type MouseEvent } from 'react'
-import { allHexes, CREATURES, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type Obstacle, type Player, type Unit } from '../../game'
-import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
-import { IconImage, SpriteImage } from '../art/SpriteImage'
+import { allHexes, CREATURES, hasAbility, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type HeroId, type Obstacle, type Player, type Unit } from '../../game'
+import { BOARD_HEIGHT, BOARD_WIDTH, HERO_POINTS, HERO_SIZE, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
+import { IconImage, MountedHero, SpriteImage } from '../art/SpriteImage'
 import { Terrain } from './Terrain'
+import { Ambience } from './Ambience'
 import type { Theme } from '../hooks/useTheme'
-import type { FloatingText, Projectile, ProjectileKind } from './useAnimator'
+import type { FloatingText, Pose, Projectile, ProjectileKind } from './useAnimator'
 
 const UNIT_SPRITE_SIZE = 44
 const OBSTACLE_SPRITE_SIZE = 40
@@ -18,6 +19,8 @@ export interface DisplayUnit {
   hit: boolean
   dying: boolean
   glow: string
+  /** Striking or shooting right now. */
+  pose?: Pose | null
   /** Drawn as a question mark, for a side picked at random that is still a secret. */
   secret?: boolean
 }
@@ -54,6 +57,8 @@ interface BoardProps {
   onBoardRightClick: (hex: Hex) => void
   /** The part of the board to show, as an SVG viewBox. The whole board when left out. */
   viewBox?: string
+  /** The heroes watching from their side of the field. A side left out has no one there. */
+  heroes?: Partial<Record<Player, HeroId>>
 }
 
 const HEXES = allHexes()
@@ -180,6 +185,21 @@ export function Board(props: BoardProps) {
         )
       })}
 
+      <Ambience factions={props.factions} />
+
+      {(['red', 'blue'] as const).map((player) => {
+        const heroId = props.heroes?.[player]
+
+        return (
+          heroId && (
+            <g key={player} className="board-hero" transform={`translate(${HERO_POINTS[player].x} ${HERO_POINTS[player].y})`}>
+              <ellipse cx={0} cy={-1} rx={HERO_SIZE * 0.36} ry={4} fill="rgba(0,0,0,0.4)" />
+              <MountedHero heroId={heroId} owner={player} size={HERO_SIZE} mirrored={player === 'blue'} />
+            </g>
+          )
+        )
+      })}
+
       {sortedUnits.map((displayUnit) => (
         <UnitToken
           key={displayUnit.unit.id}
@@ -240,6 +260,17 @@ function ProjectileShape({ projectile }: { projectile: Projectile }) {
   )
 }
 
+/** A steady number between 0 and 1 for each stack, so its idle animation keeps its own rhythm. */
+function idleOffset(unitId: string): number {
+  let hash = 0
+
+  for (const character of unitId) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
+  }
+
+  return (hash % 1000) / 1000
+}
+
 interface UnitTokenProps {
   displayUnit: DisplayUnit
   active: boolean
@@ -249,7 +280,7 @@ interface UnitTokenProps {
 }
 
 const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spellTarget, spotlight }: UnitTokenProps) {
-  const { unit, point, count, topHp, hit, dying, glow, secret } = displayUnit
+  const { unit, point, count, topHp, hit, dying, glow, pose, secret } = displayUnit
   const maxHp = CREATURES[unit.type].hp
   const hpFraction = topHp / maxHp
   const hpColor = hpFraction > 0.6 ? '#22c55e' : hpFraction > 0.3 ? '#eab308' : '#ef4444'
@@ -275,6 +306,17 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
     className += ' unit--petrified'
   }
 
+  if (pose) {
+    className += ` unit--${pose}`
+  }
+
+  // Fliers hover, everyone else breathes; each stack starts at its own point so they don't move in step.
+  if (hasAbility(unit.type, 'flying')) {
+    className += ' unit--flier'
+  }
+
+  const idleDelay = `${-(idleOffset(unit.id) * 3).toFixed(2)}s`
+
   return (
     <g className={className} transform={`translate(${point.x} ${point.y})`}>
       {active && <ellipse className="unit__active-ring" cx={0} cy={12} rx={20} ry={7} />}
@@ -288,7 +330,11 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
         </text>
       ) : (
         <g className="unit__sprite" transform="translate(0 14)">
-          <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
+          <g className="unit__pose">
+            <g className="unit__idle" style={{ animationDelay: idleDelay }}>
+              <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
+            </g>
+          </g>
         </g>
       )}
       {unit.defending && (

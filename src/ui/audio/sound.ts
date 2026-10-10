@@ -6,6 +6,14 @@
 export type SoundId =
   | 'click'
   | 'step'
+  | 'hoof'
+  | 'heavyStep'
+  | 'clatter'
+  | 'slither'
+  | 'shamble'
+  | 'hover'
+  | 'flap'
+  | 'heavyFlap'
   | 'fly'
   | 'swing'
   | 'hit'
@@ -168,8 +176,32 @@ function arpeggio(
 
 const SOUNDS: Record<SoundId, (audio: { context: AudioContext; master: GainNode }) => void> = {
   click: (audio) => tone(audio, { wave: 'triangle', from: 1100, to: 900, duration: 0.04, gain: 0.08 }),
-  step: (audio) => noise(audio, { filter: 'lowpass', from: 420, to: 180, duration: 0.07, gain: 0.22 }),
-  fly: (audio) => noise(audio, { filter: 'bandpass', from: 300, to: 1400, duration: 0.4, gain: 0.3 }),
+  step: (audio) => noise(audio, { filter: 'lowpass', from: 320, to: 120, duration: 0.06, gain: 0.1 }),
+  // Two soft knocks, a hoof landing and pushing off.
+  hoof: (audio) => {
+    noise(audio, { filter: 'lowpass', from: 900, to: 300, duration: 0.04, gain: 0.1 })
+    noise(audio, { filter: 'lowpass', from: 800, to: 260, duration: 0.04, gain: 0.08, delay: 0.08 })
+  },
+  // A big creature's foot coming down: a low, muffled thud.
+  heavyStep: (audio) => noise(audio, { filter: 'lowpass', from: 180, to: 60, duration: 0.16, gain: 0.3 }),
+  // Bones rattling, quietly.
+  clatter: (audio) => {
+    for (const delay of [0, 0.04]) {
+      noise(audio, { filter: 'bandpass', from: 2400, duration: 0.02, gain: 0.06, delay })
+    }
+  },
+  // Scales sliding over the ground.
+  slither: (audio) => noise(audio, { filter: 'bandpass', from: 1600, to: 1100, duration: 0.16, gain: 0.05 }),
+  // A dragging shuffle.
+  shamble: (audio) => noise(audio, { filter: 'lowpass', from: 260, to: 120, duration: 0.16, gain: 0.12 }),
+  // Something gliding just above the ground: a faint rush.
+  hover: (audio) => noise(audio, { filter: 'bandpass', from: 600, duration: 0.12, gain: 0.04 }),
+  // One soft beat of wings.
+  flap: (audio) => noise(audio, { filter: 'lowpass', from: 600, to: 200, duration: 0.12, gain: 0.1 }),
+  // One beat of great wings: a deep, muffled whump.
+  heavyFlap: (audio) => noise(audio, { filter: 'lowpass', from: 220, to: 70, duration: 0.22, gain: 0.22 }),
+  // Flight without wings: a magical rush through the air.
+  fly: (audio) => noise(audio, { filter: 'bandpass', from: 400, to: 900, duration: 0.35, gain: 0.14 }),
   swing: (audio) => noise(audio, { filter: 'highpass', from: 900, to: 3500, duration: 0.13, gain: 0.25 }),
   hit: (audio) => {
     noise(audio, { filter: 'lowpass', from: 1400, to: 300, duration: 0.14, gain: 0.55 })

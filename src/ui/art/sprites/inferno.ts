@@ -1,5 +1,5 @@
 import type { UpgradedCreature } from '../../../game'
-import { OUTLINE, SKIN, BONE, GOLD, type Sprite } from './shared'
+import { OUTLINE, SKIN, BONE, BONE_SHADOW, GOLD, type Sprite } from './shared'
 
 /** Inferno: its creatures, heroes, town emblem and homeland obstacles. */
 export const INFERNO_SPRITES = {
@@ -288,3 +288,117 @@ export const INFERNO_TINTS = {
   efreetSultan: '#ffd040',
   archDevil: '#500818',
 } satisfies Partial<Record<UpgradedCreature, string>>
+
+/** Upgrades that look different enough to need their own drawing rather than a tint of the base creature. */
+export const INFERNO_UPGRADE_SPRITES = {
+  // Cerberus has three snarling heads on one hound's body.
+  cerberus: {
+    palette: { o: OUTLINE, d: '#6a2a1a', D: '#401810', f: '#ff8020', y: '#ffd040', k: '#1a1418', w: '#f0f0f0' },
+    pixels: [
+      '........foDo....',
+      '.y......oddddoo.',
+      '.foDo...odyddddo',
+      '.oddddooyoddkwwo',
+      '.odyddddfoDoooo.',
+      'y.oddkwwoddddoo.',
+      'odooooooodyddddo',
+      'odo.ooooooddkwwo',
+      '.ododdddddooooo.',
+      '..odddddddddTTo.',
+      '..odddddddddTTo.',
+      '..ododoooododo..',
+      '..ododo..ododo..',
+      '..ododo..ododo..',
+      '.oDDoDDo.oDDDDo.',
+      '..oo.oo...oooo..',
+    ],
+  },
+  // The Pit Lord has bigger horns and wields a huge scythe.
+  pitLord: {
+    palette: { o: OUTLINE, m: '#6a1a1a', M: '#4a1010', l: '#8a2a2a', y: '#ffb020', k: '#140c0c', h: '#d8ccb0', w: '#efe7cf', n: '#5a4030', x: '#c8d0d8', X: '#7a8490' },
+    pixels: [
+      '...oo....ooooo..',
+      '..ohhoo.oxxxxxo.',
+      '...oohhoohooXxxo',
+      '.....oohmmo.onXo',
+      '......ommyo.on.o',
+      '.....ommmoko.on.',
+      '....ommmmmo..on.',
+      '...oMmmllmmoowo.',
+      '...oMmmmlmommo..',
+      '...oMmmmmmooono.',
+      '....oTTTTTo.ono.',
+      'Mo..oMmoomo.ono.',
+      'oMooMmo..omoono.',
+      '.oMMoomoomo.ono.',
+      '..oo.omoomo.ono.',
+      '....okkookko.o..',
+    ],
+  },
+  // The Horned Demon has huge curved horns and a darker hide.
+  hornedDemon: {
+    palette: { o: OUTLINE, r: '#a83050', R: '#701c38', p: '#c85a78', y: '#ffd040', k: '#1a1418', h: '#e8dcc0', H: BONE_SHADOW, w: '#efe7cf' },
+    pixels: [
+      '..oho......oho..',
+      '..ohHo....oHho..',
+      '...ohHoooohHo...',
+      '....oohrrrHoo...',
+      '.......orrryo...',
+      '.....ooorrroo...',
+      '....orrrrrokwo..',
+      '...oRrrrprroo...',
+      '..oRrrrrrroro...',
+      '..oRrrrrrroro...',
+      '..oRorrrro.oro..',
+      '..oRoTTTTToorwo.',
+      '.owwooRooRoowwo.',
+      '..oo.oRooRo.oo..',
+      '.....oRooRo.....',
+      '....okkookko....',
+    ],
+  },
+  // The Arch Devil has larger wings, a gold crown and a gold trident.
+  archDevil: {
+    palette: { o: OUTLINE, d: '#401418', D: '#6a2028', W: '#6a2430', B: '#3a0e14', y: GOLD, h: '#d8ccb0', k: '#120808', w: '#efe7cf', e: '#ffb020' },
+    pixels: [
+      'o.o.o..oh..ho.yo',
+      'oWoWoo.ohooho.y.',
+      'oWoWBo.oyyyyo.y.',
+      'oWBWBohBdddo.yyy',
+      'oWBWBWWdddeo..y.',
+      'oWoWBWWBdddo..y.',
+      '.oWoWBWddoko..y.',
+      '.oo.oBdddddo.oyo',
+      '.....oddDddooowo',
+      '.....oddDdoddoyo',
+      '.....oddddooo.y.',
+      '.....oyTTyo...y.',
+      '....odododo...y.',
+      '...ododo.odo..y.',
+      'Doodo.ododo...y.',
+      'oddo.okkokko....',
+    ],
+  },
+  // The Efreet Sultan is wreathed in flames from head to tail.
+  efreetSultan: {
+    palette: { o: OUTLINE, r: '#e05020', R: '#b03818', f: '#ffa030', F: '#ff6020', y: '#fff0a0', g: '#e6b43c' },
+    pixels: [
+      '......y.y.......',
+      '.....yfyfy......',
+      '....yFffffo.....',
+      '...yfFforro.....',
+      '..yfFforryo.....',
+      '..yfFforrro.....',
+      '..yfFooroo..oo..',
+      '..yforrrrroorRoy',
+      '.yfForrRRrrgoofy',
+      '.yfForrrrroo.fy.',
+      '..yfForrrrro....',
+      '...yfoTTTTo.....',
+      '...yfoffffoy....',
+      '..yfofffoyf.....',
+      '..yoffofy.......',
+      '..yfooy.........',
+    ],
+  },
+} satisfies Partial<Record<UpgradedCreature, Sprite>>

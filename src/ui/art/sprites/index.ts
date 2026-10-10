@@ -1,17 +1,18 @@
 import { UPGRADES, type BaseCreature, type CreatureType, type Faction, type HeroId, type ObstacleKind, type UpgradedCreature } from '../../../game'
 import { CASTLE_SPRITES, CASTLE_TINTS, CASTLE_UPGRADE_SPRITES } from './castle'
-import { RAMPART_SPRITES, RAMPART_TINTS } from './rampart'
-import { STRONGHOLD_SPRITES, STRONGHOLD_TINTS } from './stronghold'
-import { NECROPOLIS_SPRITES, NECROPOLIS_TINTS } from './necropolis'
-import { DUNGEON_SPRITES, DUNGEON_TINTS } from './dungeon'
-import { INFERNO_SPRITES, INFERNO_TINTS } from './inferno'
-import { TOWER_SPRITES, TOWER_TINTS } from './tower'
-import { FORTRESS_SPRITES, FORTRESS_TINTS } from './fortress'
-import { CONFLUX_SPRITES, CONFLUX_TINTS } from './conflux'
+import { RAMPART_SPRITES, RAMPART_TINTS, RAMPART_UPGRADE_SPRITES } from './rampart'
+import { STRONGHOLD_SPRITES, STRONGHOLD_TINTS, STRONGHOLD_UPGRADE_SPRITES } from './stronghold'
+import { NECROPOLIS_SPRITES, NECROPOLIS_TINTS, NECROPOLIS_UPGRADE_SPRITES } from './necropolis'
+import { DUNGEON_SPRITES, DUNGEON_TINTS, DUNGEON_UPGRADE_SPRITES } from './dungeon'
+import { INFERNO_SPRITES, INFERNO_TINTS, INFERNO_UPGRADE_SPRITES } from './inferno'
+import { TOWER_SPRITES, TOWER_TINTS, TOWER_UPGRADE_SPRITES } from './tower'
+import { FORTRESS_SPRITES, FORTRESS_TINTS, FORTRESS_UPGRADE_SPRITES } from './fortress'
+import { CONFLUX_SPRITES, CONFLUX_TINTS, CONFLUX_UPGRADE_SPRITES } from './conflux'
 import { OUTLINE, SKIN, type Sprite } from './shared'
 import { WAR_MACHINE_SPRITES } from './warMachines'
 
 export type { Sprite } from './shared'
+export { RIDER_SPRITES, type RiderId, type RiderSprite } from './riders'
 
 /** Every creature, hero, obstacle and town has a sprite of the same name. */
 export type SpriteId = CreatureType | HeroId | ObstacleKind | Faction
@@ -79,6 +80,16 @@ const UPGRADE_SPRITES = Object.fromEntries(
 ) as Record<UpgradedCreature, Sprite>
 
 /** Upgrades drawn by hand replace their tinted versions. */
-const DRAWN_UPGRADE_SPRITES: Partial<Record<UpgradedCreature, Sprite>> = { ...CASTLE_UPGRADE_SPRITES }
+const DRAWN_UPGRADE_SPRITES: Partial<Record<UpgradedCreature, Sprite>> = {
+  ...CASTLE_UPGRADE_SPRITES,
+  ...RAMPART_UPGRADE_SPRITES,
+  ...STRONGHOLD_UPGRADE_SPRITES,
+  ...NECROPOLIS_UPGRADE_SPRITES,
+  ...DUNGEON_UPGRADE_SPRITES,
+  ...INFERNO_UPGRADE_SPRITES,
+  ...TOWER_UPGRADE_SPRITES,
+  ...FORTRESS_UPGRADE_SPRITES,
+  ...CONFLUX_UPGRADE_SPRITES,
+}
 
 export const SPRITES: Record<SpriteId, Sprite> = { ...BASE_SPRITES, ...UPGRADE_SPRITES, ...DRAWN_UPGRADE_SPRITES }
