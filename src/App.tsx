@@ -173,7 +173,7 @@ export default function App() {
       (current) =>
         ({
           [side]: { ...current[side], controller: true },
-          [opponent]: { controller: true, difficulty: false, town: false, hero: false },
+          [opponent]: { controller: true, difficulty: false, town: false, hero: false, random: false },
         }) as SetupProgress,
     )
     connection.send({ type: 'hello', version: PROTOCOL_VERSION })
@@ -197,12 +197,12 @@ export default function App() {
       } else if (message.type === 'field') {
         setFieldSeed(message.fieldSeed)
       } else if (message.type === 'picks') {
-        const { faction, hero, army, armySize } = message.picks
+        const { faction, hero, army, armySize, random } = message.picks
         setFactions((current) => ({ ...current, [opponent]: faction }))
         setHeroes((current) => ({ ...current, [opponent]: hero }))
         setArmies((current) => ({ ...current, [opponent]: army }))
         setArmySizes((current) => ({ ...current, [opponent]: armySize }))
-        setSetup((current) => ({ ...current, [opponent]: { controller: true, difficulty: false, town: true, hero: true } }))
+        setSetup((current) => ({ ...current, [opponent]: { controller: true, difficulty: false, town: true, hero: true, random } }))
       } else if (message.type === 'start') {
         beginBattle(message.seed)
       } else if (message.type === 'move') {
@@ -228,14 +228,15 @@ export default function App() {
   const localHero = localSide ? heroes[localSide] : null
   const localArmy = localSide ? armies[localSide] : null
   const localArmySize = localSide ? armySizes[localSide] : null
+  const localRandom = localSide ? setup[localSide].random : false
   useEffect(() => {
     if (online && localPicksReady && localFaction && localHero && localArmy && localArmySize) {
       online.connection.send({
         type: 'picks',
-        picks: { faction: localFaction, hero: localHero, army: localArmy, armySize: localArmySize },
+        picks: { faction: localFaction, hero: localHero, army: localArmy, armySize: localArmySize, random: localRandom },
       })
     }
-  }, [online, localPicksReady, localFaction, localHero, localArmy, localArmySize])
+  }, [online, localPicksReady, localFaction, localHero, localArmy, localArmySize, localRandom])
 
   // Straight into a new battle, on a new field: no zoom.
   const playAgain = () => {
@@ -245,7 +246,15 @@ export default function App() {
 
   return (
     <div className={`app app--${screen}`} onAnimationEnd={handleAnimationEnd}>
-      <Backdrop screen={screen} theme={theme} fieldSeed={fieldSeed} factions={factions} heroes={heroes} armies={armies} />
+      <Backdrop
+        screen={screen}
+        theme={theme}
+        fieldSeed={fieldSeed}
+        factions={factions}
+        heroes={heroes}
+        armies={armies}
+        secret={{ red: setup.red.random, blue: setup.blue.random }}
+      />
       {showsBattle(screen) && (
         <header className="app-header">
           <span className="app-header__title">Banner &amp; Blade</span>
