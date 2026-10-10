@@ -23,6 +23,7 @@ export type SoundId =
   | 'petrify'
   | 'regenerate'
   | 'victory'
+  | 'horn'
 
 export interface SoundSettings {
   /** Sound effects. */
@@ -212,6 +213,12 @@ const SOUNDS: Record<SoundId, (audio: { context: AudioContext; master: GainNode 
   },
   regenerate: (audio) => tone(audio, { wave: 'sine', from: 400, to: 820, duration: 0.4, gain: 0.12 }),
   victory: (audio) => arpeggio(audio, 'triangle', [392, 523, 659, 784, 1047], 0.14, 0.16),
+  // A war horn: a short low call rising into a long held note.
+  horn: (audio) => {
+    tone(audio, { wave: 'sawtooth', from: 147, to: 196, duration: 0.22, gain: 0.09 })
+    tone(audio, { wave: 'sawtooth', from: 196, to: 200, duration: 0.9, gain: 0.1, delay: 0.2 })
+    tone(audio, { wave: 'triangle', from: 392, to: 400, duration: 0.9, gain: 0.06, delay: 0.2 })
+  },
 }
 
 export function playSound(sound: SoundId) {

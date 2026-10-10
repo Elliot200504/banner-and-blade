@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from '../../game'
-import { startingState, STEPS, withActor } from './BattleDemo'
+import { DEMOS, withActor, type DemoId } from './BattleDemo'
 
-describe('How to play demo', () => {
-  it('only makes legal moves, so it never stalls', () => {
-    let state = startingState()
+describe('How to play demos', () => {
+  for (const [demo, scenario] of Object.entries(DEMOS) as [DemoId, (typeof DEMOS)[DemoId]][]) {
+    it(`${demo} only makes legal moves, so it never stalls`, () => {
+      let state = scenario.start()
 
-    for (const step of STEPS) {
-      const before = withActor(state, step.actorId)
-      const after = applyMove(before, step.move)
-      expect(after, step.caption).not.toBe(before)
-      expect(after.winner).toBeNull()
-      state = after
-    }
-  })
+      for (const step of scenario.steps) {
+        const before = withActor(state, step.actorId)
+        const after = applyMove(before, step.move)
+        expect(after, step.caption).not.toBe(before)
+        state = after
+      }
+
+      // Only the Win demo ends the battle, and Red wins it.
+      expect(state.winner).toBe(demo === 'win' ? 'red' : null)
+    })
+  }
 })

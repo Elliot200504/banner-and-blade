@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ABILITY_DESCRIPTIONS,
-  ARMY_BUDGET,
+  ARMY_BUDGETS,
+  ARMY_SIZES,
   armyCost,
   baseOf,
   armyProblem,
@@ -17,13 +18,13 @@ import {
   mostAffordable,
   PLAYER_NAMES,
   randomArmy,
-  standardArmy,
   UPGRADES,
   WAR_MACHINES,
   withStack,
   withUpgrade,
   type BaseCreature,
   type Army,
+  type ArmySize,
   type CreatureType,
   type Difficulty,
   type Faction,
@@ -67,6 +68,8 @@ const DIFFICULTY_HINTS: Record<Difficulty, string> = {
   expert: 'Fights like a veteran: strikes first, kites out of reach, shields its shooters and baits out retaliation.',
 }
 
+const ARMY_SIZE_LABELS: Record<ArmySize, string> = { small: 'Small', medium: 'Medium', large: 'Large' }
+
 const formatGold = (gold: number) => gold.toLocaleString('en-US')
 
 /** A creature's stats and abilities in a few lines, for the recruit list's tooltips. */
@@ -97,6 +100,7 @@ interface StartScreenProps {
   heroes: Record<Player, HeroId>
   difficulties: Record<Player, Difficulty>
   armies: Record<Player, Army>
+  armySizes: Record<Player, ArmySize>
   setup: SetupProgress
   onChangeSetup: (setup: SetupProgress) => void
   onChangeFaction: (player: Player, faction: Faction) => void
@@ -104,6 +108,7 @@ interface StartScreenProps {
   onChangeDifficulty: (player: Player, difficulty: Difficulty) => void
   onChangeHero: (player: Player, hero: HeroId) => void
   onChangeArmy: (player: Player, army: Army) => void
+  onChangeArmySize: (player: Player, size: ArmySize) => void
   onStart: () => void
   onOpenSettings: () => void
 }
@@ -114,6 +119,7 @@ export function StartScreen({
   heroes,
   difficulties,
   armies,
+  armySizes,
   setup,
   onChangeSetup,
   onChangeFaction,
@@ -121,6 +127,7 @@ export function StartScreen({
   onChangeDifficulty,
   onChangeHero,
   onChangeArmy,
+  onChangeArmySize,
   onStart,
   onOpenSettings,
 }: StartScreenProps) {
@@ -146,7 +153,7 @@ export function StartScreen({
   }, [])
   const [aboutOpen, setAboutOpen] = useState(false)
   const problems = (['red', 'blue'] as const).flatMap((player) => {
-    const problem = armyProblem(armies[player], factions[player])
+    const problem = armyProblem(armies[player], factions[player], ARMY_BUDGETS[armySizes[player]])
 
     return problem ? [`${PLAYER_NAMES[player]}: ${problem}`] : []
   })
@@ -239,7 +246,7 @@ export function StartScreen({
                 }
               }}
             >
-              <SpriteIcon spriteId={faction} owner={player} size={24} />
+              <SpriteIcon spriteId={faction} owner={player} size={20} />
               {FACTIONS[faction].name}
             </button>
           )
@@ -341,7 +348,9 @@ export function StartScreen({
             key={factions[player]}
             heroId={heroes[player]}
             army={armies[player]}
+            size={armySizes[player]}
             onChange={(army) => onChangeArmy(player, army)}
+            onChangeSize={(size) => onChangeArmySize(player, size)}
           />
         </div>
       )}
@@ -403,19 +412,22 @@ interface ArmyBuilderProps {
   faction: Faction
   heroId: HeroId
   army: Army
+  size: ArmySize
   onChange: (army: Army) => void
+  onChangeSize: (size: ArmySize) => void
 }
 
-function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderProps) {
+function ArmyBuilder({ player, faction, heroId, army, size, onChange, onChangeSize }: ArmyBuilderProps) {
   const hero = createHero(heroId)
-  const goldLeft = ARMY_BUDGET - armyCost(army)
+  const budget = ARMY_BUDGETS[size]
+  const goldLeft = budget - armyCost(army)
   /** Creatures marked for upgrading while the army has none of them yet. */
   const [pendingUpgrades, setPendingUpgrades] = useState<Set<BaseCreature>>(new Set())
   /** The version of a creature this row recruits: the one in the army, or the one chosen for when it joins. */
   const rowType = (base: BaseCreature) =>
     army.find((stack) => baseOf(stack.type) === base)?.type ?? (pendingUpgrades.has(base) ? UPGRADES[base] : base)
   const toggleUpgrade = (base: BaseCreature, upgraded: boolean) => {
-    onChange(withUpgrade(army, faction, base, upgraded))
+    onChange(withUpgrade(army, faction, base, upgraded, budget))
     setPendingUpgrades((current) => {
       const next = new Set(current)
 
@@ -430,27 +442,39 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
   }
   const countOf = (type: CreatureType) => army.find((stack) => stack.type === type)?.count ?? 0
   const setCount = (type: CreatureType, count: number) => {
-    const allowed = Math.max(0, Math.min(Math.floor(count) || 0, mostAffordable(army, type)))
+    const allowed = Math.max(0, Math.min(Math.floor(count) || 0, mostAffordable(army, type, budget)))
     onChange(withStack(army, faction, type, allowed))
   }
 
   return (
     <div className="army-preview">
-      <p className="army-preview__specialty">
-        <span className="army-preview__specialty-label">Hero bonus:</span> {specialtyText(hero)}
-      </p>
-      <HeroStats hero={hero} showKnowledge />
+      {/* The hero's bonus and stats share one line, so the whole army fits without scrolling. */}
+      <div className="army-preview__hero">
+        <p className="army-preview__specialty">
+          <span className="army-preview__specialty-label">Hero bonus:</span> {specialtyText(hero)}
+        </p>
+        <HeroStats hero={hero} showKnowledge />
+      </div>
       <div className="recruit__gold">
         <span>
-          <Icon name="gold" /> {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(ARMY_BUDGET)} gold left</span>
+          <Icon name="gold" /> {formatGold(goldLeft)} <span className="recruit__budget">/ {formatGold(budget)} gold left</span>
         </span>
         <span className="recruit__presets">
-          <button className="recruit__preset" onClick={() => onChange(standardArmy(faction))}>
-            Standard
-          </button>
+          {/* The size sets the gold; Clear and Random keep it. */}
+          {ARMY_SIZES.map((option) => (
+            <button
+              key={option}
+              role="radio"
+              aria-checked={option === size}
+              className={`recruit__preset${option === size ? ' recruit__preset--active' : ''}`}
+              onClick={() => onChangeSize(option)}
+            >
+              {ARMY_SIZE_LABELS[option]}
+            </button>
+          ))}
           <button
             className="recruit__preset"
-            onClick={() => onChange(randomArmy(faction, createRandom(Math.floor(Math.random() * 2 ** 32))))}
+            onClick={() => onChange(randomArmy(faction, createRandom(Math.floor(Math.random() * 2 ** 32)), budget))}
           >
             Random
           </button>
@@ -466,7 +490,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           const other = upgraded ? base : UPGRADES[base]
           const stats = CREATURES[type]
           const count = countOf(type)
-          const most = mostAffordable(army, type)
+          const most = mostAffordable(army, type, budget)
           const specialist = hero.specialty.kind === 'creature' && hero.specialty.creature === base
           const upgradeTip = upgraded
             ? `Back to ${CREATURES[base].plural} (${CREATURES[base].cost} gold each)`
@@ -477,7 +501,7 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
               key={base}
               className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}${specialist ? ' army-preview__specialist' : ''}`}
             >
-              <SpriteIcon spriteId={type} owner={player} size={28} mirrored={player === 'blue'} />
+              <SpriteIcon spriteId={type} owner={player} size={24} mirrored={player === 'blue'} />
               <span className="recruit__name" title={creatureSummary(type)}>
                 {stats.plural}
                 <span className="recruit__cost">{stats.cost} gold each</span>
@@ -530,11 +554,11 @@ function ArmyBuilder({ player, faction, heroId, army, onChange }: ArmyBuilderPro
           {WAR_MACHINES.map((machine) => {
             const stats = CREATURES[machine]
             const count = countOf(machine)
-            const most = mostAffordable(army, machine)
+            const most = mostAffordable(army, machine, budget)
 
             return (
               <li key={machine} className={`recruit__row${count === 0 ? ' recruit__row--empty' : ''}`}>
-                <SpriteIcon spriteId={machine} owner={player} size={28} mirrored={player === 'blue'} />
+                <SpriteIcon spriteId={machine} owner={player} size={24} mirrored={player === 'blue'} />
                 <span className="recruit__name" title={creatureSummary(machine)}>
                   {stats.name}
                   <span className="recruit__cost">{stats.cost} gold</span>

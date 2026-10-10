@@ -24,7 +24,7 @@ const AIM_MS = 1500
 const REST_MS = 700
 const LOOP_PAUSE_MS = 1600
 /** The demo board never grows taller than this, so the rules stay in view. */
-const MAX_HEIGHT = 300
+const MAX_HEIGHT = 250
 
 function demoUnit(type: CreatureType, owner: Player, column: number, row: number, count: number): Unit {
   const stats = CREATURES[type]
@@ -55,9 +55,7 @@ const ARCHERS = demoUnit('archer', 'red', 3, 3, 12)
 const SKELETONS = demoUnit('skeleton', 'blue', 10, 5, 20)
 const WALKING_DEAD = demoUnit('walkingDead', 'blue', 8, 3, 10)
 
-export function startingState(): GameState {
-  const units = [CAVALIERS, ARCHERS, SKELETONS, WALKING_DEAD]
-
+function battleWith(units: Unit[]): GameState {
   return { ...createBattle({ red: 'castle', blue: 'necropolis' }, 7), units, obstacles: [], queue: units.map((unit) => unit.id) }
 }
 
@@ -69,16 +67,76 @@ export interface Step {
   aim: Hex
 }
 
-export const STEPS: Step[] = [
-  { caption: 'Click a shaded hex to move', actorId: CAVALIERS.id, move: { type: 'move', to: offsetToHex(6, 5) }, aim: offsetToHex(6, 5) },
-  {
-    caption: 'Click an enemy to attack it',
-    actorId: CAVALIERS.id,
-    move: { type: 'attack', targetId: SKELETONS.id, from: offsetToHex(9, 5) },
-    aim: SKELETONS.position,
+/** One scene the demo can play: where everyone starts, and what happens. */
+export interface Scenario {
+  start: () => GameState
+  steps: Step[]
+}
+
+/** The demos, one per How to play topic, and a short tour of the basics. */
+export type DemoId = 'tour' | 'move' | 'attack' | 'actions' | 'spellbook' | 'win'
+
+const MOVE_STEP: Step = {
+  caption: 'Click a shaded hex to move',
+  actorId: CAVALIERS.id,
+  move: { type: 'move', to: offsetToHex(6, 5) },
+  aim: offsetToHex(6, 5),
+}
+
+const CHARGE_STEP: Step = {
+  caption: 'Click an enemy to attack it',
+  actorId: CAVALIERS.id,
+  move: { type: 'attack', targetId: SKELETONS.id, from: offsetToHex(9, 5) },
+  aim: SKELETONS.position,
+}
+
+const VOLLEY_STEP: Step = {
+  caption: 'Shooters fire from afar',
+  actorId: ARCHERS.id,
+  move: { type: 'attack', targetId: WALKING_DEAD.id },
+  aim: WALKING_DEAD.position,
+}
+
+const startingState = () => battleWith([CAVALIERS, ARCHERS, SKELETONS, WALKING_DEAD])
+
+/** Just one small stack left, so the next blow wins the battle. */
+const LAST_STAND = demoUnit('skeleton', 'blue', 7, 5, 2)
+
+export const DEMOS: Record<DemoId, Scenario> = {
+  tour: { start: startingState, steps: [MOVE_STEP, CHARGE_STEP, VOLLEY_STEP] },
+  move: { start: startingState, steps: [MOVE_STEP] },
+  attack: { start: startingState, steps: [CHARGE_STEP, VOLLEY_STEP] },
+  actions: {
+    start: startingState,
+    steps: [
+      { caption: 'W: wait and act later this round', actorId: ARCHERS.id, move: { type: 'wait' }, aim: ARCHERS.position },
+      { caption: 'D: defend for extra defense', actorId: CAVALIERS.id, move: { type: 'defend' }, aim: CAVALIERS.position },
+    ],
   },
-  { caption: 'Shooters fire from afar', actorId: ARCHERS.id, move: { type: 'attack', targetId: WALKING_DEAD.id }, aim: WALKING_DEAD.position },
-]
+  spellbook: {
+    start: startingState,
+    steps: [
+      {
+        caption: 'C opens the spellbook: Bless your Cavaliers',
+        actorId: CAVALIERS.id,
+        move: { type: 'cast', spell: 'bless', targetId: CAVALIERS.id },
+        aim: CAVALIERS.position,
+      },
+      { ...CHARGE_STEP, caption: 'The spell does not end the turn: now charge for full damage' },
+    ],
+  },
+  win: {
+    start: () => battleWith([CAVALIERS, ARCHERS, LAST_STAND]),
+    steps: [
+      {
+        caption: 'Destroy every enemy stack to win',
+        actorId: CAVALIERS.id,
+        move: { type: 'attack', targetId: LAST_STAND.id, from: offsetToHex(6, 5) },
+        aim: LAST_STAND.position,
+      },
+    ],
+  },
+}
 
 /** The middle of the field, where the demo plays out. */
 const topLeft = hexToPixel(offsetToHex(2, 2))
@@ -114,6 +172,8 @@ function aimHighlights(state: GameState, step: Step): BoardHighlights {
   if (step.move.type === 'move') {
     highlights.reachable = new Set(reachable.keys())
     highlights.pathPreview = reachable.get(hexKey(step.move.to)) ?? []
+  } else if (step.move.type === 'cast' && step.move.targetId) {
+    highlights.spellTargetIds = new Set([step.move.targetId])
   } else if (step.move.type === 'attack') {
     highlights.targetUnitIds = new Set([step.move.targetId])
 
@@ -140,11 +200,12 @@ const IDLE: BoardHighlights = {
   selectedHex: null,
 }
 
-/** A short battle that plays itself on a loop, showing how to move, attack and shoot. */
-export function BattleDemo() {
-  const [state, setState] = useState(startingState)
+/** A short battle that plays itself on a loop, showing one How to play topic (or a tour of the basics). */
+export function BattleDemo({ demo }: { demo: DemoId }) {
+  const scenario = DEMOS[demo]
+  const [state, setState] = useState(scenario.start)
   const [highlights, setHighlights] = useState(IDLE)
-  const [caption, setCaption] = useState(STEPS[0].caption)
+  const [caption, setCaption] = useState(scenario.steps[0].caption)
   const animator = useAnimator({ silent: true })
   const { play, finish } = animator
   const theme = (document.documentElement.dataset.theme ?? 'default') as Theme
@@ -154,10 +215,11 @@ export function BattleDemo() {
 
     const run = async () => {
       while (!cancelled) {
-        let current = startingState()
+        let current = scenario.start()
         setState(current)
+        finish()
 
-        for (const step of STEPS) {
+        for (const step of scenario.steps) {
           current = withActor(current, step.actorId)
           setState(current)
           setCaption(step.caption)
@@ -191,7 +253,7 @@ export function BattleDemo() {
     return () => {
       cancelled = true
     }
-  }, [play, finish])
+  }, [play, finish, scenario])
 
   const displayUnits: DisplayUnit[] = state.units.map((unit) => ({
     unit,

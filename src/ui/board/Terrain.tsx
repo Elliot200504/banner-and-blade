@@ -147,7 +147,7 @@ const NEON_GROUND: Record<Faction, string> = {
   inferno: '#2e0606',
   tower: '#0a1a2a',
   fortress: '#0e1a08',
-  conflux: '#160a2e',
+  conflux: '#0f1e0c',
 }
 
 const NEON: Record<Faction, string> = {
@@ -159,7 +159,7 @@ const NEON: Record<Faction, string> = {
   inferno: '#ff3a3a',
   tower: '#7ae0ff',
   fortress: '#a8e030',
-  conflux: '#c08aff',
+  conflux: '#d8ffa0',
 }
 
 /** One small faction glyph per homeland, drawn in its neon color among the circuit traces. */
