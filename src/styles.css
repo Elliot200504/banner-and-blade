@@ -1549,12 +1549,12 @@ select {
 
 /*
  * Hero bar on top, the board filling whatever height is left, status and actions under it,
- * the inspected stack and log beside it and the turn order along the bottom.
+ * the inspected stack and log beside it. The turn order lies over the bottom of the board.
  */
 .battle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(230px, 20vw, 300px);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px 12px;
 }
 
@@ -1600,10 +1600,6 @@ select {
   margin: 0;
   font-size: calc(8px * var(--text-scale));
   color: var(--text-muted);
-}
-
-.battle .turn-queue {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 900px) {
@@ -1776,6 +1772,8 @@ select {
 
 /* As large as fits the stage while keeping the board's shape. */
 .board-frame {
+  position: relative;
+  container-type: inline-size;
   width: min(100cqw, 100cqh * var(--board-ratio));
   aspect-ratio: var(--board-ratio);
   border: 4px solid var(--board-frame);
@@ -2038,11 +2036,98 @@ select {
 
 /* ---------- Turn queue ---------- */
 
+/* A new round is called out over the board: the words grow in, hold a moment and fade. */
+.round-call {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.round-call__text {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: clamp(22px, 6cqw, 72px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--title);
+  text-shadow:
+    0 3px 0 var(--frame-dark),
+    0 0 20px rgba(0, 0, 0, 0.9),
+    0 0 44px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  animation: round-call 1.6s forwards;
+}
+
+@keyframes round-call {
+  0% {
+    opacity: 0;
+    transform: scale(1.3);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  22% {
+    opacity: 1;
+    transform: none;
+  }
+
+  72% {
+    opacity: 1;
+    transform: none;
+    animation-timing-function: ease-in;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes round-call {
+    0%,
+    100% {
+      opacity: 0;
+    }
+
+    22%,
+    72% {
+      opacity: 1;
+    }
+  }
+}
+
+/* A dark strip over the bottom of the board, fading out at its ends. Only the tokens catch the pointer. */
 .turn-queue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 2px 16px 6px;
+  line-height: var(--line-height);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.62) 6%, rgba(0, 0, 0, 0.62) 94%, transparent);
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.turn-queue .queue-token {
+  pointer-events: auto;
+}
+
+.turn-queue--faded {
+  opacity: 0.15;
+}
+
+.turn-queue--faded .queue-token {
+  pointer-events: none;
 }
 
 .turn-queue__title {
@@ -2058,7 +2143,7 @@ select {
   display: flex;
   align-items: flex-end;
   gap: 5px;
-  padding: 4px 4px 0;
+  padding: 10px 4px 0;
   overflow: hidden;
   mask-image: linear-gradient(90deg, #000 85%, transparent 100%);
 }
@@ -2099,15 +2184,24 @@ select {
   outline: 2px solid var(--highlight);
 }
 
+/* "Now" and "Next": a small framed tag on the token's top edge, clear of the creature. */
 .queue-token__label {
   position: absolute;
-  top: -2px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: calc(8px * var(--text-scale));
-  color: #fff;
-  text-shadow: 1px 1px 0 #000;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -60%);
+  padding: 1px 5px;
+  border: 1px solid var(--panel-border);
+  background: var(--frame-dark);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: calc(5.5px * var(--text-scale));
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--title);
 }
 
 .queue-token__count {

@@ -19,6 +19,7 @@ import {
   pathLength,
   PLAYER_NAMES,
   reachableHexes,
+  ROWS,
   sameHex,
   shotProblem,
   spellDamage,
@@ -45,6 +46,7 @@ import { Spellbook } from '../modals/Spellbook'
 import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
 import { TurnQueue } from '../panels/TurnQueue'
+import { RoundCall } from '../board/RoundCall'
 import { useAnimator } from '../board/useAnimator'
 import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from '../hooks/useBattleSpeed'
 import type { Theme } from '../hooks/useTheme'
@@ -335,6 +337,8 @@ export function Battle({
   }
 
   const hoveredUnit = hoveredHex ? unitAt(state.units, hoveredHex) : undefined
+  // The turn order lies over the bottom row, so it steps aside while the pointer is there.
+  const pointerOnBottomRow = hoveredHex !== null && hoveredHex.r === ROWS - 1
   const spotlightUnit = state.units.find((unit) => unit.id === spotlightUnitId)
   const selectedUnit = selectedHex ? unitAt(state.units, selectedHex) : undefined
   const inspectedUnit = hoveredUnit ?? spotlightUnit ?? selectedUnit ?? actor
@@ -377,6 +381,8 @@ export function Battle({
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
           />
+          <TurnQueue state={state} faded={pointerOnBottomRow} onHover={setSpotlightUnitId} />
+          {state.round > 1 && !state.winner && <RoundCall key={state.round} round={state.round} />}
         </div>
       </div>
 
@@ -424,8 +430,6 @@ export function Battle({
         <BattleLog log={state.log} />
         <p className="battle__hint">Right-click a stack for details.</p>
       </aside>
-
-      <TurnQueue state={state} onHover={setSpotlightUnitId} />
 
       {spellbookOpen && hero && (
         <Spellbook
