@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SPELLS, type BattleEvent, type CreatureType, type Player, type Unit } from '../../game'
-import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from './layout'
+import { distanceBetween, HERO_POINTS, HERO_SIZE, hexToPixel, type Point } from './layout'
 import { playSound, type SoundId } from '../audio/sound'
+import { flightOf, gaitOf } from './creatureMotion'
 
 const STEP_MS = 140
 const FLY_MS_PER_HEX = 80
+/** Time between wing beats while flying, for ordinary and great wings. */
+const FLAP_MS = { wings: 300, heavyWings: 420 }
 const LUNGE_MS = 120
+const WIND_UP_MS = 110
 const HIT_MS = 300
 const DEATH_MS = 450
 const NOTE_MS = 380
@@ -65,8 +69,12 @@ export interface Projectile {
 }
 
 /** Temporary changes drawn on top of the last committed state while a move plays out. */
+/** A stack's attack pose while it strikes or shoots. */
+export type Pose = 'strike' | 'shoot'
+
 export interface AnimationView {
   positions: Record<string, Point>
+  pose: Record<string, Pose>
   stacks: Record<string, { count: number; topHp: number }>
   hit: Record<string, boolean>
   dying: Record<string, boolean>
@@ -77,6 +85,7 @@ export interface AnimationView {
 
 const EMPTY_VIEW: AnimationView = {
   positions: {},
+  pose: {},
   stacks: {},
   hit: {},
   dying: {},
@@ -109,8 +118,8 @@ const between = (from: Point, to: Point, progress: number): Point => ({
   y: from.y + (to.y - from.y) * progress,
 })
 
-/** Where a hero's spell comes from: the caster's edge of the board. */
-const casterPoint = (caster: Player): Point => ({ x: caster === 'red' ? 0 : BOARD_WIDTH, y: BOARD_HEIGHT / 2 })
+/** Where a hero's spell comes from: the caster's raised hands, up on horseback. */
+const casterPoint = (caster: Player): Point => ({ x: HERO_POINTS[caster].x, y: HERO_POINTS[caster].y - HERO_SIZE * 0.85 })
 
 /** With `silent`, moves play out without sound, as in the How to play demo. */
 export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
@@ -164,6 +173,12 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
       const setPosition = (unitId: string, point: Point) =>
         updateView((current) => ({ ...current, positions: { ...current.positions, [unitId]: point } }))
       const setProjectile = (projectile: Projectile | null) => updateView((current) => ({ ...current, projectile }))
+      const setPose = (unitId: string, pose: Pose | null) =>
+        updateView((current) => {
+          const others = Object.fromEntries(Object.entries(current.pose).filter(([id]) => id !== unitId))
+
+          return { ...current, pose: pose ? { ...others, [unitId]: pose } : others }
+        })
 
       const showHit = async (targetId: string, count: number, topHp: number, damage: number, kills: number) => {
         updateView((current) => ({
@@ -198,14 +213,33 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
 
         switch (event.kind) {
           case 'move': {
+            const type = typeOf(event.unitId) ?? 'pikeman'
+
             if (event.flying) {
               const from = positions[event.unitId]
               const to = hexToPixel(event.path[event.path.length - 1])
               const hexes = Math.max(1, distanceBetween(from, to) / 45)
-              sound('fly')
-              await tween(duration(FLY_MS_PER_HEX * hexes + 120), (progress) => {
+              const flight = flightOf(type)
+              const total = duration(FLY_MS_PER_HEX * hexes + 120)
+              // Winged fliers beat their wings all the way, bobbing with each beat; the rest rush through the air.
+              const beat = flight === 'magic' ? 0 : duration(FLAP_MS[flight])
+              let nextBeat = 0
+
+              if (flight === 'magic') {
+                sound('fly')
+              }
+
+              await tween(total, (progress) => {
+                const elapsed = progress * total
+
+                if (beat > 0 && elapsed >= nextBeat && progress < 1) {
+                  sound(flight === 'heavyWings' ? 'heavyFlap' : 'flap')
+                  nextBeat += beat
+                }
+
                 const point = between(from, to, progress)
-                setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 18 })
+                const bob = beat > 0 ? Math.sin((elapsed / beat) * Math.PI * 2) * 2 : 0
+                setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 18 + bob })
               })
               positions[event.unitId] = to
               setPosition(event.unitId, to)
@@ -213,7 +247,7 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
               for (const step of event.path.slice(1)) {
                 const from = positions[event.unitId]
                 const to = hexToPixel(step)
-                sound('step')
+                sound(gaitOf(type))
                 await tween(duration(STEP_MS), (progress) => {
                   const point = between(from, to, progress)
                   setPosition(event.unitId, { x: point.x, y: point.y - Math.sin(progress * Math.PI) * 3 })
@@ -232,12 +266,22 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
             if (event.splash) {
               // Death clouds and dragon fire spread from the main target, with no projectile of their own.
             } else if (event.ranged) {
+              // The shooter rocks back as it lets fly.
+              setPose(event.attackerId, 'shoot')
               await shoot(from, to, PROJECTILE_FOR[typeOf(event.attackerId) ?? 'archer'] ?? 'arrow')
+              setPose(event.attackerId, null)
             } else {
-              const lunge = between(from, to, 0.35)
+              // Draw back, then lunge in leaning into the blow, and settle back into place.
+              const windUp = between(from, to, -0.08)
+              const lunge = between(from, to, 0.38)
+              setPose(event.attackerId, 'strike')
+              await tween(duration(WIND_UP_MS), (progress) => setPosition(event.attackerId, between(from, windUp, progress)))
               sound('swing')
-              await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(from, lunge, progress)))
+              await tween(duration(LUNGE_MS), (progress) =>
+                setPosition(event.attackerId, between(windUp, lunge, progress * progress)),
+              )
               await tween(duration(LUNGE_MS), (progress) => setPosition(event.attackerId, between(lunge, from, progress)))
+              setPose(event.attackerId, null)
             }
 
             if (event.lucky) {
