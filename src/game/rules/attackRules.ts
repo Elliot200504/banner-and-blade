@@ -2,8 +2,8 @@
 
 import { afterDamage, CURSE_CHANCE, CURSE_ROUNDS, PETRIFY_CHANCE, rollDamage, totalHp } from '../combat'
 import { CREATURES, hasAbility, isWarMachine } from '../creatures'
-import { hexDistance, hexKey, neighbors, sameHex, type Hex } from '../hex'
-import { attackMode, pathLength, reachableHexes } from '../movement'
+import { hexKey, sameHex, type Hex } from '../hex'
+import { attackMode, pathLength, reachableHexes, strikesFrom, unitDistance } from '../movement'
 import type { GameState, Unit } from '../types'
 import { describe, getUnit, recordLosses, updateUnit, type Draft } from './draft'
 import { breathVictim, isImmune, usesAmmunition } from './unitRules'
@@ -165,12 +165,12 @@ export function performAttack(draft: Draft, state: GameState, actor: Unit, targe
       strike(draft, actor.id, targetId, { ranged: true, retaliation: false, splash: false, hexesMoved: 0 })
 
       if (hasAbility(actor.type, 'deathCloud')) {
-        for (const neighbor of neighbors(target.position)) {
-          const caught = draft.units.find((unit) => sameHex(unit.position, neighbor) && unit.count > 0)
+        const caught = draft.units.filter(
+          (unit) => unit.id !== targetId && unit.count > 0 && unitDistance(unit, target) === 1 && !hasAbility(unit.type, 'undead'),
+        )
 
-          if (caught && !hasAbility(caught.type, 'undead')) {
-            strike(draft, actor.id, caught.id, { ranged: true, retaliation: false, splash: true, hexesMoved: 0 })
-          }
+        for (const unit of caught) {
+          strike(draft, actor.id, unit.id, { ranged: true, retaliation: false, splash: true, hexesMoved: 0 })
         }
       }
     }
@@ -180,7 +180,7 @@ export function performAttack(draft: Draft, state: GameState, actor: Unit, targe
 
   const origin = from ?? actor.position
 
-  if (hexDistance(origin, target.position) !== 1) {
+  if (!strikesFrom(actor, origin, target)) {
     return false
   }
 
