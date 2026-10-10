@@ -38,10 +38,16 @@ import { HowToPlay } from '../modals/HowToPlay'
 import { Modal } from '../modals/Modal'
 import { Icon, SpriteIcon } from '../art/SpriteImage'
 
-/** Who plays a side: someone at the keyboard, or the computer. */
-export type Controller = 'human' | 'computer'
+/** Who plays a side: someone at the keyboard, the computer, or a friend online. */
+export type Controller = 'human' | 'computer' | 'remote'
 
-const CONTROLLER_LABELS: Record<Controller, string> = { human: 'Human', computer: 'Computer' }
+const CONTROLLER_LABELS: Record<Controller, string> = { human: 'Human', computer: 'Computer', remote: 'Online' }
+
+/** An online game on the start screen: which side is played here, and whether this player starts battles. */
+export interface OnlineSide {
+  side: Player
+  isHost: boolean
+}
 
 /**
  * The choices actually made for a side. Nothing shows as picked until it is, and each
@@ -111,6 +117,9 @@ interface StartScreenProps {
   onChangeArmySize: (player: Player, size: ArmySize) => void
   onStart: () => void
   onOpenSettings: () => void
+  online: OnlineSide | null
+  onOpenOnline: () => void
+  onLeaveOnline: () => void
 }
 
 export function StartScreen({
@@ -130,6 +139,9 @@ export function StartScreen({
   onChangeArmySize,
   onStart,
   onOpenSettings,
+  online,
+  onOpenOnline,
+  onLeaveOnline,
 }: StartScreenProps) {
   const [rulesOpen, setRulesOpen] = useState(false)
   // Each side is a drawer: slid into its edge as a card of the picks, and open only while choosing.
@@ -303,11 +315,14 @@ export function StartScreen({
     }
 
     const army = picks.hero ? armies[player].filter((stack) => stack.count > 0) : []
+    // A friend online makes their own picks; their card fills in as they choose.
+    const remote = controllers[player] === 'remote'
 
     return (
       <button
         key={player}
         className={`panel side-summary side-summary--${player}`}
+        disabled={remote}
         onClick={() => setDrawersOpen((current) => ({ ...current, [player]: true }))}
       >
         <span className="panel__title">{PLAYER_NAMES[player]} player</span>
@@ -316,7 +331,7 @@ export function StartScreen({
             {line}
           </span>
         ))}
-        {!picks.hero && <span className="side-summary__cue">Assign team</span>}
+        {!picks.hero && <span className="side-summary__cue">{remote ? 'Choosing…' : 'Assign team'}</span>}
         {army.length > 0 && (
           <span className="side-summary__army">
             {army.map((stack) => (
@@ -337,7 +352,7 @@ export function StartScreen({
   const sideDrawer = (player: Player) => (
     <section key={player} ref={drawers[player]} className={`panel army-picker__side army-picker__side--${player}`}>
       <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
-      {playerStep(player)}
+      {!online && playerStep(player)}
       {playerChosen(player) && townStep(player)}
       {playerChosen(player) && setup[player].town && heroStep(player)}
       {playerChosen(player) && setup[player].town && setup[player].hero && (
@@ -366,18 +381,28 @@ export function StartScreen({
       {sidePanel('red')}
 
       <div className="start-screen__center">
+        {/* Online, the host starts the battle once both sides are ready. */}
         <button
           className="button button--large battle-button"
           onClick={onStart}
-          disabled={problems.length > 0 || !ready}
+          disabled={problems.length > 0 || !ready || (online !== null && !online.isHost)}
           autoFocus
         >
-          To battle!
+          {online && !online.isHost ? 'Waiting for host' : 'To battle!'}
         </button>
         {problems.length > 0 && <p className="start-screen__problem">{problems.join(' ')}</p>}
         <button className="button button--secondary start-screen__rules" onClick={() => setRulesOpen(true)}>
           How to play
         </button>
+        {online ? (
+          <button className="button button--secondary start-screen__rules" onClick={onLeaveOnline}>
+            Leave online game
+          </button>
+        ) : (
+          <button className="button button--secondary start-screen__rules" onClick={onOpenOnline}>
+            Play online
+          </button>
+        )}
       </div>
 
       {sidePanel('blue')}
