@@ -1,13 +1,20 @@
 import { memo, useRef, type MouseEvent } from 'react'
-import { allHexes, CREATURES, hasAbility, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Faction, type Hex, type HeroId, type Obstacle, type Player, type Unit } from '../../game'
-import { BOARD_HEIGHT, BOARD_WIDTH, HERO_POINTS, HERO_SIZE, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, type Point } from './layout'
+import { allHexes, CREATURES, hasAbility, hexesOf, hexKey, inBounds, OBSTACLES_BY_FACTION, sameHex, type Corpse, type CreatureType, type Faction, type Hex, type HeroId, type Obstacle, type Player, type Unit } from '../../game'
+import { BOARD_HEIGHT, BOARD_WIDTH, HERO_POINTS, HERO_SIZE, HEX_SIZE, hexCorners, hexToPixel, pixelToHex, standPoint, type Point } from './layout'
 import { IconImage, MountedHero, SpriteImage } from '../art/SpriteImage'
+import { SPRITES } from '../art/sprites'
 import { Terrain } from './Terrain'
 import { Ambience } from './Ambience'
 import type { Theme } from '../hooks/useTheme'
 import type { FloatingText, Pose, Projectile, ProjectileKind } from './useAnimator'
 
 const UNIT_SPRITE_SIZE = 44
+
+/**
+ * How wide a creature is drawn: every sprite pixel is the same size, so the wide creatures' 24-pixel sprites
+ * stretch across both their hexes while standing no taller than anyone else.
+ */
+const spriteWidth = (type: CreatureType) => (UNIT_SPRITE_SIZE * SPRITES[type].pixels[0].length) / 16
 const OBSTACLE_SPRITE_SIZE = 40
 
 /** A unit as it should be drawn right now (animation overrides already applied). */
@@ -57,6 +64,8 @@ interface BoardProps {
   onBoardRightClick: (hex: Hex) => void
   /** The part of the board to show, as an SVG viewBox. The whole board when left out. */
   viewBox?: string
+  /** The stacks that have fallen, lying where they died. */
+  corpses?: Corpse[]
   /** The heroes watching from their side of the field. A side left out has no one there. */
   heroes?: Partial<Record<Player, HeroId>>
 }
@@ -118,7 +127,8 @@ export function Board(props: BoardProps) {
   }
 
   const pathKeys = new Set(highlights.pathPreview.map(hexKey))
-  const activeHex = props.units.find((displayUnit) => displayUnit.unit.id === highlights.activeUnitId)?.unit.position
+  const activeUnit = props.units.find((displayUnit) => displayUnit.unit.id === highlights.activeUnitId)?.unit
+  const activeHexes = new Set(activeUnit ? hexesOf(activeUnit).map(hexKey) : [])
   const sortedUnits = [...props.units].sort((first, second) => first.point.y - second.point.y)
 
   return (
@@ -150,7 +160,7 @@ export function Board(props: BoardProps) {
           className += ' hex--path'
         }
 
-        if (activeHex && sameHex(activeHex, hex)) {
+        if (activeHexes.has(key)) {
           className += ' hex--active'
         }
 
@@ -184,6 +194,10 @@ export function Board(props: BoardProps) {
           </g>
         )
       })}
+
+      {props.corpses?.map((corpse, index) => (
+        <CorpseShape key={index} corpse={corpse} />
+      ))}
 
       <Ambience factions={props.factions} />
 
@@ -271,6 +285,24 @@ function idleOffset(unitId: string): number {
   return (hash % 1000) / 1000
 }
 
+/** A fallen stack: its creature lying on its back where it died, faded into the ground. */
+const CorpseShape = memo(function CorpseShape({ corpse }: { corpse: Corpse }) {
+  const point = standPoint(corpse)
+  const facing = corpse.owner === 'red' ? 1 : -1
+
+  // The same pose a dying stack topples into, so the body takes over where the death leaves off.
+  return (
+    <g className="corpse" transform={`translate(${point.x} ${point.y + 20}) rotate(${-85 * facing}) scale(0.9)`}>
+      <SpriteImage
+        spriteId={corpse.type}
+        owner={corpse.owner}
+        size={spriteWidth(corpse.type)}
+        mirrored={corpse.owner === 'blue'}
+      />
+    </g>
+  )
+})
+
 interface UnitTokenProps {
   displayUnit: DisplayUnit
   active: boolean
@@ -316,14 +348,18 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
   }
 
   const idleDelay = `${-(idleOffset(unit.id) * 3).toFixed(2)}s`
+  const wide = hasAbility(unit.type, 'wide')
+  const ringWidth = wide ? 38 : 20
+  // The count sits beside the creature, further out for a wide one.
+  const countOffset = wide ? 16 : 0
 
   return (
     <g className={className} transform={`translate(${point.x} ${point.y})`}>
-      {active && <ellipse className="unit__active-ring" cx={0} cy={12} rx={20} ry={7} />}
-      {targeted && <ellipse className="unit__target-ring" cx={0} cy={12} rx={20} ry={7} />}
-      {spellTarget && <ellipse className="unit__spell-ring" cx={0} cy={12} rx={20} ry={7} />}
-      {glow && <circle cx={0} cy={-8} r={24} style={{ fill: glow }} className="unit__glow" />}
-      <ellipse cx={0} cy={13} rx={15} ry={4} fill="rgba(0,0,0,0.4)" />
+      {active && <ellipse className="unit__active-ring" cx={0} cy={12} rx={ringWidth} ry={7} />}
+      {targeted && <ellipse className="unit__target-ring" cx={0} cy={12} rx={ringWidth} ry={7} />}
+      {spellTarget && <ellipse className="unit__spell-ring" cx={0} cy={12} rx={ringWidth} ry={7} />}
+      {glow && <circle cx={0} cy={-8} r={wide ? 34 : 24} style={{ fill: glow }} className="unit__glow" />}
+      <ellipse cx={0} cy={13} rx={wide ? 30 : 15} ry={wide ? 5 : 4} fill="rgba(0,0,0,0.4)" />
       {secret ? (
         <text className="unit__secret" x={0} y={-6} textAnchor="middle" dominantBaseline="central">
           ?
@@ -332,7 +368,12 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
         <g className="unit__sprite" transform="translate(0 14)">
           <g className="unit__pose">
             <g className="unit__idle" style={{ animationDelay: idleDelay }}>
-              <SpriteImage spriteId={unit.type} owner={unit.owner} size={UNIT_SPRITE_SIZE} mirrored={unit.owner === 'blue'} />
+              <SpriteImage
+                spriteId={unit.type}
+                owner={unit.owner}
+                size={spriteWidth(unit.type)}
+                mirrored={unit.owner === 'blue'}
+              />
             </g>
           </g>
         </g>
@@ -342,7 +383,7 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
           <IconImage name="defense" size={16} />
         </g>
       )}
-      <g transform={`translate(${unit.owner === 'red' ? 6 : -30} 8)`}>
+      <g transform={`translate(${unit.owner === 'red' ? 6 + countOffset : -30 - countOffset} 8)`}>
         <rect
           className={`unit__count-box${hasBuff ? ' unit__count-box--buffed' : ''}${hasDebuff ? ' unit__count-box--debuffed' : ''}`}
           width={24}
