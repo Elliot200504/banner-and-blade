@@ -1,5 +1,5 @@
 import { useEffect, useState, type AnimationEvent } from 'react'
-import { heroesOf, sizedArmy, standardArmy, type Army, type ArmySize, type Difficulty, type Faction, type HeroId, type Player } from './game'
+import { FACTION_ORDER, heroesOf, sizedArmy, standardArmy, type Army, type ArmySize, type Difficulty, type Faction, type HeroId, type Player } from './game'
 import { About, GitHubLink } from './ui/modals/About'
 import { Backdrop } from './ui/board/Backdrop'
 import { Battle } from './ui/screens/Battle'
@@ -14,6 +14,8 @@ import { useTheme } from './ui/hooks/useTheme'
 import { showsBattle, type Screen } from './ui/screens/screen'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32)
+
+const randomItem = <Item,>(items: Item[]): Item => items[Math.floor(Math.random() * items.length)]
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('start')
@@ -148,6 +150,13 @@ export default function App() {
             // A new size brings that size's standard army with it.
             setArmySizes((current) => ({ ...current, [player]: size }))
             setArmies((current) => ({ ...current, [player]: sizedArmy(factions[player], size) }))
+          }}
+          onRandomSide={(player, size) => {
+            const faction = randomItem(FACTION_ORDER)
+            setFactions((current) => ({ ...current, [player]: faction }))
+            setHeroes((current) => ({ ...current, [player]: randomItem(heroesOf(faction)) }))
+            setArmySizes((current) => ({ ...current, [player]: size }))
+            setArmies((current) => ({ ...current, [player]: sizedArmy(faction, size) }))
           }}
           onStart={startBattle}
           onOpenSettings={() => setSettingsOpen(true)}
