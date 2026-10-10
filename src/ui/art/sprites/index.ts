@@ -1,5 +1,5 @@
 import { UPGRADES, type BaseCreature, type CreatureType, type Faction, type HeroId, type ObstacleKind, type UpgradedCreature } from '../../../game'
-import { CASTLE_SPRITES, CASTLE_TINTS } from './castle'
+import { CASTLE_SPRITES, CASTLE_TINTS, CASTLE_UPGRADE_SPRITES } from './castle'
 import { RAMPART_SPRITES, RAMPART_TINTS } from './rampart'
 import { STRONGHOLD_SPRITES, STRONGHOLD_TINTS } from './stronghold'
 import { NECROPOLIS_SPRITES, NECROPOLIS_TINTS } from './necropolis'
@@ -78,4 +78,7 @@ const UPGRADE_SPRITES = Object.fromEntries(
   Object.entries(UPGRADES).map(([base, upgrade]) => [upgrade, tinted(BASE_SPRITES[base as BaseCreature], UPGRADE_TINTS[upgrade])]),
 ) as Record<UpgradedCreature, Sprite>
 
-export const SPRITES: Record<SpriteId, Sprite> = { ...BASE_SPRITES, ...UPGRADE_SPRITES }
+/** Upgrades drawn by hand replace their tinted versions. */
+const DRAWN_UPGRADE_SPRITES: Partial<Record<UpgradedCreature, Sprite>> = { ...CASTLE_UPGRADE_SPRITES }
+
+export const SPRITES: Record<SpriteId, Sprite> = { ...BASE_SPRITES, ...UPGRADE_SPRITES, ...DRAWN_UPGRADE_SPRITES }
