@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   applyMove,
   ARMY_BUDGET,
+  ARMY_BUDGETS,
+  ARMY_SIZES,
   armyCost,
   armyProblem,
   createBattle,
@@ -12,6 +14,7 @@ import {
   hexToOffset,
   mostAffordable,
   randomArmy,
+  sizedArmy,
   standardArmy,
   withStack,
   type Faction,
@@ -80,5 +83,28 @@ describe('army building', () => {
     }
     const next = applyMove(wounded, { type: 'cast', spell: 'animateDead', targetId: vampires.id })
     expect(next.units.find((unit) => unit.id === vampires.id)!.count).toBe(3)
+  })
+})
+
+describe('army sizes', () => {
+  for (const faction of FACTION_LIST) {
+    it(`${faction}: each size's army fits its own gold, and bigger sizes bring more`, () => {
+      const costs = ARMY_SIZES.map((size) => armyCost(sizedArmy(faction, size)))
+
+      for (const size of ARMY_SIZES) {
+        const army = sizedArmy(faction, size)
+        expect(armyProblem(army, faction, ARMY_BUDGETS[size])).toBeNull()
+        expect(army.every((stack) => stack.count >= 1)).toBe(true)
+      }
+
+      expect(costs[0]).toBeLessThan(costs[1])
+      expect(costs[1]).toBeLessThan(costs[2])
+      expect(sizedArmy(faction, 'small')).toEqual(standardArmy(faction))
+    })
+  }
+
+  it('a bigger size lets an army spend more gold', () => {
+    const castle = standardArmy('castle')
+    expect(mostAffordable(castle, 'angel', ARMY_BUDGETS.large)).toBeGreaterThan(mostAffordable(castle, 'angel'))
   })
 })

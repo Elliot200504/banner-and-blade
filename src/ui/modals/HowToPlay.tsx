@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react'
-import { ARMY_BUDGET } from '../../game'
 import { BattleDemo, type DemoId } from '../board/BattleDemo'
 
 interface RulesCardProps {
@@ -38,7 +37,7 @@ export function HowToPlay() {
       <div className="info-grid">
         <RulesCard title="Build your army" {...card}>
           <p className="info-card__text">
-            Pick a town and a hero, then spend {ARMY_BUDGET.toLocaleString('en-US')} gold on creatures. Then press To battle!
+            Pick a town, a hero and an army size: Small, Medium or Large sets your gold. Then press To battle!
           </p>
         </RulesCard>
         <RulesCard title="Move" demo="move" {...card}>

@@ -1050,6 +1050,13 @@ select {
   background: var(--button-secondary-hover);
 }
 
+/* The chosen army size, filled like a picked town. */
+.recruit__preset--active,
+.recruit__preset--active:hover {
+  background: var(--accent);
+  color: var(--button-text);
+}
+
 .recruit__step:disabled {
   opacity: 0.4;
   cursor: not-allowed;

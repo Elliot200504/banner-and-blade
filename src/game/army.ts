@@ -14,8 +14,15 @@ import type { Random } from './random'
 /** Chance that each stack in a random army is upgraded. */
 const RANDOM_UPGRADE_CHANCE = 0.35
 
-/** Gold each side may spend on recruits. Every standard army fits within it. */
-export const ARMY_BUDGET = 11_000
+/** Each side picks how big a battle to fight: its army size sets how much gold it may spend. */
+export type ArmySize = 'small' | 'medium' | 'large'
+
+export const ARMY_SIZES: ArmySize[] = ['small', 'medium', 'large']
+
+export const ARMY_BUDGETS: Record<ArmySize, number> = { small: 11_000, medium: 20_000, large: 35_000 }
+
+/** The gold each side may spend unless it picks a bigger size. Every standard army fits within it. */
+export const ARMY_BUDGET = ARMY_BUDGETS.small
 
 /** The most stacks an army can bring: one of each of its faction's creatures. */
 export const MAX_STACKS = 7
@@ -28,15 +35,37 @@ export interface ArmyStack {
 /** The stacks a side brings to battle, top to bottom, then any war machines (one of each at most). */
 export type Army = ArmyStack[]
 
-/** The fixed army each faction fought with before army building. */
+/** The fixed army each faction fought with before army building: one HoMM3 week of creatures. */
 export const standardArmy = (faction: Faction): Army =>
   FACTIONS[faction].creatures.map((type) => ({ type, count: CREATURES[type].armyCount }))
+
+/**
+ * The standard army scaled to an army size's gold: Small is the standard army itself. Every stack keeps at
+ * least one creature, and if the scaled army would cost too much, its priciest stacks give up creatures first.
+ */
+export function sizedArmy(faction: Faction, size: ArmySize): Army {
+  const share = ARMY_BUDGETS[size] / ARMY_BUDGETS.small
+  const army = standardArmy(faction).map(({ type, count }) => ({ type, count: Math.max(1, Math.floor(count * share)) }))
+
+  while (armyCost(army) > ARMY_BUDGETS[size]) {
+    const shrinkable = army.filter((stack) => stack.count > 1)
+
+    if (shrinkable.length === 0) {
+      break
+    }
+
+    const priciest = shrinkable.reduce((most, stack) => (CREATURES[stack.type].cost > CREATURES[most.type].cost ? stack : most))
+    priciest.count--
+  }
+
+  return army
+}
 
 export const armyCost = (army: Army): number =>
   army.reduce((total, stack) => total + stack.count * CREATURES[stack.type].cost, 0)
 
 /** Why this army cannot take the field, or null if it can. */
-export function armyProblem(army: Army, faction: Faction): string | null {
+export function armyProblem(army: Army, faction: Faction, budget = ARMY_BUDGET): string | null {
   const stacks = army.filter((stack) => stack.count > 0)
 
   if (!stacks.some((stack) => !isWarMachine(stack.type))) {
@@ -59,8 +88,8 @@ export function armyProblem(army: Army, faction: Faction): string | null {
     return 'Each creature can form only one stack, upgraded or not.'
   }
 
-  if (armyCost(stacks) > ARMY_BUDGET) {
-    return `The army costs more than ${ARMY_BUDGET} gold.`
+  if (armyCost(stacks) > budget) {
+    return `The army costs more than ${budget} gold.`
   }
 
   return null
@@ -80,9 +109,9 @@ export function withStack(army: Army, faction: Faction, type: CreatureType, coun
 }
 
 /** How many of `type` the army could have, spending the gold it has left. */
-export function mostAffordable(army: Army, type: CreatureType): number {
+export function mostAffordable(army: Army, type: CreatureType, budget = ARMY_BUDGET): number {
   const current = army.find((stack) => stack.type === type)?.count ?? 0
-  const affordable = current + Math.floor((ARMY_BUDGET - armyCost(army)) / CREATURES[type].cost)
+  const affordable = current + Math.floor((budget - armyCost(army)) / CREATURES[type].cost)
 
   return isWarMachine(type) ? Math.min(1, affordable) : affordable
 }
@@ -90,7 +119,7 @@ export function mostAffordable(army: Army, type: CreatureType): number {
 /**
  * The army with the stack of `base` swapped to its upgrade (or back). It keeps as many creatures as the gold allows.
  */
-export function withUpgrade(army: Army, faction: Faction, base: BaseCreature, upgraded: boolean): Army {
+export function withUpgrade(army: Army, faction: Faction, base: BaseCreature, upgraded: boolean, budget = ARMY_BUDGET): Army {
   const current = army.find((stack) => baseOf(stack.type) === base)
 
   if (!current) {
@@ -100,14 +129,14 @@ export function withUpgrade(army: Army, faction: Faction, base: BaseCreature, up
   const type = upgraded ? UPGRADES[base] : base
   const without = army.filter((stack) => stack !== current)
 
-  return withStack(without, faction, type, Math.min(current.count, mostAffordable(without, type)))
+  return withStack(without, faction, type, Math.min(current.count, mostAffordable(without, type, budget)))
 }
 
 /**
  * A random army for the faction: three to six kinds of creature, the budget split
  * between them at random, and any change spent on whatever still fits.
  */
-export function randomArmy(faction: Faction, random: Random): Army {
+export function randomArmy(faction: Faction, random: Random, budget = ARMY_BUDGET): Army {
   const pool = [...FACTIONS[faction].creatures]
   const kinds = random.integer(3, Math.min(MAX_STACKS, pool.length))
   const chosen: CreatureType[] = []
@@ -121,11 +150,11 @@ export function randomArmy(faction: Faction, random: Random): Army {
   const totalWeight = weights.reduce((total, weight) => total + weight, 0)
   let army: Army = []
   chosen.forEach((type, index) => {
-    const count = Math.max(1, Math.floor((ARMY_BUDGET * weights[index]) / totalWeight / CREATURES[type].cost))
-    army = withStack(army, faction, type, Math.min(count, mostAffordable(army, type)))
+    const count = Math.max(1, Math.floor((budget * weights[index]) / totalWeight / CREATURES[type].cost))
+    army = withStack(army, faction, type, Math.min(count, mostAffordable(army, type, budget)))
   })
   // Spend what's left on the cheapest creature already in the army.
   const cheapest = [...chosen].sort((first, second) => CREATURES[first].cost - CREATURES[second].cost)[0]
 
-  return withStack(army, faction, cheapest, mostAffordable(army, cheapest))
+  return withStack(army, faction, cheapest, mostAffordable(army, cheapest, budget))
 }
