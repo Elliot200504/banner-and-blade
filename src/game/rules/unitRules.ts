@@ -2,7 +2,8 @@
 
 import { hasAbility, isWarMachine } from '../creatures'
 import type { Hero } from '../heroes'
-import { sameHex, type Hex } from '../hex'
+import type { Hex } from '../hex'
+import { occupies } from '../movement'
 import { SPELLS, type SpellId } from '../spells'
 import type { Unit } from '../types'
 
@@ -36,5 +37,5 @@ export function usesAmmunition(units: Unit[], unit: Unit): boolean {
 export function breathVictim(units: Unit[], from: Hex, target: Unit): Unit | undefined {
   const behind = { q: 2 * target.position.q - from.q, r: 2 * target.position.r - from.r }
 
-  return units.find((unit) => unit.id !== target.id && unit.count > 0 && sameHex(unit.position, behind))
+  return units.find((unit) => unit.id !== target.id && unit.count > 0 && occupies(unit, behind))
 }
