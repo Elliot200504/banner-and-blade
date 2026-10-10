@@ -1,7 +1,7 @@
 import type { Army, ArmySize, Faction, HeroId, Move } from '../game'
 
 /** Bumped whenever the messages change, so mismatched players can tell. */
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 /** One side's choices on the start screen. */
 export interface SidePicksMessage {
@@ -9,6 +9,8 @@ export interface SidePicksMessage {
   hero: HeroId
   army: Army
   armySize: ArmySize
+  /** Rolled at random: the friend's card shows a question mark instead of the picks. */
+  random: boolean
 }
 
 /**

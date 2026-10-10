@@ -44,6 +44,8 @@ interface BackdropProps {
   factions: Record<Player, Faction>
   heroes: Record<Player, HeroId>
   armies: Record<Player, Army>
+  /** Sides picked at random, kept hidden on the menu: question marks for troops, the other town's ground. */
+  secret: Record<Player, boolean>
 }
 
 /**
@@ -52,8 +54,21 @@ interface BackdropProps {
  * a worn war table (CC0 texture from Poly Haven, polyhaven.com). Between the two, the field zooms from
  * filling the screen down onto the battle's board, or back up.
  */
-export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies }: BackdropProps) {
+export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies, secret }: BackdropProps) {
   const battle = useMemo(() => createBattle(factions, fieldSeed, heroes, armies), [factions, fieldSeed, heroes, armies])
+  // The secret is kept until the field starts zooming onto the board.
+  const hiding = screen === 'start' || screen === 'leaving'
+  const hiddenRed = hiding && secret.red
+  const hiddenBlue = hiding && secret.blue
+  // A hidden town's ground would give it away, so its half borrows the other side's, or Castle's if both are hidden.
+  const shownFactions = useMemo(
+    () => ({
+      red: hiddenRed ? (hiddenBlue ? 'castle' : factions.blue) : factions.red,
+      blue: hiddenBlue ? (hiddenRed ? 'castle' : factions.red) : factions.blue,
+    }) satisfies Record<Player, Faction>,
+    [factions, hiddenRed, hiddenBlue],
+  )
+  const ground = useMemo(() => createBattle(shownFactions, fieldSeed), [shownFactions, fieldSeed])
   const fieldRef = useRef<HTMLDivElement>(null)
   const [flight, setFlight] = useState<Flight | null>(null)
   const zooming = screen === 'to-battle' || screen === 'to-menu'
@@ -99,6 +114,7 @@ export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies }:
     hit: false,
     dying: false,
     glow: '',
+    secret: unit.owner === 'red' ? hiddenRed : hiddenBlue,
   }))
 
   const flightStyle = flight
@@ -119,8 +135,8 @@ export function Backdrop({ screen, theme, fieldSeed, factions, heroes, armies }:
         >
           <Board
             units={units}
-            obstacles={battle.obstacles}
-            factions={battle.factions}
+            obstacles={ground.obstacles}
+            factions={shownFactions}
             highlights={NOTHING_HIGHLIGHTED}
             projectile={null}
             lightning={null}
