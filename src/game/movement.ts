@@ -1,20 +1,47 @@
 import { effectiveSpeed } from './combat'
 import { CREATURES, hasAbility, isWarMachine } from './creatures'
 import { allHexes, hexDistance, hexKey, inBounds, neighbors, sameHex, type Hex } from './hex'
-import type { GameState, Unit } from './types'
+import type { CreatureType } from './creatures'
+import type { GameState, Player, Unit } from './types'
 
 type Board = Pick<GameState, 'units' | 'obstacles'>
 
-export function unitAt(units: Unit[], hex: Hex): Unit | undefined {
-  return units.find((unit) => sameHex(unit.position, hex))
+/**
+ * The hexes a stack stands on with its front on `head`. Wide creatures, like dragons and cavalry, also take
+ * the hex behind them: to the left for Red, to the right for Blue, facing the enemy.
+ */
+export function footprint(type: CreatureType, owner: Player, head: Hex): Hex[] {
+  return hasAbility(type, 'wide') ? [head, { q: head.q + (owner === 'red' ? -1 : 1), r: head.r }] : [head]
 }
 
-function isBlocked(board: Board, hex: Hex): boolean {
+export const hexesOf = (unit: Unit): Hex[] => footprint(unit.type, unit.owner, unit.position)
+
+export const occupies = (unit: Unit, hex: Hex): boolean => hexesOf(unit).some((own) => sameHex(own, hex))
+
+/** The fewest steps between any hex of one footprint and any hex of the other. */
+function footprintDistance(first: Hex[], second: Hex[]): number {
+  return Math.min(...first.flatMap((from) => second.map((to) => hexDistance(from, to))))
+}
+
+/** How far apart two stacks stand, counting from their nearest hexes. 1 means they are side by side. */
+export const unitDistance = (first: Unit, second: Unit): number => footprintDistance(hexesOf(first), hexesOf(second))
+
+export function unitAt(units: Unit[], hex: Hex): Unit | undefined {
+  return units.find((unit) => occupies(unit, hex))
+}
+
+/** Whether the hex is off the board, an obstacle, or taken by a stack other than `moverId`. */
+function isBlocked(board: Board, hex: Hex, moverId?: string): boolean {
   return (
     !inBounds(hex) ||
     board.obstacles.some((obstacle) => sameHex(obstacle.position, hex)) ||
-    board.units.some((unit) => sameHex(unit.position, hex))
+    board.units.some((unit) => unit.id !== moverId && occupies(unit, hex))
   )
+}
+
+/** Whether the unit would fit with its front on `head`, every hex it takes free. */
+function fits(board: Board, unit: Unit, head: Hex): boolean {
+  return footprint(unit.type, unit.owner, head).every((hex) => !isBlocked(board, hex, unit.id))
 }
 
 /**
@@ -33,7 +60,7 @@ export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
     for (const hex of allHexes()) {
       const distance = hexDistance(unit.position, hex)
 
-      if (distance > 0 && distance <= speed && !isBlocked(board, hex)) {
+      if (distance > 0 && distance <= speed && fits(board, unit, hex)) {
         paths.set(hexKey(hex), [unit.position, hex])
       }
     }
@@ -51,7 +78,7 @@ export function reachableHexes(board: Board, unit: Unit): Map<string, Hex[]> {
       for (const neighbor of neighbors(path[path.length - 1])) {
         const key = hexKey(neighbor)
 
-        if (visited.has(key) || isBlocked(board, neighbor)) {
+        if (visited.has(key) || !fits(board, unit, neighbor)) {
           continue
         }
 
@@ -78,22 +105,27 @@ export function pathLength(path: Hex[]): number {
 }
 
 export function isEnemyAdjacent(units: Unit[], unit: Unit): boolean {
-  return units.some((other) => other.owner !== unit.owner && hexDistance(other.position, unit.position) === 1)
+  return units.some((other) => other.owner !== unit.owner && unitDistance(other, unit) === 1)
 }
 
-/** Hexes the unit can strike the target from in melee: where it stands, or any reachable hex next to the target. */
+/** Whether the unit, standing with its front on `head`, would be right next to the target. */
+export function strikesFrom(unit: Unit, head: Hex, target: Unit): boolean {
+  return footprintDistance(footprint(unit.type, unit.owner, head), hexesOf(target)) === 1
+}
+
+/** Where the unit can strike the target from in melee: where it stands, or anywhere it can reach next to the target. */
 export function attackOrigins(board: Board, unit: Unit, target: Unit): Hex[] {
   const origins: Hex[] = []
 
-  if (hexDistance(unit.position, target.position) === 1) {
+  if (strikesFrom(unit, unit.position, target)) {
     origins.push(unit.position)
   }
 
-  const reach = reachableHexes(board, unit)
+  for (const path of reachableHexes(board, unit).values()) {
+    const head = path[path.length - 1]
 
-  for (const neighbor of neighbors(target.position)) {
-    if (reach.has(hexKey(neighbor))) {
-      origins.push(neighbor)
+    if (strikesFrom(unit, head, target)) {
+      origins.push(head)
     }
   }
 
@@ -119,7 +151,7 @@ export function shotProblem(units: Unit[], unit: Unit, target: Unit): ShotProble
     return 'blocked'
   }
 
-  if (hexDistance(unit.position, target.position) > stats.range) {
+  if (unitDistance(unit, target) > stats.range) {
     return 'outOfRange'
   }
 
