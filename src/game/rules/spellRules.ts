@@ -3,7 +3,7 @@
 import { afterDamage, totalHp } from '../combat'
 import { CREATURES, hasAbility } from '../creatures'
 import { isSpellSpecialist, type Hero } from '../heroes'
-import { hexDistance } from '../hex'
+import { unitDistance } from '../movement'
 import { animateDeadAmount, cureAmount, isEffect, OPPOSITE_EFFECT, SPELLS, spellDamage, type SpellId } from '../spells'
 import type { GameState, Player, Unit } from '../types'
 import { getUnit, recordLosses, updateUnit, type Draft } from './draft'
@@ -84,11 +84,11 @@ export function spellVictims(
   }
 
   if (spell === 'meteorShower') {
-    return affected.filter((unit) => hexDistance(unit.position, target.position) <= 1)
+    return affected.filter((unit) => unitDistance(unit, target) <= 1)
   }
 
   if (spell === 'inferno') {
-    return affected.filter((unit) => hexDistance(unit.position, target.position) <= 2)
+    return affected.filter((unit) => unitDistance(unit, target) <= 2)
   }
 
   return [target]
