@@ -47,7 +47,7 @@ type ClassStats = Pick<Hero, 'title' | 'attack' | 'defense' | 'spellPower' | 'kn
 // Starting stats lean the way each HoMM3 class does: might classes fight, magic classes cast.
 const KNIGHT: ClassStats = { title: 'Knight', attack: 2, defense: 2, spellPower: 1, knowledge: 2, morale: 1, luck: 1 }
 const CLERIC: ClassStats = { title: 'Cleric', attack: 1, defense: 0, spellPower: 2, knowledge: 3, morale: 1, luck: 1 }
-const DEATH_KNIGHT: ClassStats = { title: 'Death Knight', attack: 1, defense: 2, spellPower: 2, knowledge: 2, morale: 0, luck: 1 }
+const DEATH_KNIGHT: ClassStats = { title: 'Death Knight', attack: 3, defense: 3, spellPower: 1, knowledge: 2, morale: 0, luck: 1 }
 const NECROMANCER: ClassStats = { title: 'Necromancer', attack: 1, defense: 0, spellPower: 3, knowledge: 3, morale: 0, luck: 1 }
 const OVERLORD: ClassStats = { title: 'Overlord', attack: 2, defense: 2, spellPower: 1, knowledge: 2, morale: 1, luck: 1 }
 const WARLOCK: ClassStats = { title: 'Warlock', attack: 0, defense: 0, spellPower: 3, knowledge: 3, morale: 0, luck: 1 }
@@ -119,6 +119,13 @@ export const SPECIALTY_DEFENSE = 2
 export const SPECIALTY_SPEED = 1
 /** A spell specialist's own spell hits (or heals) this much harder. */
 export const SPELL_SPECIALTY_BONUS = 1.5
+/**
+ * Spells whose specialists get a different bonus. Death Ripple already hits the whole field, so its specialist's
+ * edge is hitting enemy undead too, with no extra damage. Animate Dead heals just one stack, so it heals double.
+ */
+const SPELL_SPECIALTY_BONUSES: Partial<Record<SpellId, number>> = { deathRipple: 1, animateDead: 2 }
+
+export const spellSpecialtyBonus = (spell: SpellId): number => SPELL_SPECIALTY_BONUSES[spell] ?? SPELL_SPECIALTY_BONUS
 /** Extra damage for stacks blessed by a Bless specialist. */
 export const BLESS_SPECIALTY_BONUS = 0.2
 /** Extra speed for stacks hasted by a Haste specialist. */
