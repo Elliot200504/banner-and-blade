@@ -3,13 +3,11 @@ import { Icon, SpriteIcon } from '../art/SpriteImage'
 
 interface TurnQueueProps {
   state: GameState
-  /** Nearly see-through and out of the pointer's way, so the board under it can be clicked. */
-  faded: boolean
   onHover: (unitId: string | null) => void
 }
 
-/** Who goes next: the rest of this round, then the next one. Laid over the bottom of the board. */
-export function TurnQueue({ state, faded, onHover }: TurnQueueProps) {
+/** Who goes next: the rest of this round, then the next one. On the open ground below the hexes. */
+export function TurnQueue({ state, onHover }: TurnQueueProps) {
   if (state.winner) {
     return null
   }
@@ -20,8 +18,7 @@ export function TurnQueue({ state, faded, onHover }: TurnQueueProps) {
   const nextRound = buildQueue(state.units, state.round + 1).map(findUnit).filter(isUnit)
 
   return (
-    <section className={`turn-queue${faded ? ' turn-queue--faded' : ''}`} aria-label="Turn order">
-      <h2 className="turn-queue__title">Turn order</h2>
+    <section className="turn-queue" aria-label="Turn order">
       <div className="turn-queue__tokens">
         {thisRound.map((unit, index) => (
           <QueueToken
@@ -31,7 +28,11 @@ export function TurnQueue({ state, faded, onHover }: TurnQueueProps) {
             onHover={onHover}
           />
         ))}
-        <span className="turn-queue__divider">Round {state.round + 1}</span>
+        <span className="turn-queue__divider" title={`Round ${state.round + 1}`}>
+          <span className="turn-queue__round">
+            <span className="turn-queue__round-number">{state.round + 1}</span>
+          </span>
+        </span>
         {nextRound.map((unit) => (
           <QueueToken key={`next-${unit.id}`} unit={unit} label={null} onHover={onHover} faded />
         ))}
@@ -66,7 +67,7 @@ function QueueToken({ unit, label, faded = false, onHover }: QueueTokenProps) {
       onMouseLeave={() => onHover(null)}
     >
       {label && <span className="queue-token__label">{label}</span>}
-      <SpriteIcon spriteId={unit.type} owner={unit.owner} size={34} mirrored={unit.owner === 'blue'} />
+      <SpriteIcon spriteId={unit.type} owner={unit.owner} size={32} mirrored={unit.owner === 'blue'} />
       <span className="queue-token__count">{unit.count}</span>
       {unit.waited && !faded && (
         <span className="queue-token__waited">
