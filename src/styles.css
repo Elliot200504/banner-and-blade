@@ -1168,12 +1168,12 @@ select {
 
 /*
  * Hero bar on top, the board filling whatever height is left, status and actions under it,
- * the inspected stack and log beside it and the turn order along the bottom.
+ * the inspected stack and log beside it. The turn order lies over the bottom of the board.
  */
 .battle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(230px, 20vw, 300px);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px 12px;
 }
 
@@ -1219,10 +1219,6 @@ select {
   margin: 0;
   font-size: calc(8px * var(--text-scale));
   color: var(--text-muted);
-}
-
-.battle .turn-queue {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 900px) {
@@ -1395,6 +1391,7 @@ select {
 
 /* As large as fits the stage while keeping the board's shape. */
 .board-frame {
+  position: relative;
   width: min(100cqw, 100cqh * var(--board-ratio));
   aspect-ratio: var(--board-ratio);
   border: 4px solid var(--board-frame);
@@ -1657,11 +1654,33 @@ select {
 
 /* ---------- Turn queue ---------- */
 
+/* A dark strip over the bottom of the board, fading out at its ends. Only the tokens catch the pointer. */
 .turn-queue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 2px 16px 6px;
+  line-height: var(--line-height);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.62) 6%, rgba(0, 0, 0, 0.62) 94%, transparent);
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.turn-queue .queue-token {
+  pointer-events: auto;
+}
+
+.turn-queue--faded {
+  opacity: 0.15;
+}
+
+.turn-queue--faded .queue-token {
+  pointer-events: none;
 }
 
 .turn-queue__title {

@@ -3,11 +3,13 @@ import { Icon, SpriteIcon } from '../art/SpriteImage'
 
 interface TurnQueueProps {
   state: GameState
+  /** Nearly see-through and out of the pointer's way, so the board under it can be clicked. */
+  faded: boolean
   onHover: (unitId: string | null) => void
 }
 
-/** Who goes next: the rest of this round, then the next one. */
-export function TurnQueue({ state, onHover }: TurnQueueProps) {
+/** Who goes next: the rest of this round, then the next one. Laid over the bottom of the board. */
+export function TurnQueue({ state, faded, onHover }: TurnQueueProps) {
   if (state.winner) {
     return null
   }
@@ -18,7 +20,7 @@ export function TurnQueue({ state, onHover }: TurnQueueProps) {
   const nextRound = buildQueue(state.units, state.round + 1).map(findUnit).filter(isUnit)
 
   return (
-    <section className="turn-queue" aria-label="Turn order">
+    <section className={`turn-queue${faded ? ' turn-queue--faded' : ''}`} aria-label="Turn order">
       <h2 className="turn-queue__title">Turn order</h2>
       <div className="turn-queue__tokens">
         {thisRound.map((unit, index) => (

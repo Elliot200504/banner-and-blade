@@ -19,6 +19,7 @@ import {
   pathLength,
   PLAYER_NAMES,
   reachableHexes,
+  ROWS,
   sameHex,
   shotProblem,
   spellDamage,
@@ -328,6 +329,8 @@ export function Battle({
   }
 
   const hoveredUnit = hoveredHex ? unitAt(state.units, hoveredHex) : undefined
+  // The turn order lies over the bottom row, so it steps aside while the pointer is there.
+  const pointerOnBottomRow = hoveredHex !== null && hoveredHex.r === ROWS - 1
   const spotlightUnit = state.units.find((unit) => unit.id === spotlightUnitId)
   const selectedUnit = selectedHex ? unitAt(state.units, selectedHex) : undefined
   const inspectedUnit = hoveredUnit ?? spotlightUnit ?? selectedUnit ?? actor
@@ -370,6 +373,7 @@ export function Battle({
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
           />
+          <TurnQueue state={state} faded={pointerOnBottomRow} onHover={setSpotlightUnitId} />
         </div>
       </div>
 
@@ -417,8 +421,6 @@ export function Battle({
         <BattleLog log={state.log} />
         <p className="battle__hint">Right-click a stack for details.</p>
       </aside>
-
-      <TurnQueue state={state} onHover={setSpotlightUnitId} />
 
       {spellbookOpen && hero && (
         <Spellbook
