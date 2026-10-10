@@ -45,6 +45,7 @@ import { BattleLog, HeroPanel, UnitCard } from '../panels/SidePanel'
 import { Spellbook } from '../modals/Spellbook'
 import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
+import type { Connection } from '../../net/connection'
 import { TurnQueue } from '../panels/TurnQueue'
 import { RoundCall } from '../board/RoundCall'
 import { useAnimator } from '../board/useAnimator'
@@ -76,6 +77,10 @@ interface BattleProps {
   paused: boolean
   onPlayAgain: () => void
   onMainMenu: () => void
+  /** Online only: where this side's moves are sent. */
+  connection?: Connection | null
+  /** Online only: every move the other player has sent this battle, in order. */
+  remoteMoves?: Move[]
 }
 
 export function Battle({
@@ -90,6 +95,8 @@ export function Battle({
   paused,
   onPlayAgain,
   onMainMenu,
+  connection = null,
+  remoteMoves = [],
 }: BattleProps) {
   const [state, setState] = useState<GameState>(() => ({
     ...createBattle(factions, fieldSeed, heroes, armies),
@@ -111,8 +118,9 @@ export function Battle({
   /** Nothing is animating and someone has a turn to take. */
   const ready = !animator.playing && !state.winner && actor !== undefined
   const computerTurn = actor !== undefined && controllers[actor.owner] === 'computer'
+  const remoteTurn = actor !== undefined && controllers[actor.owner] === 'remote'
   /** Whether the person at the keyboard may act. */
-  const canAct = ready && !computerTurn
+  const canAct = ready && !computerTurn && !remoteTurn
   const hero = actor ? state.heroes[actor.owner] : undefined
 
   const reachable = useMemo(
@@ -195,13 +203,18 @@ export function Battle({
         return
       }
 
+      // Online, a move made here is sent on at once, so both sides apply it to the same state.
+      if (connection && actor && controllers[actor.owner] === 'human') {
+        connection.send({ type: 'move', move })
+      }
+
       setSelectedHex(null)
       setPendingSpell(null)
       await animator.play(next.events, state.units, SPEED_FACTORS[speed])
       setState(next)
       animator.finish()
     },
-    [ready, state, animator, speed],
+    [ready, state, animator, speed, connection, actor, controllers],
   )
 
   // The computer moves on its own turns. The latest perform is kept in a ref so that
@@ -218,6 +231,18 @@ export function Battle({
 
     return () => clearTimeout(timer)
   }, [ready, computerTurn, modalOpen, state, speed, actor, difficulties])
+
+  // The other player's moves are played in the order they arrive, each once the board is ready for it.
+  const remoteMovesPlayed = useRef(0)
+  useEffect(() => {
+    if (!ready || !remoteTurn || paused || remoteMovesPlayed.current >= remoteMoves.length) {
+      return
+    }
+
+    const move = remoteMoves[remoteMovesPlayed.current]
+    remoteMovesPlayed.current += 1
+    void performRef.current(move)
+  }, [ready, remoteTurn, paused, remoteMoves, state])
 
   const performIntent = (chosen: Intent) => {
     if (chosen.kind === 'move') {
@@ -358,7 +383,7 @@ export function Battle({
     <div className="battle">
       <div className="battle__heroes">
         <HeroPanel state={state} player="red" active={actor?.owner === 'red'} />
-        <TurnBanner state={state} actor={actor} computer={computerTurn} />
+        <TurnBanner state={state} actor={actor} computer={computerTurn} remote={remoteTurn} />
         <HeroPanel state={state} player="blue" active={actor?.owner === 'blue'} />
       </div>
 
@@ -389,6 +414,8 @@ export function Battle({
       <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
         {computerTurn && actor && !state.winner
           ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
+          : remoteTurn && actor && !state.winner
+          ? `Waiting for ${PLAYER_NAMES[actor.owner]}…`
           : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
       </div>
 
@@ -484,13 +511,20 @@ export function Battle({
   )
 }
 
-function TurnBanner({ state, actor, computer }: { state: GameState; actor: Unit | undefined; computer: boolean }) {
+interface TurnBannerProps {
+  state: GameState
+  actor: Unit | undefined
+  computer: boolean
+  remote: boolean
+}
+
+function TurnBanner({ state, actor, computer, remote }: TurnBannerProps) {
   return (
     <div className={`turn-banner${actor && !state.winner ? ` turn-banner--${actor.owner}` : ''}`}>
       <span className="turn-banner__round">Round {state.round}</span>
       {actor && !state.winner && (
         <span>
-          {PLAYER_NAMES[actor.owner]}'s turn{computer ? ' (CPU)' : ''}
+          {PLAYER_NAMES[actor.owner]}'s turn{computer ? ' (CPU)' : remote ? ' (online)' : ''}
           <br />
           {actor.count} {CREATURES[actor.type].plural}
         </span>
