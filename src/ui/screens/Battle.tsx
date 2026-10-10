@@ -19,6 +19,7 @@ import {
   pathLength,
   PLAYER_NAMES,
   reachableHexes,
+  ROWS,
   sameHex,
   shotProblem,
   spellDamage,
@@ -45,6 +46,7 @@ import { Spellbook } from '../modals/Spellbook'
 import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
 import { TurnQueue } from '../panels/TurnQueue'
+import { RoundCall } from '../board/RoundCall'
 import { useAnimator } from '../board/useAnimator'
 import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from '../hooks/useBattleSpeed'
 import type { Theme } from '../hooks/useTheme'
@@ -65,9 +67,12 @@ interface BattleProps {
   difficulties: Record<Player, Difficulty>
   heroes: Record<Player, HeroId>
   armies: Record<Player, Army>
+  /** Lays out the obstacles; the menu's backdrop draws the same field. */
+  fieldSeed: number
+  /** Rolls the dice. */
   seed: number
   theme: Theme
-  /** The settings window is open: the battle waits, and keys do nothing. */
+  /** The settings window is open, or the screen is still zooming in or out: the battle waits, and keys do nothing. */
   paused: boolean
   onPlayAgain: () => void
   onMainMenu: () => void
@@ -79,13 +84,17 @@ export function Battle({
   difficulties,
   heroes,
   armies,
+  fieldSeed,
   seed,
   theme,
   paused,
   onPlayAgain,
   onMainMenu,
 }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes, armies))
+  const [state, setState] = useState<GameState>(() => ({
+    ...createBattle(factions, fieldSeed, heroes, armies),
+    seed,
+  }))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
@@ -328,6 +337,8 @@ export function Battle({
   }
 
   const hoveredUnit = hoveredHex ? unitAt(state.units, hoveredHex) : undefined
+  // The turn order lies over the bottom row, so it steps aside while the pointer is there.
+  const pointerOnBottomRow = hoveredHex !== null && hoveredHex.r === ROWS - 1
   const spotlightUnit = state.units.find((unit) => unit.id === spotlightUnitId)
   const selectedUnit = selectedHex ? unitAt(state.units, selectedHex) : undefined
   const inspectedUnit = hoveredUnit ?? spotlightUnit ?? selectedUnit ?? actor
@@ -370,6 +381,8 @@ export function Battle({
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
           />
+          <TurnQueue state={state} faded={pointerOnBottomRow} onHover={setSpotlightUnitId} />
+          {state.round > 1 && !state.winner && <RoundCall key={state.round} round={state.round} />}
         </div>
       </div>
 
@@ -417,8 +430,6 @@ export function Battle({
         <BattleLog log={state.log} />
         <p className="battle__hint">Right-click a stack for details.</p>
       </aside>
-
-      <TurnQueue state={state} onHover={setSpotlightUnitId} />
 
       {spellbookOpen && hero && (
         <Spellbook

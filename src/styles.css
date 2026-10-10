@@ -234,7 +234,16 @@ select {
 .backdrop--battlefield {
   display: flex;
   justify-content: center;
-  filter: brightness(0.38) saturate(0.85);
+}
+
+/* Dimmed with a dark layer rather than a filter, so the zoom can lift it without repainting the field. */
+.backdrop--battlefield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  opacity: 0.62;
 }
 
 .backdrop__field {
@@ -247,6 +256,378 @@ select {
 .backdrop__field .board {
   width: 100%;
   height: 100%;
+}
+
+/* ---------- Zooming between the menu and the battle ---------- */
+
+/*
+ * Only opacity and transform move, so the browser glides them without repainting the field.
+ * Each step starts before the last one ends, so it flows as one motion.
+ */
+
+/* The menu's panels slide off to their own edges as the battle is called. */
+.app--leaving .start-screen {
+  pointer-events: none;
+  animation: menu-leave 0.25s ease-in forwards;
+}
+
+.app--leaving .start-screen .army-picker__side--red,
+.app--leaving .side-summary--red {
+  animation: slide-to-left 0.25s ease-in forwards;
+}
+
+.app--leaving .start-screen .army-picker__side--blue,
+.app--leaving .side-summary--blue {
+  animation: slide-to-right 0.25s ease-in forwards;
+}
+
+@keyframes menu-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-to-left {
+  to {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+@keyframes slide-to-right {
+  to {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+}
+
+/* The field already starts to light up while the menu leaves, and gets its own layer ready for the zoom. */
+.backdrop--leaving::before {
+  animation: dim-lift-start 0.25s ease-in forwards;
+}
+
+.backdrop--leaving .backdrop__field,
+.backdrop--to-battle .backdrop__field,
+.backdrop--to-menu .backdrop__field {
+  will-change: transform;
+}
+
+@keyframes dim-lift-start {
+  to {
+    opacity: 0.45;
+  }
+}
+
+/* The field shrinks onto the board fast, then settles gently, scaling from its top left corner (see Backdrop). */
+.backdrop--to-battle .backdrop__field,
+.backdrop--to-menu .backdrop__field {
+  transform-origin: 0 0;
+}
+
+.backdrop--to-battle .backdrop__field {
+  animation: field-to-battle 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.backdrop--to-battle::before {
+  animation: dim-lift 0.6s ease-out forwards;
+}
+
+.backdrop--to-battle::after {
+  animation: vignette-leave 0.6s ease-out forwards;
+}
+
+.backdrop--texture:has(~ .backdrop--to-battle) {
+  animation: texture-arrive 0.6s ease-out both;
+}
+
+@keyframes field-to-battle {
+  to {
+    transform: translate(var(--flight-x), var(--flight-y)) scale(var(--flight-scale));
+  }
+}
+
+@keyframes dim-lift {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vignette-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes texture-arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The battle fades in over the field as it settles, which looks just like its board. */
+.app--to-battle .battle {
+  animation: battle-arrive 1.9s ease-out both;
+}
+
+.app--to-battle .app-header {
+  animation: header-arrive 1.9s ease-out both;
+}
+
+@keyframes battle-arrive {
+  0%,
+  34% {
+    opacity: 0;
+  }
+
+  56%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes header-arrive {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+
+  62%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Back to the menu: the battle fades away over the field, which rises back up and darkens. */
+.app--to-menu .battle,
+.app--to-menu .app-header {
+  pointer-events: none;
+  animation: battle-depart 1s ease-out forwards;
+}
+
+.backdrop--to-menu .backdrop__field {
+  animation: field-to-menu 1s both;
+}
+
+.backdrop--to-menu::before {
+  animation: dim-return 1s ease-in-out both;
+}
+
+.backdrop--to-menu::after {
+  animation: vignette-return 1s ease-in-out both;
+}
+
+.backdrop--texture:has(~ .backdrop--to-menu) {
+  animation: texture-depart 1s ease-out forwards;
+}
+
+@keyframes battle-depart {
+  28%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes field-to-menu {
+  0%,
+  22% {
+    transform: translate(var(--flight-x), var(--flight-y)) scale(var(--flight-scale));
+    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes dim-return {
+  0%,
+  30% {
+    opacity: 0;
+  }
+}
+
+@keyframes vignette-return {
+  0%,
+  30% {
+    opacity: 0;
+  }
+}
+
+@keyframes texture-depart {
+  0%,
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+ * The call to arms, over the board only (BattleCall places it): the board's edges flare in the theme's
+ * title colour, a dark banner unrolls across its middle and the words settle onto it.
+ */
+.battle-call {
+  position: fixed;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+  container-type: size;
+  display: grid;
+  place-items: center;
+  animation: battle-call 1.9s linear forwards;
+}
+
+.battle-call__glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--title), transparent 20%, transparent 80%, var(--title));
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: battle-call-glow 1.9s ease-out forwards;
+}
+
+.battle-call__band {
+  position: relative;
+  width: 100%;
+  padding: clamp(8px, 4cqh, 28px) 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.85) 20%, rgba(0, 0, 0, 0.85) 80%, transparent);
+  border-block: 2px solid;
+  border-image: linear-gradient(90deg, transparent, var(--title) 25%, var(--title) 75%, transparent) 1;
+  transform: scaleX(0);
+  animation: battle-call-band 1.9s forwards;
+}
+
+.battle-call__text {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: clamp(20px, 9cqw, 96px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--title);
+  text-shadow:
+    0 3px 0 var(--frame-dark),
+    0 0 20px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  animation: battle-call-text 1.9s forwards;
+}
+
+@keyframes battle-call {
+  0%,
+  84% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes battle-call-glow {
+  0%,
+  28% {
+    opacity: 0;
+  }
+
+  42% {
+    opacity: 0.55;
+  }
+
+  100% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes battle-call-band {
+  0%,
+  28% {
+    transform: scaleX(0);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  42%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes battle-call-text {
+  0%,
+  33% {
+    opacity: 0;
+    transform: scale(1.3);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  47%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* No zooming or growing: the field and the battle simply fade into each other. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes slide-to-left {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes slide-to-right {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes field-to-battle {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes field-to-menu {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes header-arrive {
+    0%,
+    40% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes battle-call-band {
+    0%,
+    28% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes battle-call-text {
+    0%,
+    33% {
+      opacity: 0;
+    }
+
+    47%,
+    100% {
+      opacity: 1;
+    }
+  }
 }
 
 /* The start screen uses the full width, so the two sides sit at the edges of the screen. */
@@ -1168,12 +1549,12 @@ select {
 
 /*
  * Hero bar on top, the board filling whatever height is left, status and actions under it,
- * the inspected stack and log beside it and the turn order along the bottom.
+ * the inspected stack and log beside it. The turn order lies over the bottom of the board.
  */
 .battle {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(230px, 20vw, 300px);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px 12px;
 }
 
@@ -1219,10 +1600,6 @@ select {
   margin: 0;
   font-size: calc(8px * var(--text-scale));
   color: var(--text-muted);
-}
-
-.battle .turn-queue {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 900px) {
@@ -1395,6 +1772,8 @@ select {
 
 /* As large as fits the stage while keeping the board's shape. */
 .board-frame {
+  position: relative;
+  container-type: inline-size;
   width: min(100cqw, 100cqh * var(--board-ratio));
   aspect-ratio: var(--board-ratio);
   border: 4px solid var(--board-frame);
@@ -1657,11 +2036,98 @@ select {
 
 /* ---------- Turn queue ---------- */
 
+/* A new round is called out over the board: the words grow in, hold a moment and fade. */
+.round-call {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.round-call__text {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: clamp(22px, 6cqw, 72px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--title);
+  text-shadow:
+    0 3px 0 var(--frame-dark),
+    0 0 20px rgba(0, 0, 0, 0.9),
+    0 0 44px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  animation: round-call 1.6s forwards;
+}
+
+@keyframes round-call {
+  0% {
+    opacity: 0;
+    transform: scale(1.3);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  22% {
+    opacity: 1;
+    transform: none;
+  }
+
+  72% {
+    opacity: 1;
+    transform: none;
+    animation-timing-function: ease-in;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes round-call {
+    0%,
+    100% {
+      opacity: 0;
+    }
+
+    22%,
+    72% {
+      opacity: 1;
+    }
+  }
+}
+
+/* A dark strip over the bottom of the board, fading out at its ends. Only the tokens catch the pointer. */
 .turn-queue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 2px 16px 6px;
+  line-height: var(--line-height);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.62) 6%, rgba(0, 0, 0, 0.62) 94%, transparent);
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.turn-queue .queue-token {
+  pointer-events: auto;
+}
+
+.turn-queue--faded {
+  opacity: 0.15;
+}
+
+.turn-queue--faded .queue-token {
+  pointer-events: none;
 }
 
 .turn-queue__title {
@@ -1677,7 +2143,7 @@ select {
   display: flex;
   align-items: flex-end;
   gap: 5px;
-  padding: 4px 4px 0;
+  padding: 10px 4px 0;
   overflow: hidden;
   mask-image: linear-gradient(90deg, #000 85%, transparent 100%);
 }
@@ -1718,15 +2184,24 @@ select {
   outline: 2px solid var(--highlight);
 }
 
+/* "Now" and "Next": a small framed tag on the token's top edge, clear of the creature. */
 .queue-token__label {
   position: absolute;
-  top: -2px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: calc(8px * var(--text-scale));
-  color: #fff;
-  text-shadow: 1px 1px 0 #000;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -60%);
+  padding: 1px 5px;
+  border: 1px solid var(--panel-border);
+  background: var(--frame-dark);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: calc(5.5px * var(--text-scale));
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--title);
 }
 
 .queue-token__count {

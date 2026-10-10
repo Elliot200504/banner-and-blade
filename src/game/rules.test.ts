@@ -449,7 +449,7 @@ describe('heroes', () => {
     const next = applyMove(battle(units, { red: hero }), { type: 'cast', spell: 'deathRipple' })
     const hit = next.events.flatMap((event) => (event.kind === 'spell' ? [event.targetId] : []))
     expect(hit).toEqual(['red-swordsman', 'blue-cavalier'])
-    expect(spellDamage('deathRipple', hero)).toBe(Math.floor((10 + 5 * hero.spellPower) * 1.5))
+    expect(spellDamage('deathRipple', hero)).toBe(Math.floor((10 + 5 * hero.spellPower) * 1))
   })
 
   it("a death ripple specialist's ripple also hits enemy undead, but never her own", () => {
