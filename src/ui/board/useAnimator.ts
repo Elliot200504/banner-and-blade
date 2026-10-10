@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { SPELLS, type BattleEvent, type CreatureType, type Hex, type Player, type Unit } from '../../game'
+import { SPELLS, type BattleEvent, type CreatureType, type Hex, type Player, type SpellId, type Unit } from '../../game'
 import { distanceBetween, HERO_POINTS, HERO_SIZE, hexToPixel, standPoint, type Point } from './layout'
 import { playSound, type SoundId } from '../audio/sound'
 import { flightOf, gaitOf } from './creatureMotion'
@@ -11,7 +11,10 @@ const FLAP_MS = { wings: 300, heavyWings: 420 }
 const LUNGE_MS = 120
 const WIND_UP_MS = 110
 const HIT_MS = 300
-const DEATH_MS = 450
+const DEATH_MS = 600
+/** How long a hero raises their hand before the spell flies, and how long a spell's effect plays on its target. */
+const CAST_MS = 380
+const SPELL_EFFECT_MS = 650
 const NOTE_MS = 380
 const FLOAT_MS = 1100
 
@@ -69,6 +72,13 @@ export interface Projectile {
 }
 
 /** Temporary changes drawn on top of the last committed state while a move plays out. */
+/** A spell's effect playing out over a stack. `id` restarts the effect when the same spell lands twice in a row. */
+export interface SpellEffect {
+  id: number
+  spell: SpellId
+  point: Point
+}
+
 /** A stack's attack pose while it strikes or shoots. */
 export type Pose = 'strike' | 'shoot'
 
@@ -81,6 +91,9 @@ export interface AnimationView {
   glow: Record<string, string>
   projectile: Projectile | null
   lightning: Point | null
+  /** The hero raising their hand to cast. */
+  casting: Player | null
+  spellEffects: SpellEffect[]
 }
 
 const EMPTY_VIEW: AnimationView = {
@@ -92,6 +105,8 @@ const EMPTY_VIEW: AnimationView = {
   glow: {},
   projectile: null,
   lightning: null,
+  casting: null,
+  spellEffects: [],
 }
 
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -122,6 +137,8 @@ const between = (from: Point, to: Point, progress: number): Point => ({
 const casterPoint = (caster: Player): Point => ({ x: HERO_POINTS[caster].x, y: HERO_POINTS[caster].y - HERO_SIZE * 0.85 })
 
 /** With `silent`, moves play out without sound, as in the How to play demo. */
+let nextEffectId = 0
+
 export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
   const [view, setView] = useState<AnimationView>(EMPTY_VIEW)
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
@@ -212,9 +229,17 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
         setProjectile(null)
       }
 
+      let castingNow = false
+
       for (const event of events) {
         if (!mounted.current) {
           return
+        }
+
+        // The casting pose ends once the spell's events are over.
+        if (castingNow && event.kind !== 'spell' && event.kind !== 'death') {
+          castingNow = false
+          updateView((current) => ({ ...current, casting: null }))
         }
 
         switch (event.kind) {
@@ -305,6 +330,14 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
 
           case 'spell': {
             const target = positions[event.targetId]
+            // The hero raises their hand the first time a spell is cast, not again for each further stack it hits.
+            const firstTarget = !castingNow
+
+            if (firstTarget) {
+              castingNow = true
+              updateView((current) => ({ ...current, casting: event.caster }))
+              await sleep(duration(CAST_MS))
+            }
 
             if (event.spell === 'magicArrow') {
               await shoot(casterPoint(event.caster), target, 'magic')
@@ -316,6 +349,18 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
               await sleep(duration(260))
               updateView((current) => ({ ...current, lightning: null }))
             }
+
+            // Each spell leaves its own mark on the stack it lands on.
+            const effectId = nextEffectId++
+            updateView((current) => ({ ...current, spellEffects: [...current.spellEffects, { id: effectId, spell: event.spell, point: target }] }))
+            setTimeout(() => {
+              if (mounted.current) {
+                updateView((current) => ({
+                  ...current,
+                  spellEffects: current.spellEffects.filter((effect) => effect.id !== effectId),
+                }))
+              }
+            }, duration(SPELL_EFFECT_MS))
 
             if (event.damage > 0) {
               await showHit(event.targetId, event.targetCount, event.targetTopHp, event.damage, event.kills)

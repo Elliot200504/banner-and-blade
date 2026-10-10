@@ -80,9 +80,13 @@ interface BattleProps {
   onPlayAgain: () => void
   onMainMenu: () => void
   /** Online only: where this side's moves are sent. */
-  connection?: Connection | null
+  connection?: Pick<Connection, 'send'> | null
   /** Online only: every move the other player has sent this battle, in order. */
   remoteMoves?: Move[]
+  /** Online only: moves already made in this battle before joining it, replayed at once to catch up. */
+  startingMoves?: Move[]
+  /** Called with every move as it is made, in order, by either side. */
+  onMove?: (move: Move) => void
 }
 
 export function Battle({
@@ -99,11 +103,12 @@ export function Battle({
   onMainMenu,
   connection = null,
   remoteMoves = [],
+  startingMoves = [],
+  onMove,
 }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => ({
-    ...createBattle(factions, fieldSeed, heroes, armies),
-    seed,
-  }))
+  const [state, setState] = useState<GameState>(() =>
+    startingMoves.reduce(applyMove, { ...createBattle(factions, fieldSeed, heroes, armies), seed }),
+  )
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
@@ -212,13 +217,15 @@ export function Battle({
         connection.send({ type: 'move', move })
       }
 
+      onMove?.(move)
+
       setSelectedHex(null)
       setPendingSpell(null)
       await animator.play(next.events, state.units, SPEED_FACTORS[speed])
       setState(next)
       animator.finish()
     },
-    [ready, state, animator, speed, connection, actor, controllers],
+    [ready, state, animator, speed, connection, actor, controllers, onMove],
   )
 
   // The computer moves on its own turns. The latest perform is kept in a ref so that
@@ -421,6 +428,8 @@ export function Battle({
             onBoardRightClick={handleBoardRightClick}
             heroes={{ red: state.heroes.red.id, blue: state.heroes.blue.id }}
             corpses={state.corpses}
+            casting={animator.view.casting}
+            spellEffects={animator.view.spellEffects}
           />
           <div className="board-band">
             <TurnQueue state={state} onHover={setSpotlightUnitId} />

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type AnimationEvent } from 'react'
 import {
-  FACTION_ORDER,
   heroesOf,
   opponentOf,
+  rollRandomSide,
   sizedArmy,
   standardArmy,
   type Army,
@@ -13,8 +13,8 @@ import {
   type Move,
   type Player,
 } from './game'
-import type { Connection } from './net/connection'
-import { PROTOCOL_VERSION } from './net/protocol'
+import { PROTOCOL_VERSION, type GameSync, type SidePicksMessage } from './net/protocol'
+import type { OnlineSession, SessionStatus } from './net/session'
 import { About, GitHubLink } from './ui/modals/About'
 import { Backdrop } from './ui/board/Backdrop'
 import { Battle } from './ui/screens/Battle'
@@ -31,14 +31,18 @@ import { showsBattle, type Screen } from './ui/screens/screen'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32)
 
-const randomItem = <Item,>(items: Item[]): Item => items[Math.floor(Math.random() * items.length)]
-
-/** A game against a friend online. The host plays Red and starts the battles. */
+/**
+ * A game against a friend online. Whoever holds the room starts the battles and catches up anyone who joins.
+ * `side` is null for a player who has just joined, until the catch-up says which side they take.
+ */
 interface OnlineGame {
-  connection: Connection
-  side: Player
-  isHost: boolean
+  session: OnlineSession
+  side: Player | null
+  status: SessionStatus
+  holdsRoom: boolean
 }
+
+const PLAYERS: Player[] = ['red', 'blue']
 
 const OFFLINE_CONTROLLERS: Record<Player, Controller> = { red: 'human', blue: 'computer' }
 
@@ -64,8 +68,19 @@ export default function App() {
   const [onlineNotice, setOnlineNotice] = useState<string | null>(null)
   /** The other player's moves in the current battle, in the order they arrived. */
   const [remoteMoves, setRemoteMoves] = useState<Move[]>([])
+  /** Moves made before joining a battle under way, which it replays to catch up. */
+  const [startingMoves, setStartingMoves] = useState<Move[]>([])
+  /** Changes whenever a battle has to be built afresh, even with the same dice: a new battle, or a catch-up. */
+  const [battleKey, setBattleKey] = useState(0)
+  /** Every move of the current battle, to catch up a player joining it. */
+  const battleMoves = useRef<Move[]>([])
   const screenRef = useRef(screen)
   screenRef.current = screen
+  // The latest picks, for listeners set up once per online game.
+  const latest = useRef({ setup, factions, heroes, armies, armySizes, fieldSeed, seed })
+  latest.current = { setup, factions, heroes, armies, armySizes, fieldSeed, seed }
+  const onlineRef = useRef(online)
+  onlineRef.current = online
 
   // Each theme has a calm song for the menu and a tense one for battle.
   useEffect(() => {
@@ -130,16 +145,33 @@ export default function App() {
     }
   }
 
-  // The battle is fought on the field the menu shows, with fresh dice. Online, the host rolls them for both.
+  /** Sides picked at random get their town, hero and army now, rolled from the battle's dice. */
+  const rollRandomSides = (battleSeed: number, randomSides: Record<Player, boolean>, sizes: Record<Player, ArmySize>) => {
+    for (const player of PLAYERS) {
+      if (randomSides[player]) {
+        const rolled = rollRandomSide(battleSeed, player, sizes[player])
+        setFactions((current) => ({ ...current, [player]: rolled.faction }))
+        setHeroes((current) => ({ ...current, [player]: rolled.hero }))
+        setArmies((current) => ({ ...current, [player]: rolled.army }))
+      }
+    }
+  }
+
+  // The battle is fought on the field the menu shows, with fresh dice. Online, the room holder rolls them for both.
   const beginBattle = (battleSeed: number) => {
+    const { setup: currentSetup, armySizes: currentSizes } = latest.current
+    rollRandomSides(battleSeed, { red: currentSetup.red.random, blue: currentSetup.blue.random }, currentSizes)
+    battleMoves.current = []
     setRemoteMoves([])
+    setStartingMoves([])
+    setBattleKey((current) => current + 1)
     setSeed(battleSeed)
     setScreen('leaving')
   }
 
   const startBattle = () => {
     const battleSeed = newSeed()
-    online?.connection.send({ type: 'start', seed: battleSeed })
+    online?.session.send({ type: 'start', seed: battleSeed })
     beginBattle(battleSeed)
   }
 
@@ -155,88 +187,174 @@ export default function App() {
     }
   }
 
+  /** Leaves for good; the friend's game waits for someone to take this place. */
   const leaveOnline = () => {
     if (online) {
-      online.connection.send({ type: 'leave' })
-      online.connection.close()
+      online.session.leave()
       endOnline(null)
     }
   }
 
-  const startOnline = (connection: Connection, side: Player) => {
-    const opponent = opponentOf(side)
-    setLobbyOpen(false)
-    setOnline({ connection, side, isHost: side === 'red' })
-    setControllers({ [side]: 'human', [opponent]: 'remote' } as Record<Player, Controller>)
-    // This side keeps its picks; the friend's side fills in as they choose.
-    setSetup(
-      (current) =>
-        ({
-          [side]: { ...current[side], controller: true },
-          [opponent]: { controller: true, difficulty: false, town: false, hero: false, random: false },
-        }) as SetupProgress,
-    )
-    connection.send({ type: 'hello', version: PROTOCOL_VERSION })
+  /** What a side has picked, as the friend sees it: only the army size for a side picked at random. */
+  const picksOf = (player: Player): SidePicksMessage | null => {
+    const current = latest.current
 
-    if (side === 'red') {
-      connection.send({ type: 'field', fieldSeed })
+    if (!current.setup[player].hero) {
+      return null
+    }
+
+    if (current.setup[player].random) {
+      return { random: true, armySize: current.armySizes[player] }
+    }
+
+    return {
+      random: false,
+      faction: current.factions[player],
+      hero: current.heroes[player],
+      army: current.armies[player],
+      armySize: current.armySizes[player],
     }
   }
 
-  // Everything the friend sends: their version, the shared field, their picks, the start and their moves.
+  const applyPicks = (player: Player, picks: SidePicksMessage | null) => {
+    if (picks && !picks.random) {
+      setFactions((current) => ({ ...current, [player]: picks.faction }))
+      setHeroes((current) => ({ ...current, [player]: picks.hero }))
+      setArmies((current) => ({ ...current, [player]: picks.army }))
+    }
+
+    if (picks) {
+      setArmySizes((current) => ({ ...current, [player]: picks.armySize }))
+    }
+
+    setSetup((current) => ({
+      ...current,
+      [player]: { controller: true, difficulty: false, town: picks !== null, hero: picks !== null, random: picks?.random ?? false },
+    }))
+  }
+
+  /** The whole game so far, for a player joining this browser's room. */
+  const syncFor = (side: Player): GameSync => {
+    const inBattle = screenRef.current !== 'start'
+
+    return {
+      side,
+      fieldSeed: latest.current.fieldSeed,
+      picks: { red: picksOf('red'), blue: picksOf('blue') },
+      battle: inBattle ? { seed: latest.current.seed, moves: [...battleMoves.current] } : null,
+    }
+  }
+
+  /** Catches up with the room holder's game: the side to play, both sides' picks and any battle under way. */
+  const applySync = (sync: GameSync) => {
+    const opponent = opponentOf(sync.side)
+    setOnline((current) => current && { ...current, side: sync.side })
+    setControllers({ [sync.side]: 'human', [opponent]: 'remote' } as Record<Player, Controller>)
+    setFieldSeed(sync.fieldSeed)
+    PLAYERS.forEach((player) => applyPicks(player, sync.picks[player]))
+
+    if (sync.battle) {
+      const sizes = { ...latest.current.armySizes }
+      PLAYERS.forEach((player) => {
+        const picks = sync.picks[player]
+
+        if (picks) {
+          sizes[player] = picks.armySize
+        }
+      })
+      rollRandomSides(sync.battle.seed, { red: sync.picks.red?.random ?? false, blue: sync.picks.blue?.random ?? false }, sizes)
+      battleMoves.current = [...sync.battle.moves]
+      setStartingMoves(sync.battle.moves)
+      setRemoteMoves([])
+      setBattleKey((current) => current + 1)
+      setSeed(sync.battle.seed)
+      setScreen('battle')
+    } else if (screenRef.current !== 'start') {
+      setScreen('to-menu')
+    }
+  }
+
+  /** Catches up whoever just joined this browser's room, giving them the side opposite this one. */
+  const welcome = (session: OnlineSession, side: Player) => {
+    session.send({ type: 'hello', version: PROTOCOL_VERSION })
+    session.send({ type: 'sync', sync: syncFor(opponentOf(side)) })
+  }
+
+  const startOnline = (session: OnlineSession) => {
+    setLobbyOpen(false)
+
+    if (session.holdsRoom) {
+      // The host plays Red and keeps the picks made so far; the friend's side fills in as they choose.
+      setOnline({ session, side: 'red', status: session.status, holdsRoom: true })
+      setControllers({ red: 'human', blue: 'remote' })
+      setSetup((current) => ({
+        red: { ...current.red, controller: true },
+        blue: { controller: true, difficulty: false, town: false, hero: false, random: false },
+      }))
+      welcome(session, 'red')
+    } else {
+      setOnline({ session, side: null, status: session.status, holdsRoom: false })
+    }
+  }
+
+  // Everything from the friend: their version, the catch-up, their picks, the start and their moves.
+  const session = online?.session
   useEffect(() => {
-    if (!online) {
+    if (!session) {
       return
     }
 
-    const opponent = opponentOf(online.side)
-    const stopMessages = online.connection.onMessage((message) => {
+    const stopMessages = session.onMessage((message) => {
       if (message.type === 'hello' && message.version !== PROTOCOL_VERSION) {
-        online.connection.close()
+        session.close()
         endOnline('Your friend is running a different version of the game. Both of you need to reload the page.')
-      } else if (message.type === 'field') {
-        setFieldSeed(message.fieldSeed)
+      } else if (message.type === 'sync') {
+        applySync(message.sync)
       } else if (message.type === 'picks') {
-        const { faction, hero, army, armySize, random } = message.picks
-        setFactions((current) => ({ ...current, [opponent]: faction }))
-        setHeroes((current) => ({ ...current, [opponent]: hero }))
-        setArmies((current) => ({ ...current, [opponent]: army }))
-        setArmySizes((current) => ({ ...current, [opponent]: armySize }))
-        setSetup((current) => ({ ...current, [opponent]: { controller: true, difficulty: false, town: true, hero: true, random } }))
+        const side = onlineRef.current?.side
+
+        if (side) {
+          applyPicks(opponentOf(side), message.picks)
+        }
       } else if (message.type === 'start') {
         beginBattle(message.seed)
       } else if (message.type === 'move') {
         setRemoteMoves((current) => [...current, message.move])
-      } else if (message.type === 'leave') {
-        online.connection.close()
-        endOnline('Your friend left the game.')
+      } else if (message.type === 'full') {
+        session.close()
+        endOnline('That game already has two players.')
       }
     })
-    const stopClose = online.connection.onClose(() => endOnline('The connection to your friend was lost.'))
+    // The friend leaving or dropping pauses the game; whoever joins next is caught up.
+    const stopChanges = session.onChange(() =>
+      setOnline((current) => current && { ...current, status: session.status, holdsRoom: session.holdsRoom }),
+    )
+    const stopJoins = session.onJoin(() => {
+      const side = onlineRef.current?.side
+
+      if (side) {
+        welcome(session, side)
+      }
+    })
 
     return () => {
       stopMessages()
-      stopClose()
+      stopChanges()
+      stopJoins()
     }
-    // endOnline and beginBattle only use state setters and refs, so the listeners need no other dependencies.
-  }, [online])
+    // The handlers only use state setters and refs, so the listeners need no other dependencies.
+  }, [session])
 
   // This side's picks go to the friend whenever they change, once a hero is chosen.
-  const localSide = online?.side
-  const localPicksReady = localSide ? setup[localSide].hero : false
-  const localFaction = localSide ? factions[localSide] : null
-  const localHero = localSide ? heroes[localSide] : null
-  const localArmy = localSide ? armies[localSide] : null
-  const localArmySize = localSide ? armySizes[localSide] : null
-  const localRandom = localSide ? setup[localSide].random : false
+  const localSide = online?.side ?? null
+  const connected = online?.status === 'connected'
+  // Compared as text, so the effect only runs when the picks really change.
+  const localPicks = localSide ? JSON.stringify(picksOf(localSide)) : null
   useEffect(() => {
-    if (online && localPicksReady && localFaction && localHero && localArmy && localArmySize) {
-      online.connection.send({
-        type: 'picks',
-        picks: { faction: localFaction, hero: localHero, army: localArmy, armySize: localArmySize, random: localRandom },
-      })
+    if (session && connected && localSide && localPicks && localPicks !== 'null') {
+      session.send({ type: 'picks', picks: JSON.parse(localPicks) as SidePicksMessage })
     }
-  }, [online, localPicksReady, localFaction, localHero, localArmy, localArmySize, localRandom])
+  }, [session, connected, localSide, localPicks])
 
   // Straight into a new battle, on a new field: no zoom.
   const playAgain = () => {
@@ -295,22 +413,18 @@ export default function App() {
             setArmySizes((current) => ({ ...current, [player]: size }))
             setArmies((current) => ({ ...current, [player]: sizedArmy(factions[player], size) }))
           }}
-          onRandomSide={(player, size) => {
-            const faction = randomItem(FACTION_ORDER)
-            setFactions((current) => ({ ...current, [player]: faction }))
-            setHeroes((current) => ({ ...current, [player]: randomItem(heroesOf(faction)) }))
-            setArmySizes((current) => ({ ...current, [player]: size }))
-            setArmies((current) => ({ ...current, [player]: sizedArmy(faction, size) }))
-          }}
+          onRandomSide={(player, size) => setArmySizes((current) => ({ ...current, [player]: size }))}
           onStart={startBattle}
           onOpenSettings={() => setSettingsOpen(true)}
-          online={online && { side: online.side, isHost: online.isHost }}
+          online={
+            online?.side ? { side: online.side, isHost: online.holdsRoom && online.status === 'connected' } : null
+          }
           onOpenOnline={() => setLobbyOpen(true)}
           onLeaveOnline={leaveOnline}
         />
       ) : (
         <Battle
-          key={seed}
+          key={battleKey}
           factions={factions}
           controllers={controllers}
           difficulties={difficulties}
@@ -319,11 +433,13 @@ export default function App() {
           fieldSeed={fieldSeed}
           seed={seed}
           theme={theme}
-          paused={settingsOpen || aboutOpen || screen !== 'battle'}
+          paused={settingsOpen || aboutOpen || screen !== 'battle' || online?.status === 'waiting'}
           onPlayAgain={online ? () => setScreen('to-menu') : playAgain}
           onMainMenu={() => setScreen('to-menu')}
-          connection={online?.connection}
+          connection={online?.session}
           remoteMoves={remoteMoves}
+          startingMoves={startingMoves}
+          onMove={(move) => battleMoves.current.push(move)}
         />
       )}
       {screen === 'to-battle' && <BattleCall />}
@@ -342,6 +458,25 @@ export default function App() {
         </Modal>
       )}
       {lobbyOpen && <OnlineLobby onConnected={startOnline} onClose={() => setLobbyOpen(false)} />}
+      {online?.status === 'waiting' && online.side && (
+        <Modal title="Waiting for your friend">
+          <p className="modal__text">Your friend is gone, so the game is paused. It carries on as soon as someone joins with this code.</p>
+          <p className="online__code" aria-label="Room code">
+            {online.session.code}
+          </p>
+          <div className="modal__buttons">
+            <button
+              className="button button--secondary"
+              onClick={() => {
+                online.session.close()
+                endOnline(null)
+              }}
+            >
+              End online game
+            </button>
+          </div>
+        </Modal>
+      )}
       {onlineNotice && (
         <Modal title="Online game over" onClose={() => setOnlineNotice(null)}>
           <p className="modal__text">{onlineNotice}</p>

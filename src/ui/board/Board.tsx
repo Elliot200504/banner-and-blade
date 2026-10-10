@@ -6,7 +6,8 @@ import { SPRITES } from '../art/sprites'
 import { Terrain } from './Terrain'
 import { Ambience } from './Ambience'
 import type { Theme } from '../hooks/useTheme'
-import type { FloatingText, Pose, Projectile, ProjectileKind } from './useAnimator'
+import type { FloatingText, Pose, Projectile, ProjectileKind, SpellEffect } from './useAnimator'
+import { SpellEffects } from './SpellEffects'
 
 const UNIT_SPRITE_SIZE = 44
 
@@ -68,6 +69,9 @@ interface BoardProps {
   corpses?: Corpse[]
   /** The heroes watching from their side of the field. A side left out has no one there. */
   heroes?: Partial<Record<Player, HeroId>>
+  /** The hero casting a spell right now. */
+  casting?: Player | null
+  spellEffects?: SpellEffect[]
 }
 
 const HEXES = allHexes()
@@ -206,9 +210,17 @@ export function Board(props: BoardProps) {
 
         return (
           heroId && (
-            <g key={player} className="board-hero" transform={`translate(${HERO_POINTS[player].x} ${HERO_POINTS[player].y})`}>
+            <g
+              key={player}
+              className={`board-hero${props.casting === player ? ' board-hero--casting' : ''}`}
+              transform={`translate(${HERO_POINTS[player].x} ${HERO_POINTS[player].y})`}
+            >
               <ellipse cx={0} cy={-1} rx={HERO_SIZE * 0.36} ry={4} fill="rgba(0,0,0,0.4)" />
               <MountedHero heroId={heroId} owner={player} size={HERO_SIZE} mirrored={player === 'blue'} />
+              {/* Magic gathering in the hand that holds the flag. */}
+              {props.casting === player && (
+                <circle className="board-hero__spark" cx={(player === 'red' ? 1 : -1) * 6} cy={-HERO_SIZE * 0.74} r={7} />
+              )}
             </g>
           )
         )
@@ -225,6 +237,7 @@ export function Board(props: BoardProps) {
         />
       ))}
 
+      {props.spellEffects && props.spellEffects.length > 0 && <SpellEffects effects={props.spellEffects} />}
       {props.projectile && <ProjectileShape projectile={props.projectile} />}
 
       {props.lightning && (
@@ -376,6 +389,13 @@ const UnitToken = memo(function UnitToken({ displayUnit, active, targeted, spell
               />
             </g>
           </g>
+        </g>
+      )}
+      {dying && (
+        <g className="unit__dust">
+          <ellipse cx={-10} cy={12} rx={7} ry={3} />
+          <ellipse cx={8} cy={13} rx={8} ry={3} />
+          <ellipse cx={0} cy={10} rx={6} ry={3} />
         </g>
       )}
       {unit.defending && (
