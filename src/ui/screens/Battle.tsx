@@ -416,6 +416,8 @@ export function Battle({
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
             heroes={{ red: state.heroes.red.id, blue: state.heroes.blue.id }}
+            casting={animator.view.casting}
+            spellEffects={animator.view.spellEffects}
           />
           <div className="board-band">
             <TurnQueue state={state} onHover={setSpotlightUnitId} />
