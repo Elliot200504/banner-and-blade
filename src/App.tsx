@@ -1,10 +1,25 @@
-import { useEffect, useState, type AnimationEvent } from 'react'
-import { heroesOf, sizedArmy, standardArmy, type Army, type ArmySize, type Difficulty, type Faction, type HeroId, type Player } from './game'
+import { useEffect, useRef, useState, type AnimationEvent } from 'react'
+import {
+  heroesOf,
+  opponentOf,
+  sizedArmy,
+  standardArmy,
+  type Army,
+  type ArmySize,
+  type Difficulty,
+  type Faction,
+  type HeroId,
+  type Move,
+  type Player,
+} from './game'
+import type { Connection } from './net/connection'
+import { PROTOCOL_VERSION } from './net/protocol'
 import { About, GitHubLink } from './ui/modals/About'
 import { Backdrop } from './ui/board/Backdrop'
 import { Battle } from './ui/screens/Battle'
 import { BattleCall } from './ui/screens/BattleCall'
 import { Modal } from './ui/modals/Modal'
+import { OnlineLobby } from './ui/modals/OnlineLobby'
 import { NEW_SETUP, StartScreen, type Controller, type SetupProgress } from './ui/screens/StartScreen'
 import { playMusic } from './ui/audio/music'
 import { Settings } from './ui/modals/Settings'
@@ -14,6 +29,15 @@ import { useTheme } from './ui/hooks/useTheme'
 import { showsBattle, type Screen } from './ui/screens/screen'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32)
+
+/** A game against a friend online. The host plays Red and starts the battles. */
+interface OnlineGame {
+  connection: Connection
+  side: Player
+  isHost: boolean
+}
+
+const OFFLINE_CONTROLLERS: Record<Player, Controller> = { red: 'human', blue: 'computer' }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('start')
@@ -31,6 +55,14 @@ export default function App() {
   const [sound, setSound] = useSoundSettings()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [online, setOnline] = useState<OnlineGame | null>(null)
+  const [lobbyOpen, setLobbyOpen] = useState(false)
+  /** Why an online game ended, shown until dismissed. */
+  const [onlineNotice, setOnlineNotice] = useState<string | null>(null)
+  /** The other player's moves in the current battle, in the order they arrived. */
+  const [remoteMoves, setRemoteMoves] = useState<Move[]>([])
+  const screenRef = useRef(screen)
+  screenRef.current = screen
 
   // Each theme has a calm song for the menu and a tense one for battle.
   useEffect(() => {
@@ -95,11 +127,112 @@ export default function App() {
     }
   }
 
-  // The battle is fought on the field the menu shows, with fresh dice.
-  const startBattle = () => {
-    setSeed(newSeed())
+  // The battle is fought on the field the menu shows, with fresh dice. Online, the host rolls them for both.
+  const beginBattle = (battleSeed: number) => {
+    setRemoteMoves([])
+    setSeed(battleSeed)
     setScreen('leaving')
   }
+
+  const startBattle = () => {
+    const battleSeed = newSeed()
+    online?.connection.send({ type: 'start', seed: battleSeed })
+    beginBattle(battleSeed)
+  }
+
+  // Back to playing alone: the other side goes back to being the computer, still to be set up.
+  const endOnline = (notice: string | null) => {
+    setOnline(null)
+    setOnlineNotice(notice)
+    setControllers(OFFLINE_CONTROLLERS)
+    setSetup((current) => ({ ...current, blue: { ...NEW_SETUP.blue } }))
+
+    if (screenRef.current !== 'start' && screenRef.current !== 'leaving') {
+      setScreen('to-menu')
+    }
+  }
+
+  const leaveOnline = () => {
+    if (online) {
+      online.connection.send({ type: 'leave' })
+      online.connection.close()
+      endOnline(null)
+    }
+  }
+
+  const startOnline = (connection: Connection, side: Player) => {
+    const opponent = opponentOf(side)
+    setLobbyOpen(false)
+    setOnline({ connection, side, isHost: side === 'red' })
+    setControllers({ [side]: 'human', [opponent]: 'remote' } as Record<Player, Controller>)
+    // This side keeps its picks; the friend's side fills in as they choose.
+    setSetup(
+      (current) =>
+        ({
+          [side]: { ...current[side], controller: true },
+          [opponent]: { controller: true, difficulty: false, town: false, hero: false },
+        }) as SetupProgress,
+    )
+    connection.send({ type: 'hello', version: PROTOCOL_VERSION })
+
+    if (side === 'red') {
+      connection.send({ type: 'field', fieldSeed })
+    }
+  }
+
+  // Everything the friend sends: their version, the shared field, their picks, the start and their moves.
+  useEffect(() => {
+    if (!online) {
+      return
+    }
+
+    const opponent = opponentOf(online.side)
+    const stopMessages = online.connection.onMessage((message) => {
+      if (message.type === 'hello' && message.version !== PROTOCOL_VERSION) {
+        online.connection.close()
+        endOnline('Your friend is running a different version of the game. Both of you need to reload the page.')
+      } else if (message.type === 'field') {
+        setFieldSeed(message.fieldSeed)
+      } else if (message.type === 'picks') {
+        const { faction, hero, army, armySize } = message.picks
+        setFactions((current) => ({ ...current, [opponent]: faction }))
+        setHeroes((current) => ({ ...current, [opponent]: hero }))
+        setArmies((current) => ({ ...current, [opponent]: army }))
+        setArmySizes((current) => ({ ...current, [opponent]: armySize }))
+        setSetup((current) => ({ ...current, [opponent]: { controller: true, difficulty: false, town: true, hero: true } }))
+      } else if (message.type === 'start') {
+        beginBattle(message.seed)
+      } else if (message.type === 'move') {
+        setRemoteMoves((current) => [...current, message.move])
+      } else if (message.type === 'leave') {
+        online.connection.close()
+        endOnline('Your friend left the game.')
+      }
+    })
+    const stopClose = online.connection.onClose(() => endOnline('The connection to your friend was lost.'))
+
+    return () => {
+      stopMessages()
+      stopClose()
+    }
+    // endOnline and beginBattle only use state setters and refs, so the listeners need no other dependencies.
+  }, [online])
+
+  // This side's picks go to the friend whenever they change, once a hero is chosen.
+  const localSide = online?.side
+  const localPicksReady = localSide ? setup[localSide].hero : false
+  const localFaction = localSide ? factions[localSide] : null
+  const localHero = localSide ? heroes[localSide] : null
+  const localArmy = localSide ? armies[localSide] : null
+  const localArmySize = localSide ? armySizes[localSide] : null
+  useEffect(() => {
+    if (online && localPicksReady && localFaction && localHero && localArmy && localArmySize) {
+      online.connection.send({
+        type: 'picks',
+        picks: { faction: localFaction, hero: localHero, army: localArmy, armySize: localArmySize },
+      })
+    }
+  }, [online, localPicksReady, localFaction, localHero, localArmy, localArmySize])
 
   // Straight into a new battle, on a new field: no zoom.
   const playAgain = () => {
@@ -113,7 +246,8 @@ export default function App() {
       {showsBattle(screen) && (
         <header className="app-header">
           <span className="app-header__title">Banner &amp; Blade</span>
-          <button className="button button--secondary" onClick={() => setScreen('to-menu')}>
+          {/* Leaving an online battle midway ends the game for both players. */}
+          <button className="button button--secondary" onClick={() => (online ? leaveOnline() : setScreen('to-menu'))}>
             Main menu
           </button>
           <button className="button button--secondary" onClick={() => setSettingsOpen(true)}>
@@ -151,6 +285,9 @@ export default function App() {
           }}
           onStart={startBattle}
           onOpenSettings={() => setSettingsOpen(true)}
+          online={online && { side: online.side, isHost: online.isHost }}
+          onOpenOnline={() => setLobbyOpen(true)}
+          onLeaveOnline={leaveOnline}
         />
       ) : (
         <Battle
@@ -164,8 +301,10 @@ export default function App() {
           seed={seed}
           theme={theme}
           paused={settingsOpen || aboutOpen || screen !== 'battle'}
-          onPlayAgain={playAgain}
+          onPlayAgain={online ? () => setScreen('to-menu') : playAgain}
           onMainMenu={() => setScreen('to-menu')}
+          connection={online?.connection}
+          remoteMoves={remoteMoves}
         />
       )}
       {screen === 'to-battle' && <BattleCall />}
@@ -181,6 +320,12 @@ export default function App() {
       {aboutOpen && (
         <Modal title="About" onClose={() => setAboutOpen(false)} className="about">
           <About />
+        </Modal>
+      )}
+      {lobbyOpen && <OnlineLobby onConnected={startOnline} onClose={() => setLobbyOpen(false)} />}
+      {onlineNotice && (
+        <Modal title="Online game over" onClose={() => setOnlineNotice(null)}>
+          <p className="modal__text">{onlineNotice}</p>
         </Modal>
       )}
     </div>
