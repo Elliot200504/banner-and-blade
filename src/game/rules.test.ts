@@ -11,6 +11,7 @@ import {
   damageRange,
   effectiveSpeed,
   heroesOf,
+  hexesOf,
   castProblem as whyNotCast,
   spellDamage,
   hexKey,
@@ -77,8 +78,10 @@ describe('setup', () => {
     expect(state.units.filter((unit) => unit.owner === 'red')).toHaveLength(7)
     expect(state.units.filter((unit) => unit.owner === 'blue')).toHaveLength(7)
 
+    // Wide creatures stand one hex in, with their hindquarters on the edge.
     for (const unit of state.units) {
-      expect(hexToOffset(unit.position).column).toBe(unit.owner === 'red' ? 0 : COLUMNS - 1)
+      const columns = hexesOf(unit).map((hex) => hexToOffset(hex).column)
+      expect(columns).toContain(unit.owner === 'red' ? 0 : COLUMNS - 1)
     }
   })
 

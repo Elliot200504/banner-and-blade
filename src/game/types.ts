@@ -105,6 +105,13 @@ export type BattleEvent =
 
 export type Casualties = Record<Player, Partial<Record<CreatureType, number>>>
 
+/** A stack that fell, lying where it died for the rest of the battle. Only for show: it blocks nothing. */
+export interface Corpse {
+  type: CreatureType
+  owner: Player
+  position: Hex
+}
+
 export interface GameState {
   units: Unit[]
   heroes: Record<Player, Hero>
@@ -116,6 +123,8 @@ export interface GameState {
   winner: Player | null
   retreated: Player | null
   casualties: Casualties
+  /** Every stack that has died, in the order they fell. */
+  corpses: Corpse[]
   log: string[]
   events: BattleEvent[]
   /** Seed for the next random roll (damage, luck, morale…). */

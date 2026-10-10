@@ -2050,6 +2050,13 @@ select {
   }
 }
 
+/* The fallen stay on the field, drained of colour and sunk into the ground. */
+.corpse {
+  filter: grayscale(0.55) brightness(0.6);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 .unit--dying {
   opacity: 0;
   transition-delay: 250ms;

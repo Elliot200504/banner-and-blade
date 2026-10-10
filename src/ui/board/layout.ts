@@ -1,4 +1,4 @@
-import { COLUMNS, ROWS, type Hex, type Player } from '../../game'
+import { COLUMNS, footprint, ROWS, type Hex, type Player, type Unit } from '../../game'
 
 export interface Point {
   x: number
@@ -31,6 +31,16 @@ export function hexToPixel(hex: Hex): Point {
   return {
     x: OFFSET_X + HEX_WIDTH * (hex.q + hex.r / 2),
     y: OFFSET_Y + HEX_SIZE * 1.5 * hex.r,
+  }
+}
+
+/** Where a stack is drawn with its front on `head`: a wide creature stands between its two hexes. */
+export function standPoint(unit: Pick<Unit, 'type' | 'owner' | 'position'>, head: Hex = unit.position): Point {
+  const points = footprint(unit.type, unit.owner, head).map(hexToPixel)
+
+  return {
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
   }
 }
 

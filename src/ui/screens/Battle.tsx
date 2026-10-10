@@ -14,6 +14,7 @@ import {
   damageRange,
   hasAbility,
   hexDistance,
+  hexesOf,
   hexKey,
   isEnemyAdjacent,
   pathLength,
@@ -22,6 +23,7 @@ import {
   sameHex,
   shotProblem,
   spellDamage,
+  unitDistance,
   SPELLS,
   spellVictims,
   unitAt,
@@ -37,7 +39,7 @@ import {
   type Unit,
 } from '../../game'
 import { Board, type BoardHighlights, type DisplayUnit } from '../board/Board'
-import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, QUEUE_BAND, type Point } from '../board/layout'
+import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, QUEUE_BAND, standPoint, type Point } from '../board/layout'
 import { Modal } from '../modals/Modal'
 import { ResultOverlay } from './ResultOverlay'
 import { BattleLog, HeroPanel, UnitCard } from '../panels/SidePanel'
@@ -146,8 +148,10 @@ export function Battle({
       return hexes
     }
 
+    const shooterHexes = hexesOf(actor)
+
     for (const hex of allHexes()) {
-      if (hexDistance(actor.position, hex) <= stats.range) {
+      if (shooterHexes.some((own) => hexDistance(own, hex) <= stats.range)) {
         hexes.add(hexKey(hex))
       }
     }
@@ -316,7 +320,7 @@ export function Battle({
 
   const displayUnits: DisplayUnit[] = state.units.map((unit) => ({
     unit,
-    point: animator.view.positions[unit.id] ?? hexToPixel(unit.position),
+    point: animator.view.positions[unit.id] ?? standPoint(unit),
     count: animator.view.stacks[unit.id]?.count ?? unit.count,
     topHp: animator.view.stacks[unit.id]?.topHp ?? unit.topHp,
     hit: animator.view.hit[unit.id] ?? false,
@@ -341,7 +345,7 @@ export function Battle({
 
     if (intent.kind === 'shoot' && actor && hasAbility(actor.type, 'deathCloud')) {
       for (const unit of state.units) {
-        if (hexDistance(unit.position, intent.target.position) === 1 && !hasAbility(unit.type, 'undead')) {
+        if (unitDistance(unit, intent.target) === 1 && !hasAbility(unit.type, 'undead')) {
           targetUnitIds.add(unit.id)
         }
       }
@@ -423,6 +427,7 @@ export function Battle({
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
             heroes={{ red: state.heroes.red.id, blue: state.heroes.blue.id }}
+            corpses={state.corpses}
             casting={animator.view.casting}
             spellEffects={animator.view.spellEffects}
           />
@@ -619,7 +624,7 @@ function statusText(
 
   if (hoveredUnit && hoveredUnit.owner !== actor.owner) {
     const problem = shotProblem(state.units, actor, hoveredUnit)
-    const distance = hexDistance(actor.position, hoveredUnit.position)
+    const distance = unitDistance(actor, hoveredUnit)
 
     if (problem === 'outOfRange') {
       return `Out of range: ${distance} hexes away, range is ${CREATURES[actor.type].range}.`

@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import { CREATURES, type CreatureType } from '../../game'
 import { RIDER_SPRITES, SPRITES } from './sprites'
+
+/** Wide creatures, which stand on two hexes, are drawn 24 pixels wide; everything else is square. */
+const widthOf = (spriteId: string) =>
+  spriteId in CREATURES && CREATURES[spriteId as CreatureType].abilities.includes('wide') ? 24 : 16
 
 describe('sprites', () => {
   for (const [spriteId, sprite] of Object.entries(SPRITES)) {
-    it(`${spriteId} is 16 by 16 pixels`, () => {
+    it(`${spriteId} is ${widthOf(spriteId)} by 16 pixels`, () => {
       expect(sprite.pixels).toHaveLength(16)
 
       for (const line of sprite.pixels) {
-        expect(line).toHaveLength(16)
+        expect(line).toHaveLength(widthOf(spriteId))
       }
     })
 

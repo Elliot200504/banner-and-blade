@@ -15,7 +15,7 @@ import {
   type Unit,
 } from '../../game'
 import { Board, type BoardHighlights, type DisplayUnit } from './Board'
-import { hexToPixel } from './layout'
+import { hexToPixel, standPoint } from './layout'
 import { useAnimator } from './useAnimator'
 import type { Theme } from '../hooks/useTheme'
 
@@ -257,7 +257,7 @@ export function BattleDemo({ demo }: { demo: DemoId }) {
 
   const displayUnits: DisplayUnit[] = state.units.map((unit) => ({
     unit,
-    point: animator.view.positions[unit.id] ?? hexToPixel(unit.position),
+    point: animator.view.positions[unit.id] ?? standPoint(unit),
     count: animator.view.stacks[unit.id]?.count ?? unit.count,
     topHp: animator.view.stacks[unit.id]?.topHp ?? unit.topHp,
     hit: animator.view.hit[unit.id] ?? false,

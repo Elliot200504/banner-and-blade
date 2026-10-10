@@ -33,7 +33,12 @@ function startRow(index: number, stacks: number, freeRows: number[]): number {
 }
 
 function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
-  const column = owner === 'red' ? 0 : COLUMNS - 1
+  // Wide creatures stand one hex further in, with their hindquarters on the edge.
+  const columnOf = (type: Army[number]['type']) => {
+    const inset = hasAbility(type, 'wide') ? 1 : 0
+
+    return owner === 'red' ? inset : COLUMNS - 1 - inset
+  }
   const creatures = army.filter((stack) => !isWarMachine(stack.type))
   const machineRows = army.flatMap((stack) => (isWarMachine(stack.type) ? [MACHINE_ROWS[stack.type]] : []))
   const freeRows = Array.from({ length: ROWS }, (_, row) => row).filter((row) => !machineRows.includes(row))
@@ -48,7 +53,7 @@ function createArmy(owner: Player, army: Army, hero: Hero): Unit[] {
       label: `${PLAYER_NAMES[owner]} ${stats.plural}`,
       type,
       owner,
-      position: offsetToHex(column, rowOf(type)),
+      position: offsetToHex(columnOf(type), rowOf(type)),
       count,
       startCount: count,
       topHp: stats.hp,
@@ -137,6 +142,7 @@ export function createBattle(
     winner: null,
     retreated: null,
     casualties: { red: {}, blue: {} },
+    corpses: [],
     log: ['— Round 1 —'],
     events: [],
     seed: random.seed(),

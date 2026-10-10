@@ -2,13 +2,15 @@
 
 import type { Hero } from '../heroes'
 import type { Random } from '../random'
-import type { BattleEvent, Casualties, Player, Unit } from '../types'
+import type { BattleEvent, Casualties, Corpse, Player, Unit } from '../types'
 
 /** A mutable working copy used while one move is resolved. */
 export interface Draft {
   units: Unit[]
   heroes: Record<Player, Hero>
   casualties: Casualties
+  /** Stacks that died during this move. */
+  fallen: Corpse[]
   events: BattleEvent[]
   log: string[]
   random: Random

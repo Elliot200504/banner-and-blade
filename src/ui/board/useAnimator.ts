@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { SPELLS, type BattleEvent, type CreatureType, type Player, type SpellId, type Unit } from '../../game'
-import { distanceBetween, HERO_POINTS, HERO_SIZE, hexToPixel, type Point } from './layout'
+import { SPELLS, type BattleEvent, type CreatureType, type Hex, type Player, type SpellId, type Unit } from '../../game'
+import { distanceBetween, HERO_POINTS, HERO_SIZE, hexToPixel, standPoint, type Point } from './layout'
 import { playSound, type SoundId } from '../audio/sound'
 import { flightOf, gaitOf } from './creatureMotion'
 
@@ -184,9 +184,15 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
       }
       const duration = (milliseconds: number) => milliseconds * speed
       const positions: Record<string, Point> = Object.fromEntries(
-        unitsBefore.map((unit) => [unit.id, hexToPixel(unit.position)]),
+        unitsBefore.map((unit) => [unit.id, standPoint(unit)]),
       )
       const typeOf = (unitId: string) => unitsBefore.find((unit) => unit.id === unitId)?.type
+      /** Where a stack is drawn with its front on `hex`. */
+      const pointFor = (unitId: string, hex: Hex) => {
+        const unit = unitsBefore.find((candidate) => candidate.id === unitId)
+
+        return unit ? standPoint(unit, hex) : hexToPixel(hex)
+      }
       const setPosition = (unitId: string, point: Point) =>
         updateView((current) => ({ ...current, positions: { ...current.positions, [unitId]: point } }))
       const setProjectile = (projectile: Projectile | null) => updateView((current) => ({ ...current, projectile }))
@@ -242,7 +248,7 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
 
             if (event.flying) {
               const from = positions[event.unitId]
-              const to = hexToPixel(event.path[event.path.length - 1])
+              const to = pointFor(event.unitId, event.path[event.path.length - 1])
               const hexes = Math.max(1, distanceBetween(from, to) / 45)
               const flight = flightOf(type)
               const total = duration(FLY_MS_PER_HEX * hexes + 120)
@@ -271,7 +277,7 @@ export function useAnimator({ silent = false }: { silent?: boolean } = {}) {
             } else {
               for (const step of event.path.slice(1)) {
                 const from = positions[event.unitId]
-                const to = hexToPixel(step)
+                const to = pointFor(event.unitId, step)
                 sound(gaitOf(type))
                 await tween(duration(STEP_MS), (progress) => {
                   const point = between(from, to, progress)
