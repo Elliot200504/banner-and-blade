@@ -19,7 +19,6 @@ import {
   pathLength,
   PLAYER_NAMES,
   reachableHexes,
-  ROWS,
   sameHex,
   shotProblem,
   spellDamage,
@@ -38,7 +37,7 @@ import {
   type Unit,
 } from '../../game'
 import { Board, type BoardHighlights, type DisplayUnit } from '../board/Board'
-import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, type Point } from '../board/layout'
+import { BOARD_HEIGHT, BOARD_WIDTH, distanceBetween, hexToPixel, QUEUE_BAND, type Point } from '../board/layout'
 import { Modal } from '../modals/Modal'
 import { ResultOverlay } from './ResultOverlay'
 import { BattleLog, HeroPanel, UnitCard } from '../panels/SidePanel'
@@ -47,6 +46,7 @@ import { Icon } from '../art/SpriteImage'
 import type { Controller } from './StartScreen'
 import type { Connection } from '../../net/connection'
 import { TurnQueue } from '../panels/TurnQueue'
+import { KeyLegend } from '../panels/KeyLegend'
 import { RoundCall } from '../board/RoundCall'
 import { useAnimator } from '../board/useAnimator'
 import { SPEED_FACTORS, useBattleSpeed, type BattleSpeed } from '../hooks/useBattleSpeed'
@@ -315,6 +315,7 @@ export function Battle({
     hit: animator.view.hit[unit.id] ?? false,
     dying: animator.view.dying[unit.id] ?? false,
     glow: animator.view.glow[unit.id] ?? '',
+    pose: animator.view.pose[unit.id] ?? null,
   }))
 
   const spellTargetIds = new Set(
@@ -363,7 +364,6 @@ export function Battle({
 
   const hoveredUnit = hoveredHex ? unitAt(state.units, hoveredHex) : undefined
   // The turn order lies over the bottom row, so it steps aside while the pointer is there.
-  const pointerOnBottomRow = hoveredHex !== null && hoveredHex.r === ROWS - 1
   const spotlightUnit = state.units.find((unit) => unit.id === spotlightUnitId)
   const selectedUnit = selectedHex ? unitAt(state.units, selectedHex) : undefined
   const inspectedUnit = hoveredUnit ?? spotlightUnit ?? selectedUnit ?? actor
@@ -388,7 +388,17 @@ export function Battle({
       </div>
 
       <div className="battle__stage">
-        <div className="board-frame" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
+        <div
+          className="board-frame"
+          style={
+            {
+              '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT,
+              '--queue-band': QUEUE_BAND / BOARD_HEIGHT,
+              // One unit of the board's drawing, so things laid over it scale with it.
+              '--board-unit': `calc(100cqw / ${BOARD_WIDTH})`,
+            } as CSSProperties
+          }
+        >
           <Board
             units={displayUnits}
             obstacles={state.obstacles}
@@ -405,51 +415,57 @@ export function Battle({
             }}
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
+            heroes={{ red: state.heroes.red.id, blue: state.heroes.blue.id }}
           />
-          <TurnQueue state={state} faded={pointerOnBottomRow} onHover={setSpotlightUnitId} />
+          <div className="board-band">
+            <TurnQueue state={state} onHover={setSpotlightUnitId} />
+            {!state.winner && <KeyLegend canAct={canAct} aiming={pendingSpell !== null} />}
+          </div>
           {state.round > 1 && !state.winner && <RoundCall key={state.round} round={state.round} />}
         </div>
       </div>
 
-      <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
-        {computerTurn && actor && !state.winner
-          ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
-          : remoteTurn && actor && !state.winner
-          ? `Waiting for ${PLAYER_NAMES[actor.owner]}…`
-          : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
-      </div>
+      <div className="battle__controls">
+        <div className={`status-bar${pendingSpell ? ' status-bar--spell' : ''}`}>
+          {computerTurn && actor && !state.winner
+            ? `${PLAYER_NAMES[actor.owner]} (computer) is thinking…`
+            : remoteTurn && actor && !state.winner
+            ? `Waiting for ${PLAYER_NAMES[actor.owner]}…`
+            : statusText(state, actor, intent, hoveredUnit, canAct, pendingSpell)}
+        </div>
 
-      <div className="action-bar">
-        <button className="button button--secondary" disabled={!canAct} onClick={() => setRetreatOpen(true)}>
-          <Icon name="retreat" /> Retreat
-        </button>
-        <button
-          className="button"
-          disabled={!canAct || !hero || hero.hasCastThisRound}
-          onClick={openSpellbook}
-          title="Spellbook (C)"
-        >
-          <Icon name="spellbook" /> Spellbook (C)
-        </button>
-        <button
-          className="button"
-          disabled={!canAct || !actor || actor.waited}
-          onClick={() => perform({ type: 'wait' })}
-          title="Act later this round (W)"
-        >
-          <Icon name="wait" /> Wait (W)
-        </button>
-        <button className="button" disabled={!canAct} onClick={() => perform({ type: 'defend' })} title="Defend (D)">
-          <Icon name="defense" /> Defend (D)
-        </button>
-        <label className="speed-select">
-          Speed
-          <select value={speed} onChange={(event) => setSpeed(event.target.value as BattleSpeed)}>
-            <option value="slow">Slow</option>
-            <option value="normal">Normal</option>
-            <option value="fast">Fast</option>
-          </select>
-        </label>
+        <div className="action-bar">
+          <button className="button button--secondary" disabled={!canAct} onClick={() => setRetreatOpen(true)}>
+            <Icon name="retreat" /> Retreat
+          </button>
+          <button
+            className="button"
+            disabled={!canAct || !hero || hero.hasCastThisRound}
+            onClick={openSpellbook}
+            title="Spellbook (C)"
+          >
+            <Icon name="spellbook" /> Spellbook (C)
+          </button>
+          <button
+            className="button"
+            disabled={!canAct || !actor || actor.waited}
+            onClick={() => perform({ type: 'wait' })}
+            title="Act later this round (W)"
+          >
+            <Icon name="wait" /> Wait (W)
+          </button>
+          <button className="button" disabled={!canAct} onClick={() => perform({ type: 'defend' })} title="Defend (D)">
+            <Icon name="defense" /> Defend (D)
+          </button>
+          <label className="speed-select">
+            Speed
+            <select value={speed} onChange={(event) => setSpeed(event.target.value as BattleSpeed)}>
+              <option value="slow">Slow</option>
+              <option value="normal">Normal</option>
+              <option value="fast">Fast</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <aside className="battle__side">
