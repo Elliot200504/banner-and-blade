@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { Player } from '../../game'
-import type { Connection } from '../../net/connection'
-import { hostRoom, joinRoom, type HostedRoom } from '../../net/peer'
 import { isRoomCode, normalizeRoomCode } from '../../net/roomCode'
+import { OnlineSession } from '../../net/session'
 import { Modal } from './Modal'
 
 interface OnlineLobbyProps {
-  /** A friend is connected: the host plays Red, the guest Blue. */
-  onConnected: (connection: Connection, side: Player) => void
+  /** A friend is connected. The host plays Red; a joining player learns their side from the host's catch-up. */
+  onConnected: (session: OnlineSession) => void
   onClose: () => void
 }
 
@@ -22,7 +20,7 @@ export function OnlineLobby({ onConnected, onClose }: OnlineLobbyProps) {
   const [lobby, setLobby] = useState<LobbyState>({ step: 'choose' })
   const [typedCode, setTypedCode] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const room = useRef<HostedRoom | null>(null)
+  const room = useRef<OnlineSession | null>(null)
   const closed = useRef(false)
 
   // Closing the window while still waiting gives the room up.
@@ -31,7 +29,7 @@ export function OnlineLobby({ onConnected, onClose }: OnlineLobbyProps) {
 
     return () => {
       closed.current = true
-      room.current?.cancel()
+      room.current?.close()
     }
   }, [])
 
@@ -40,22 +38,23 @@ export function OnlineLobby({ onConnected, onClose }: OnlineLobbyProps) {
     setLobby({ step: 'opening' })
 
     try {
-      const hosted = await hostRoom()
+      const session = await OnlineSession.host()
 
       if (closed.current) {
-        hosted.cancel()
+        session.close()
 
         return
       }
 
-      room.current = hosted
-      setLobby({ step: 'hosting', code: hosted.code })
-      const connection = await hosted.connected
-      room.current = null
-
-      if (!closed.current) {
-        onConnected(connection, 'red')
-      }
+      room.current = session
+      setLobby({ step: 'hosting', code: session.code })
+      const stopWaiting = session.onChange(() => {
+        if (session.status === 'connected') {
+          stopWaiting()
+          room.current = null
+          onConnected(session)
+        }
+      })
     } catch (caught) {
       if (!closed.current) {
         setError(caught instanceof Error ? caught.message : 'Something went wrong.')
@@ -71,12 +70,12 @@ export function OnlineLobby({ onConnected, onClose }: OnlineLobbyProps) {
     setLobby({ step: 'joining', code })
 
     try {
-      const connection = await joinRoom(code)
+      const session = await OnlineSession.join(code)
 
       if (closed.current) {
-        connection.close()
+        session.close()
       } else {
-        onConnected(connection, 'blue')
+        onConnected(session)
       }
     } catch (caught) {
       if (!closed.current) {
@@ -87,7 +86,7 @@ export function OnlineLobby({ onConnected, onClose }: OnlineLobbyProps) {
   }
 
   const cancel = () => {
-    room.current?.cancel()
+    room.current?.close()
     room.current = null
     setLobby({ step: 'choose' })
   }
