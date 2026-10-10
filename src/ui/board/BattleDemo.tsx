@@ -263,6 +263,7 @@ export function BattleDemo({ demo }: { demo: DemoId }) {
     hit: animator.view.hit[unit.id] ?? false,
     dying: animator.view.dying[unit.id] ?? false,
     glow: animator.view.glow[unit.id] ?? '',
+    pose: animator.view.pose[unit.id] ?? null,
   }))
 
   return (
