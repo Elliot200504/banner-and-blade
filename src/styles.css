@@ -2052,6 +2052,45 @@ select {
 
 .unit--dying {
   opacity: 0;
+  transition-delay: 250ms;
+}
+
+/* A stack that dies topples over backwards before it fades, raising a puff of dust. */
+.unit--dying .unit__pose {
+  animation: unit-fall 420ms ease-in forwards;
+}
+
+@keyframes unit-fall {
+  0% {
+    transform: none;
+  }
+
+  25% {
+    transform: translateY(-3px) rotate(calc(var(--facing) * -10deg));
+  }
+
+  100% {
+    transform: translateY(6px) rotate(calc(var(--facing) * -85deg)) scale(0.9);
+  }
+}
+
+.unit__dust ellipse {
+  fill: rgba(200, 180, 140, 0.5);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dust-puff 500ms ease-out 180ms both;
+}
+
+@keyframes dust-puff {
+  from {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.8) translateY(-4px);
+  }
 }
 
 .unit--petrified .unit__sprite {
@@ -2581,6 +2620,304 @@ select {
 
   .mounted-hero__frame--0 {
     opacity: 1;
+  }
+}
+
+/* A hero casting rears back with magic gathering in their hand. */
+.board-hero--casting .mounted-hero {
+  animation: hero-cast 380ms ease-out forwards;
+}
+
+.board-hero__spark {
+  fill: #fff6c0;
+  filter: drop-shadow(0 0 6px #a0d8ff) drop-shadow(0 0 10px #a060ff);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spark-gather 380ms ease-out both;
+}
+
+@keyframes hero-cast {
+  to {
+    transform: translateY(-3px) rotate(-3deg);
+  }
+}
+
+@keyframes spark-gather {
+  from {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(0.7);
+  }
+}
+
+/* Spell effects: each part plays once as the spell lands. */
+.spell-effects {
+  pointer-events: none;
+}
+
+.spell-fx * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.spell-fx__burst {
+  fill: none;
+  stroke-width: 4;
+  animation: fx-burst 450ms ease-out both;
+}
+
+.spell-fx__flash {
+  fill: #fff;
+  animation: fx-flash 300ms ease-out both;
+}
+
+.spell-fx--arcane {
+  stroke: #b080ff;
+}
+
+.spell-fx--storm {
+  stroke: #9fdcff;
+}
+
+.spell-fx--fire {
+  stroke: #ff8a30;
+  fill: rgba(255, 140, 40, 0.35);
+}
+
+.spell-fx__flash.spell-fx--fire {
+  fill: #ffd060;
+}
+
+.spell-fx__streak {
+  stroke: #fff6c8;
+  stroke-width: 2;
+  stroke-linecap: square;
+  animation: fx-streak 380ms ease-out both;
+}
+
+.spell-fx__sink {
+  fill: none;
+  stroke: #6a7ad8;
+  stroke-width: 2;
+  animation: fx-sink 520ms ease-in both;
+}
+
+.spell-fx__halo {
+  fill: none;
+  stroke: #f2cf5b;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px #f2cf5b);
+  animation: fx-halo 600ms ease-out both;
+}
+
+.spell-fx--gold {
+  fill: #ffe680;
+}
+
+.spell-fx--shadow {
+  fill: rgba(70, 30, 100, 0.75);
+}
+
+.spell-fx--stone {
+  fill: #a89c88;
+  stroke: #4a4238;
+  stroke-width: 1;
+}
+
+.spell-fx--heal {
+  fill: #7ee08a;
+  stroke: #1e5a2a;
+  stroke-width: 0.8;
+}
+
+.spell-fx--necro {
+  fill: rgba(120, 220, 160, 0.7);
+}
+
+.spell-fx--ember {
+  fill: #ffc040;
+}
+
+.spell-fx__ripple {
+  fill: none;
+  stroke: rgba(160, 120, 220, 0.8);
+  stroke-width: 3;
+  animation: fx-ripple 520ms ease-out both;
+}
+
+.spell-fx__rise {
+  animation: fx-rise 600ms ease-out both;
+}
+
+.spell-fx__fall {
+  animation: fx-fall 560ms ease-in both;
+}
+
+.spell-fx__gather {
+  animation: fx-gather 500ms ease-in both;
+}
+
+.spell-fx__scatter {
+  animation: fx-scatter 520ms ease-out both;
+}
+
+@keyframes fx-burst {
+  from {
+    opacity: 1;
+    transform: scale(0.2);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes fx-flash {
+  from {
+    opacity: 0.8;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fx-streak {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+}
+
+@keyframes fx-sink {
+  from {
+    opacity: 0;
+    transform: scale(1.3) translateY(-24px);
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.4) translateY(8px);
+  }
+}
+
+@keyframes fx-halo {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes fx-ripple {
+  from {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes fx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-34px);
+  }
+}
+
+@keyframes fx-fall {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.6);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(26px) scale(1.4);
+  }
+}
+
+@keyframes fx-gather {
+  from {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y));
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+}
+
+@keyframes fx-scatter {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(var(--to-x), var(--to-y));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spell-effects,
+  .unit__dust,
+  .board-hero__spark {
+    display: none;
+  }
+
+  .board-hero--casting .mounted-hero,
+  .unit--dying .unit__pose {
+    animation: none;
   }
 }
 
