@@ -39,6 +39,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     units: state.units,
     heroes: state.heroes,
     casualties: { red: { ...state.casualties.red }, blue: { ...state.casualties.blue } },
+    fallen: [],
     events: [],
     log: [],
     random: createRandom(state.seed),
@@ -99,6 +100,9 @@ export function applyMove(state: GameState, move: Move): GameState {
     }
   }
 
+  draft.fallen.push(
+    ...draft.units.filter((unit) => unit.count === 0).map(({ type, owner, position }) => ({ type, owner, position })),
+  )
   draft.units = draft.units.filter((unit) => unit.count > 0)
   queue = queue.filter((id) => draft.units.some((unit) => unit.id === id))
   const winner = winnerOf(draft.units)
@@ -152,6 +156,7 @@ function finish(
     units: draft.units,
     heroes: draft.heroes,
     casualties: draft.casualties,
+    corpses: [...state.corpses, ...draft.fallen],
     events: draft.events,
     log: [...state.log, ...draft.log].slice(-MAX_LOG),
     seed: draft.random.seed(),
