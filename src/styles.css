@@ -2391,6 +2391,52 @@ select {
   gap: 12px;
 }
 
+/* ---------- Online lobby ---------- */
+
+.online__choices,
+.online__hosting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.online__join {
+  display: flex;
+  gap: 8px;
+}
+
+.online__code-input {
+  width: 7.5em;
+  padding: 6px 10px;
+  border: 2px solid var(--panel-border);
+  background: var(--frame-dark);
+  color: var(--text);
+  font-family: var(--font-title);
+  font-size: calc(10px * var(--text-scale));
+  letter-spacing: 0.25em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* The code to read out to a friend, big enough to read across a room. */
+.online__code {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: calc(20px * var(--text-scale));
+  letter-spacing: 0.3em;
+  color: var(--title);
+  text-shadow: var(--title-shadow);
+  user-select: all;
+}
+
+.online__error {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--red-light);
+}
+
 /* ---------- Settings ---------- */
 
 /* Compact: a smaller text scale shrinks every font inside, the title and buttons included. */
