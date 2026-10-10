@@ -65,9 +65,12 @@ interface BattleProps {
   difficulties: Record<Player, Difficulty>
   heroes: Record<Player, HeroId>
   armies: Record<Player, Army>
+  /** Lays out the obstacles; the menu's backdrop draws the same field. */
+  fieldSeed: number
+  /** Rolls the dice. */
   seed: number
   theme: Theme
-  /** The settings window is open: the battle waits, and keys do nothing. */
+  /** The settings window is open, or the screen is still zooming in or out: the battle waits, and keys do nothing. */
   paused: boolean
   onPlayAgain: () => void
   onMainMenu: () => void
@@ -79,13 +82,17 @@ export function Battle({
   difficulties,
   heroes,
   armies,
+  fieldSeed,
   seed,
   theme,
   paused,
   onPlayAgain,
   onMainMenu,
 }: BattleProps) {
-  const [state, setState] = useState<GameState>(() => createBattle(factions, seed, heroes, armies))
+  const [state, setState] = useState<GameState>(() => ({
+    ...createBattle(factions, fieldSeed, heroes, armies),
+    seed,
+  }))
   const [hoveredHex, setHoveredHex] = useState<Hex | null>(null)
   const [pointer, setPointer] = useState<Point | null>(null)
   const [selectedHex, setSelectedHex] = useState<Hex | null>(null)
