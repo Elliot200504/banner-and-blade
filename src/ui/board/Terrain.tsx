@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react'
-import { allHexes, COLUMNS, hexKey, hexToOffset, type Faction, type Obstacle, type Player } from '../../game'
+import { COLUMNS, hexKey, inBounds, offsetToHex, ROWS, type Faction, type Hex, type Obstacle, type Player } from '../../game'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexToPixel } from './layout'
 
 /** Ground colors: each army fights on its own homeland's half of the field. */
@@ -225,6 +225,37 @@ function NeonFilter({ faction }: { faction: Faction }) {
   )
 }
 
+/** A place for ground details: one per hex, also on imagined hexes past the edges, so the open ground the heroes and the turn order stand on is dressed too. */
+interface GroundSpot {
+  hex: Hex
+  key: string
+  side: Player
+}
+
+/** How far past the hexes the spots reach, in hexes: the hero bands on the sides and the strip below. */
+const SPOT_REACH = { sides: 2, below: 3 }
+
+function groundSpots(obstacles: Obstacle[]): GroundSpot[] {
+  const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
+  const spots: GroundSpot[] = []
+
+  for (let row = -1; row < ROWS + SPOT_REACH.below; row++) {
+    for (let column = -SPOT_REACH.sides; column < COLUMNS + SPOT_REACH.sides; column++) {
+      const hex = offsetToHex(column, row)
+      const center = hexToPixel(hex)
+      const onBoard = center.x > 0 && center.x < BOARD_WIDTH && center.y > 0 && center.y < BOARD_HEIGHT
+
+      if (!onBoard || column === MIDDLE_COLUMN || (inBounds(hex) && blocked.has(hexKey(hex)))) {
+        continue
+      }
+
+      spots.push({ hex, key: hexKey(hex), side: column < MIDDLE_COLUMN ? 'red' : 'blue' })
+    }
+  }
+
+  return spots
+}
+
 interface TerrainProps {
   factions: Record<Player, Faction>
   obstacles: Obstacle[]
@@ -238,17 +269,10 @@ export const Terrain = memo(function Terrain({ factions, obstacles, neon = false
     return <NeonTerrain factions={factions} obstacles={obstacles} />
   }
 
-  const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
   const details: ReactNode[] = []
 
-  for (const hex of allHexes()) {
-    const { column } = hexToOffset(hex)
-
-    if (column === MIDDLE_COLUMN || blocked.has(hexKey(hex))) {
-      continue
-    }
-
-    const choices = DECORATIONS[column < MIDDLE_COLUMN ? factions.red : factions.blue]
+  for (const { hex, key, side } of groundSpots(obstacles)) {
+    const choices = DECORATIONS[factions[side]]
     const center = hexToPixel(hex)
 
     for (let slot = 0; slot < 2; slot++) {
@@ -260,7 +284,7 @@ export const Terrain = memo(function Terrain({ factions, obstacles, neon = false
       const x = center.x + (noise(hex.q, hex.r, slot * 3 + 2) - 0.5) * 26
       const y = center.y + (slot === 0 ? -8 : 8)
       details.push(
-        <g key={`${hexKey(hex)}-${slot}`} transform={`translate(${x.toFixed(1)} ${y})`}>
+        <g key={`${key}-${slot}`} transform={`translate(${x.toFixed(1)} ${y})`}>
           {decorate(noise(hex.q, hex.r, slot * 3 + 7))}
         </g>,
       )
@@ -290,23 +314,20 @@ export const Terrain = memo(function Terrain({ factions, obstacles, neon = false
 
 /** Synthwave ground: each homeland in its own neon, with a glowing floor grid and circuit traces. */
 function NeonTerrain({ factions, obstacles }: Omit<TerrainProps, 'neon'>) {
-  const blocked = new Set(obstacles.map((obstacle) => hexKey(obstacle.position)))
   const details: ReactNode[] = []
 
-  for (const hex of allHexes()) {
-    const { column } = hexToOffset(hex)
-
-    if (column === MIDDLE_COLUMN || blocked.has(hexKey(hex)) || noise(hex.q, hex.r, 0) > 0.4) {
+  for (const { hex, key, side } of groundSpots(obstacles)) {
+    if (noise(hex.q, hex.r, 0) > 0.4) {
       continue
     }
 
-    const faction = column < MIDDLE_COLUMN ? factions.red : factions.blue
+    const faction = factions[side]
     const decorate = NEON_DECORATIONS[Math.floor(noise(hex.q, hex.r, 1) * NEON_DECORATIONS.length)]
     const center = hexToPixel(hex)
     const x = center.x + (noise(hex.q, hex.r, 2) - 0.5) * 20
     const y = center.y + (noise(hex.q, hex.r, 3) - 0.5) * 16
     details.push(
-      <g key={hexKey(hex)} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
+      <g key={key} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
         {decorate(NEON[faction], faction)}
       </g>,
     )
