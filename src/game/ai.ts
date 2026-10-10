@@ -1,7 +1,7 @@
 import { afterDamage, damageRange, effectiveSpeed, totalHp } from './combat'
 import { CREATURES, hasAbility, isWarMachine } from './creatures'
-import { hexDistance, hexKey, neighbors, type Hex } from './hex'
-import { attackMode, attackOrigins, isEnemyAdjacent, reachableHexes } from './movement'
+import type { Hex } from './hex'
+import { attackMode, attackOrigins, isEnemyAdjacent, reachableHexes, strikesFrom, unitDistance } from './movement'
 import { createRandom } from './random'
 import { activeUnit, applyMove, castProblem } from './rules'
 import { SPELLS, type EffectId } from './spells'
@@ -97,13 +97,13 @@ const aggression = (profile: Profile, round: number) =>
 
 /**
  * How good the state is for `player`: their army minus the enemy's, plus position and mana.
- * Distances are measured to `enemyPositions`, where the enemies stood before the move, so that
+ * Distances are measured to `enemies` as they stood before the move, so that
  * killing the nearest stack never looks like losing ground.
  */
 export function scoreState(
   state: GameState,
   player: Player,
-  enemyPositions: Hex[],
+  enemies: Unit[],
   profile: Profile = PROFILES.normal,
 ): number {
   if (state.winner) {
@@ -127,7 +127,7 @@ export function scoreState(
       continue
     }
 
-    const nearest = Math.min(...enemyPositions.map((position) => hexDistance(unit.position, position)))
+    const nearest = Math.min(...enemies.map((enemy) => unitDistance(unit, enemy)))
     const reach = isShooter(unit) ? CREATURES[unit.type].range : 1 + effectiveSpeed(unit)
     score -= profile.distancePenalty * value * Math.max(0, nearest - reach)
 
@@ -165,8 +165,7 @@ function shouldWait(state: GameState, actor: Unit, best: Move): boolean {
   return state.queue.slice(1).some((id) => state.units.find((unit) => unit.id === id)?.owner !== actor.owner)
 }
 
-const enemyPositionsOf = (state: GameState, player: Player): Hex[] =>
-  state.units.filter((unit) => unit.owner !== player).map((unit) => unit.position)
+const enemiesOf = (state: GameState, player: Player): Unit[] => state.units.filter((unit) => unit.owner !== player)
 
 /*
  * Expert tactics, after how skilled Heroes III players fight:
@@ -210,7 +209,10 @@ function exchangeValue(state: GameState, attacker: Unit, target: Unit, ranged: b
 
 /** Whether `attacker` could walk or fly next to `target` and strike it, given the hexes it can reach. */
 function canReachInMelee(attacker: Unit, target: Unit, reach: Map<string, Hex[]>): boolean {
-  return hexDistance(attacker.position, target.position) === 1 || neighbors(target.position).some((hex) => reach.has(hexKey(hex)))
+  return (
+    unitDistance(attacker, target) === 1 ||
+    [...reach.values()].some((path) => strikesFrom(attacker, path[path.length - 1], target))
+  )
 }
 
 type ReachOf = (unit: Unit) => Map<string, Hex[]>
@@ -224,7 +226,7 @@ function worstBlowFrom(state: GameState, enemy: Unit, player: Player, reachOf: R
   const targets = state.units.filter((unit) => unit.owner === player)
 
   if (canShoot(state.units, enemy)) {
-    const inRange = targets.filter((target) => hexDistance(enemy.position, target.position) <= CREATURES[enemy.type].range)
+    const inRange = targets.filter((target) => unitDistance(enemy, target) <= CREATURES[enemy.type].range)
 
     return Math.max(0, ...inRange.map((target) => exchangeValue(state, enemy, target, true)))
   }
@@ -295,7 +297,7 @@ export function tacticalScore(state: GameState, player: Player, profile: Profile
 
 /** The average score of a move over the AI's imagined rolls, or null if the move is not allowed. */
 function scoreMove(state: GameState, move: Move, player: Player, profile: Profile): number | null {
-  const enemyPositions = enemyPositionsOf(state, player)
+  const enemies = enemiesOf(state, player)
   let total = 0
   let tactics = 0
 
@@ -307,7 +309,7 @@ function scoreMove(state: GameState, move: Move, player: Player, profile: Profil
       return null
     }
 
-    total += scoreState(after, player, enemyPositions, profile)
+    total += scoreState(after, player, enemies, profile)
 
     // Where the stacks end up hardly depends on the rolls, so the board is read once to save time.
     if (index === 0) {
@@ -417,7 +419,7 @@ export function chooseMove(state: GameState, difficulty: Difficulty = 'normal'):
     return { type: 'retreat' }
   }
 
-  const now = scoreState(state, player, enemyPositionsOf(state, player), profile) + tacticalScore(state, player, profile)
+  const now = scoreState(state, player, enemiesOf(state, player), profile) + tacticalScore(state, player, profile)
 
   if (profile.castsSpells) {
     const bestSpell = bestOf(state, spellMoves(state), player, profile)
