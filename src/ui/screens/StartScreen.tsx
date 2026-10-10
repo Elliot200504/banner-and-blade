@@ -115,6 +115,8 @@ interface StartScreenProps {
   onChangeHero: (player: Player, hero: HeroId) => void
   onChangeArmy: (player: Player, army: Army) => void
   onChangeArmySize: (player: Player, size: ArmySize) => void
+  /** A random town and hero, with that town's standard army of the given size. */
+  onRandomSide: (player: Player, size: ArmySize) => void
   onStart: () => void
   onOpenSettings: () => void
   online: OnlineSide | null
@@ -137,6 +139,7 @@ export function StartScreen({
   onChangeHero,
   onChangeArmy,
   onChangeArmySize,
+  onRandomSide,
   onStart,
   onOpenSettings,
   online,
@@ -230,6 +233,26 @@ export function StartScreen({
           })}
         </div>
       )}
+    </div>
+  )
+
+  const randomStep = (player: Player) => (
+    <div className="setup-step">
+      <h3 className="drawer-label">Random</h3>
+      <div className="army-picker__factions" role="group" aria-label={`Random ${PLAYER_NAMES[player]} team`}>
+        {ARMY_SIZES.map((size) => (
+          <button
+            key={size}
+            className={optionClass(false)}
+            onClick={() => {
+              onRandomSide(player, size)
+              pick(player, { town: true, hero: true })
+            }}
+          >
+            {ARMY_SIZE_LABELS[size]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 
@@ -353,6 +376,7 @@ export function StartScreen({
     <section key={player} ref={drawers[player]} className={`panel army-picker__side army-picker__side--${player}`}>
       <h2 className="panel__title">{PLAYER_NAMES[player]} player</h2>
       {!online && playerStep(player)}
+      {playerChosen(player) && randomStep(player)}
       {playerChosen(player) && townStep(player)}
       {playerChosen(player) && setup[player].town && heroStep(player)}
       {playerChosen(player) && setup[player].town && setup[player].hero && (

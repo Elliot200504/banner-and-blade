@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type AnimationEvent } from 'react'
 import {
+  FACTION_ORDER,
   heroesOf,
   opponentOf,
   sizedArmy,
@@ -29,6 +30,8 @@ import { useTheme } from './ui/hooks/useTheme'
 import { showsBattle, type Screen } from './ui/screens/screen'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32)
+
+const randomItem = <Item,>(items: Item[]): Item => items[Math.floor(Math.random() * items.length)]
 
 /** A game against a friend online. The host plays Red and starts the battles. */
 interface OnlineGame {
@@ -282,6 +285,13 @@ export default function App() {
             // A new size brings that size's standard army with it.
             setArmySizes((current) => ({ ...current, [player]: size }))
             setArmies((current) => ({ ...current, [player]: sizedArmy(factions[player], size) }))
+          }}
+          onRandomSide={(player, size) => {
+            const faction = randomItem(FACTION_ORDER)
+            setFactions((current) => ({ ...current, [player]: faction }))
+            setHeroes((current) => ({ ...current, [player]: randomItem(heroesOf(faction)) }))
+            setArmySizes((current) => ({ ...current, [player]: size }))
+            setArmies((current) => ({ ...current, [player]: sizedArmy(faction, size) }))
           }}
           onStart={startBattle}
           onOpenSettings={() => setSettingsOpen(true)}
